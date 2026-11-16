@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatView } from "@/components/chat/ChatView";
-import { controlledStream, jsonResponse, renderWithProviders, streamedAnswer } from "@/test/render";
+import { chatPageFetch, controlledStream, jsonResponse, renderWithProviders, streamedAnswer } from "@/test/render";
 
 type Fetch = ReturnType<typeof vi.fn>;
 
@@ -18,7 +18,7 @@ let fetchMock: Fetch;
 
 beforeEach(() => {
   fetchMock = vi.fn();
-  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal("fetch", chatPageFetch(fetchMock));
 });
 
 afterEach(() => vi.unstubAllGlobals());

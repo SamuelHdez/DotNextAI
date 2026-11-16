@@ -1,6 +1,6 @@
 # Terminal app (CLI)
 
-> **Status:** Step 07 (streamed answers) implemented on 2026-11-16, on top of steps 01, 03 and 06 (single question and answer, multi-turn chat, images). The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
+> **Status:** Step 08 (model selection) implemented on 2026-11-16, on top of steps 01, 03, 06 and 07 (single question and answer, multi-turn chat, images, streamed answers). The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
 
 `dotnextai` (project `backend/src/DotNextAI.Cli`) is the terminal front end of DotNextAI. It uses the same Application and Infrastructure services as the API, so a feature is written once and offered in both front ends.
 
@@ -32,6 +32,7 @@
 | `dotnextai ask What is .NET?` | Same: unquoted words are joined with single spaces. |
 | `echo "…" \| dotnextai ask`, `dotnextai ask < question.txt` | With no question argument and redirected stdin, the whole of stdin is the question (multi-line allowed). |
 | `dotnextai ask` in a terminal | Writes `Question: ` to stderr and reads one line. |
+| `dotnextai ask --model gpt-5.6-terra "…"` (`-m`) | Answers with another chat model (step 08). It is checked against `dotnextai models` before the question is read; an unknown or non-chat model exits with 2. |
 | `dotnextai ask --image cat.png -i dog.jpg "What is in these pictures?"` | Attaches up to 4 image files (step 06). Each one is loaded and checked before the question is read. |
 
 Rules:
@@ -76,10 +77,23 @@ Rules:
 | ------------ | ------ |
 | `/image <path>` | Loads an image and attaches it to the **next** question: `Attached cat.png (image/png, 120 KB). It goes with your next question.` Up to 4 per question. |
 | `/images` | Lists the images waiting for the next question, or `No images attached.` |
+| `/model` | Shows the current model (`Model: gpt-5.6-luna`) and the list, the current one marked with `*`. |
+| `/model <name>` | Answers the next questions with another chat model: `Now using gpt-5.6-terra. The conversation goes on with it.` The history goes to the new model. A non-chat or unknown model is refused with the list. |
 | `/new` | Forgets the conversation and the attached images, and writes `Started a new conversation.` |
 | `/help` | Lists the chat commands. |
 | `/exit`, `/quit` | Ends the chat (exit code 0). |
 | any other `/…` | `Unknown command '/…'. Type /help for the list.` |
+
+### `dotnextai models` — chat models of the proxy (step 08)
+
+Lists the proxy's chat models on stdout, the default marked with `*`:
+
+```text
+* gpt-5.6-luna   (default, 922,000 input / 128,000 output tokens)
+  gpt-5.6-terra  (922,000 input / 128,000 output tokens)
+```
+
+Exit codes: 0, 1 if the list cannot be read, 3 if not configured.
 
 ### `dotnextai --help`, `dotnextai <command> --help`, `dotnextai --version`
 
@@ -106,6 +120,7 @@ All on stderr.
 | Not an image | `<name> is not a PNG, JPEG, WebP or GIF image.` | 2 (`ask`), — (chat) |
 | Image too large | `<name> is too large (N MB; the maximum is 4 MB).` | 2 (`ask`), — (chat) |
 | Too many images | `ask`: `Too many images (N; the maximum is 4 per question).` Chat: `You can attach up to 4 images to one question.` | 2 (`ask`), — (chat) |
+| Model not a chat model | `'x' is not a chat model of the LiteLLM proxy. Available: …` (`ask` adds `Run 'dotnextai models' for the list.`) | 2 (`ask`), — (chat) |
 | `/image` without a path | `Usage: /image <path to a PNG, JPEG, WebP or GIF file>` | — |
 
 Hints after `Error:`:
@@ -145,7 +160,7 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 | 03 Chat history | **Done 2026-11-16.** `dotnextai` / `dotnextai chat`: multi-turn chat with in-memory history, `/new`, `/help`, `/exit`. |
 | 06 Image input | **Done 2026-11-16.** `ask --image <path>` and `/image <path>` in the chat. |
 | 07 Streaming | **Done 2026-11-16.** `ask` and the chat print the answer as it is generated. |
-| 08 Model selector | `--model` option and a command that lists the proxy's chat models. |
+| 08 Model selector | **Done 2026-11-16.** `dotnextai models`, `ask --model`, `/model` in the chat. |
 | 09 Image generation | Command that generates an image and saves it to a file. |
 | 10 Token metrics | Tokens per call and per conversation. |
 
@@ -154,6 +169,10 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 - `ChatCommandTests` (unit, fake `IChatService`): history sent with each question, stdout with only the answers, banner and prompts, `/exit` `/quit` `/new` `/help`, unknown commands, empty lines, failed question not recorded, too-long question, 50-question limit, not configured (3), Ctrl+C (130).
 - `CliApplicationTests` (unit, fake `IChatService`): `ask` with quoted and unquoted questions, stdin, interactive prompt, no history, empty and too-long questions, not configured (checked before reading), failures with their hints and exit codes, truncation warning, Ctrl+C (130), `--help`, unknown command or option (2).
 - `CliApplicationTests` and `ChatCommandTests` (streaming): the answer written piece by piece as one line; an answer broken midway ends its line, reports the error (exit 1) and is not recorded in the chat.
+- `ModelCommandTests`:
+  - `models`: the list with the default marked, a failure, not configured.
+  - `ask`: `--model`/`-m` sent; the default reads no list; an unknown model exits with 2 before reading the question.
+  - Chat: `/model` shows and switches with the conversation going on; a non-chat model and a list failure are refused.
 - `ImageCommandTests`:
   - `ask --image`: images detected by content, missing file, non-image, too large, too many.
   - Chat: `/image` for the next question only, `/images`, `/new` discards, kept after a failure, usage without a path, limit, non-image.

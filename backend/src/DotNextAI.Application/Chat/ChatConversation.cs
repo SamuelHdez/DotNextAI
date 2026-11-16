@@ -25,6 +25,12 @@ public sealed class ChatConversation(IChatService chat)
         AskAsync(question, [], cancellationToken);
 
     /// <summary>
+    /// Chat model for the next questions (step 08), or null for the default. It can change in the middle of a
+    /// conversation: the history goes to whichever model answers next.
+    /// </summary>
+    public string? Model { get; set; }
+
+    /// <summary>
     /// Asks the question with its images after the previous turns. The history keeps the text only, so later questions
     /// see the model's earlier answer about an image, not the image itself (docs/specs/feature-llm-chat.md#images).
     /// </summary>
@@ -37,7 +43,7 @@ public sealed class ChatConversation(IChatService chat)
         }
 
         var normalized = ChatRules.NormalizeQuestion(question);
-        var answer = await chat.AskAsync(normalized, _turns.ToArray(), images, cancellationToken).ConfigureAwait(false);
+        var answer = await chat.AskAsync(new ChatRequest(normalized, _turns.ToArray(), images, Model), cancellationToken).ConfigureAwait(false);
 
         _turns.Add(new ChatTurn(ChatTurnRole.User, normalized));
         _turns.Add(new ChatTurn(ChatTurnRole.Assistant, answer.Text));
@@ -62,7 +68,7 @@ public sealed class ChatConversation(IChatService chat)
 
         var normalized = ChatRules.NormalizeQuestion(question);
         var history = _turns.ToArray();
-        await foreach (var update in chat.AskStreamingAsync(normalized, history, images, cancellationToken).ConfigureAwait(false))
+        await foreach (var update in chat.AskStreamingAsync(new ChatRequest(normalized, history, images, Model), cancellationToken).ConfigureAwait(false))
         {
             if (update.Completed is { } answer)
             {

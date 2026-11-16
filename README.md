@@ -4,7 +4,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 Technical documentation, backlog and decisions: [docs/](docs/README.md).
 
-> **Status:** backlog step 07 done (streamed answers). A web app (Next.js + Fluent UI, English/Spanish) and the terminal app chat through the same API and Microsoft Agent Framework agent over the LiteLLM proxy.
+> **Status:** backlog step 08 done (model selector). A web app (Next.js + Fluent UI, English/Spanish) and the terminal app chat through the same API and Microsoft Agent Framework agent over the LiteLLM proxy.
 
 ## Requirements
 
@@ -67,7 +67,7 @@ To read or reset the store: `dotnet user-secrets list --project backend/src/DotN
 Open `http://localhost:3030` after `./scripts/dev.sh`. A dashboard with the ValidatorHub layout and the ERNI brand:
 
 - **Home**: service status (API, language model) and the course backlog.
-- **Chat**: the conversation stays in the browser tab and is sent with every question. Enter sends, Shift+Enter adds a line, the answer appears as it is written (**Stop** keeps what arrived), and **New conversation** starts over. Attach up to 4 images (PNG, JPEG, WebP, GIF, 4 MB each) with the paperclip or by pasting; they go with that question only.
+- **Chat**: the conversation stays in the browser tab and is sent with every question. Enter sends, Shift+Enter adds a line, the answer appears as it is written (**Stop** keeps what arrived), **New conversation** starts over, and the **Model** selector picks one of the proxy's chat models (remembered). Attach up to 4 images (PNG, JPEG, WebP, GIF, 4 MB each) with the paperclip or by pasting; they go with that question only.
 - **Header**: language selector (English / Español, remembered in a cookie) and appearance (system / light / dark).
 
 Details in the [web app spec](docs/specs/feature-web-app.md).
@@ -81,6 +81,7 @@ dotnextai                            # chat with history (/new, /help, /exit; Ct
 dotnextai chat < questions.txt       # one question per line, answers only on stdout
 dotnextai ask "What is .NET?"        # one question, no history (quotes optional)
 dotnextai ask -i cat.png "What is in this picture?"   # with images (up to 4; /image <path> in the chat)
+dotnextai models                     # chat models of the proxy; use one with ask -m <name> or /model <name>
 echo "Summarize: ..." | dotnextai ask  # one multi-line question from stdin
 dotnextai --help
 ```
@@ -96,7 +97,7 @@ curl -s -H "Content-Type: application/json" \
 # {"answer":"Your name is Ana.","model":"gpt-5.6-luna","truncated":false}
 ```
 
-The API is stateless: the client sends the history with every question. `POST /api/chat/stream` takes the same body and streams the answer as Server-Sent Events (`delta`, `done`, `error`). Errors are `ProblemDetails` with a `failure` code (`ModelUnavailable`, `Timeout`, …). See the [API contract](docs/design/api.md), or use `backend/src/DotNextAI.Api/DotNextAI.Api.http` and Swagger UI.
+The API is stateless: the client sends the history with every question. `GET /api/models` lists the chat models, `model` in the body picks one, and `POST /api/chat/stream` takes the same body and streams the answer as Server-Sent Events (`delta`, `done`, `error`). Errors are `ProblemDetails` with a `failure` code (`ModelUnavailable`, `Timeout`, …). See the [API contract](docs/design/api.md), or use `backend/src/DotNextAI.Api/DotNextAI.Api.http` and Swagger UI.
 
 ## Project layout
 

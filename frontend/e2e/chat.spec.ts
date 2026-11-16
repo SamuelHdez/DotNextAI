@@ -125,6 +125,23 @@ test.describe("chat", () => {
     await expect(page.getByText("notes.png is not a PNG, JPEG, WebP or GIF image.")).toBeVisible();
   });
 
+  test("answers with the chosen model and remembers the choice", async ({ page }) => {
+    const picker = page.getByRole("combobox", { name: "Model" });
+    await expect(picker).toHaveText("e2e-model (default)");
+
+    await picker.click();
+    // Only chat models are offered (the fake proxy also lists an embedding and an image model).
+    await expect(page.getByRole("option")).toHaveText(["e2e-model (default)", "e2e-model-fast"]);
+    await page.getByRole("option", { name: "e2e-model-fast" }).click();
+    await ask(page, "Which model are you?");
+
+    await expect(conversation(page).getByText("Echo: Which model are you?")).toBeVisible();
+    await expect(conversation(page).getByText("e2e-model-fast", { exact: true })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole("combobox", { name: "Model" })).toHaveText("e2e-model-fast");
+  });
+
   test("has no serious accessibility violations with a conversation", async ({ page }) => {
     await expectNoA11yViolations(page);
 

@@ -9,18 +9,15 @@ internal sealed class FakeChatService(Func<string, ChatAnswer>? answer = null) :
 {
     public bool IsConfigured { get; init; } = true;
 
-    public List<(string Question, ChatTurn[] History, ChatImage[] Images)> Calls { get; } = [];
+    public List<(string Question, ChatTurn[] History, ChatImage[] Images, string? Model)> Calls { get; } = [];
 
     public List<string> Questions => Calls.Select(call => call.Question).ToList();
 
-    public Task<ChatAnswer> AskAsync(
-        string question,
-        IReadOnlyList<ChatTurn> history,
-        IReadOnlyList<ChatImage> images,
-        CancellationToken cancellationToken)
+    public Task<ChatAnswer> AskAsync(ChatRequest request, CancellationToken cancellationToken)
     {
+        var (question, history, images, model) = request;
         cancellationToken.ThrowIfCancellationRequested();
-        Calls.Add((question, history.ToArray(), images.ToArray()));
+        Calls.Add((question, history.ToArray(), images.ToArray(), model));
         return Task.FromResult((answer ?? (q => new ChatAnswer($"answer to {q}", "gpt-5.6-luna", Truncated: false)))(question));
     }
 
@@ -29,12 +26,10 @@ internal sealed class FakeChatService(Func<string, ChatAnswer>? answer = null) :
 
     /// <summary>Streams the canned answer word by word (the call is recorded like <see cref="AskAsync"/>).</summary>
     public async IAsyncEnumerable<ChatStreamUpdate> AskStreamingAsync(
-        string question,
-        IReadOnlyList<ChatTurn> history,
-        IReadOnlyList<ChatImage> images,
+        ChatRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var answer = await AskAsync(question, history, images, cancellationToken);
+        var answer = await AskAsync(request, cancellationToken);
         var pieces = Regex.Split(answer.Text, @"(?<=\s)").Where(piece => piece.Length > 0).ToArray();
         for (var i = 0; i < pieces.Length; i++)
         {

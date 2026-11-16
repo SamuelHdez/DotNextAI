@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -20,6 +21,7 @@ namespace DotNextAI.Infrastructure.Chat;
 /// Step 03: the caller's history is sent before the question; the agent keeps no state between calls.
 /// Step 06: images go with the question as <see cref="DataContent"/>; the SDK sends them as base64 data URIs.
 /// Step 07: <see cref="AskStreamingAsync"/> relays the agent's streamed updates as they arrive.
+/// Step 08: one agent per chat model, created on first use; a model must be in the <see cref="IModelCatalog"/>.
 /// </summary>
 internal sealed partial class AgentChatService : IChatService
 {
@@ -30,48 +32,37 @@ internal sealed partial class AgentChatService : IChatService
         "You are DotNextAI, a helpful assistant. Answer clearly and concisely, in the language of the question.";
 
     private readonly LlmOptions _options;
-    private readonly AIAgent? _agent;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly IModelCatalog _catalog;
+    private readonly ConcurrentDictionary<string, AIAgent> _agents = new(StringComparer.Ordinal);
     private readonly ILogger<AgentChatService> _logger;
 
     public AgentChatService(
         IOptions<LlmOptions> options,
         IHttpClientFactory httpClientFactory,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        IModelCatalog catalog)
     {
         _options = options.Value;
+        _httpClientFactory = httpClientFactory;
+        _loggerFactory = loggerFactory;
+        _catalog = catalog;
         _logger = loggerFactory.CreateLogger<AgentChatService>();
-
-        if (_options.IsConfigured)
-        {
-            _agent = LlmChatClientFactory
-                .Create(_options, _options.DefaultModel!, httpClientFactory)
-                .AsAIAgent(instructions: Instructions, name: AgentName, loggerFactory: loggerFactory);
-        }
     }
 
-    public bool IsConfigured => _agent is not null;
+    public bool IsConfigured => _options.IsConfigured;
 
-    public async Task<ChatAnswer> AskAsync(
-        string question,
-        IReadOnlyList<ChatTurn> history,
-        IReadOnlyList<ChatImage> images,
-        CancellationToken cancellationToken)
+    public async Task<ChatAnswer> AskAsync(ChatRequest request, CancellationToken cancellationToken)
     {
-        var prompt = ChatRules.NormalizeQuestion(question);
-        ChatRules.ValidateHistory(history);
-        ChatRules.ValidateImages(images);
-        if (_agent is null)
-        {
-            throw ChatFailureMapper.NotConfigured();
-        }
-
-        var model = _options.DefaultModel!;
+        var (prompt, model) = Validate(request);
+        var agent = await AgentForAsync(model, cancellationToken);
         var started = Stopwatch.GetTimestamp();
         AgentResponse response;
         try
         {
             // No AgentSession: the front end owns the history (CLI process, browser), so the API can stay stateless.
-            response = await _agent.RunAsync(ToMessages(history, prompt, images), cancellationToken: cancellationToken);
+            response = await agent.RunAsync(ToMessages(request.History, prompt, request.Images), cancellationToken: cancellationToken);
         }
         catch (ClientResultException ex)
         {
@@ -114,25 +105,16 @@ internal sealed partial class AgentChatService : IChatService
     }
 
     public async IAsyncEnumerable<ChatStreamUpdate> AskStreamingAsync(
-        string question,
-        IReadOnlyList<ChatTurn> history,
-        IReadOnlyList<ChatImage> images,
+        ChatRequest request,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var prompt = ChatRules.NormalizeQuestion(question);
-        ChatRules.ValidateHistory(history);
-        ChatRules.ValidateImages(images);
-        if (_agent is null)
-        {
-            throw ChatFailureMapper.NotConfigured();
-        }
-
-        var model = _options.DefaultModel!;
+        var (prompt, model) = Validate(request);
+        var agent = await AgentForAsync(model, cancellationToken);
         var started = Stopwatch.GetTimestamp();
         var text = new StringBuilder();
         Microsoft.Extensions.AI.ChatFinishReason? finishReason = null;
 
-        var updates = _agent.RunStreamingAsync(ToMessages(history, prompt, images), cancellationToken: cancellationToken);
+        var updates = agent.RunStreamingAsync(ToMessages(request.History, prompt, request.Images), cancellationToken: cancellationToken);
         await using var enumerator = updates.GetAsyncEnumerator(cancellationToken);
         while (true)
         {
@@ -186,6 +168,41 @@ internal sealed partial class AgentChatService : IChatService
         yield return new ChatStreamUpdate(
             string.Empty,
             new ChatAnswer(text.ToString(), model, Truncated: finishReason == Microsoft.Extensions.AI.ChatFinishReason.Length));
+    }
+
+    /// <summary>The rules of every call; returns the trimmed question and the model to use.</summary>
+    private (string Prompt, string Model) Validate(ChatRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var prompt = ChatRules.NormalizeQuestion(request.Question);
+        ChatRules.ValidateHistory(request.History);
+        ChatRules.ValidateImages(request.Images);
+        if (!_options.IsConfigured)
+        {
+            throw ChatFailureMapper.NotConfigured();
+        }
+
+        return (prompt, string.IsNullOrWhiteSpace(request.Model) ? _options.DefaultModel! : request.Model.Trim());
+    }
+
+    /// <summary>
+    /// The agent of a chat model, created on first use. Any model other than the default must be a chat model of the
+    /// proxy (<see cref="IModelCatalog"/>): callers cannot send arbitrary model names to the proxy.
+    /// </summary>
+    private async Task<AIAgent> AgentForAsync(string model, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(model, _options.DefaultModel, StringComparison.Ordinal))
+        {
+            var models = await _catalog.GetChatModelsAsync(cancellationToken);
+            if (!models.Any(chatModel => string.Equals(chatModel.Id, model, StringComparison.Ordinal)))
+            {
+                throw ChatFailureMapper.NotAChatModel(model);
+            }
+        }
+
+        return _agents.GetOrAdd(model, id => LlmChatClientFactory
+            .Create(_options, id, _httpClientFactory)
+            .AsAIAgent(instructions: Instructions, name: AgentName, loggerFactory: _loggerFactory));
     }
 
     private static List<ChatMessage> ToMessages(IReadOnlyList<ChatTurn> history, string question, IReadOnlyList<ChatImage> images)

@@ -3,6 +3,7 @@ using DotNextAI.Infrastructure.Chat;
 using DotNextAI.Infrastructure.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DotNextAI.Infrastructure;
 
@@ -22,6 +23,8 @@ public static class DependencyInjection
         // The SDK enforces Llm:TimeoutSeconds per attempt (NetworkTimeout); HttpClient's own 100 s limit would cut
         // longer answers first.
         services.AddHttpClient(LlmChatClientFactory.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan);
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<IModelCatalog, LiteLlmModelCatalog>();
         services.AddSingleton<IChatService, AgentChatService>();
 
         return services;

@@ -1,6 +1,7 @@
 import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 import { render, type RenderOptions } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
+import type { vi } from "vitest";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import type { Locale } from "@/lib/i18n/locales";
 
@@ -55,6 +56,30 @@ export function controlledStream() {
       push(`event: error\ndata: ${JSON.stringify({ status, failure, title: "x", detail: "English detail" })}\n\n`);
       close();
     },
+  };
+}
+
+/** GET /api/models as the API answers it, with the two chat models of the ERNI proxy. */
+export const MODELS = {
+  defaultModel: "gpt-5.6-luna",
+  models: [
+    { id: "gpt-5.6-luna", isDefault: true, maxInputTokens: 922000, maxOutputTokens: 128000 },
+    { id: "gpt-5.6-terra", isDefault: false, maxInputTokens: 922000, maxOutputTokens: 128000 },
+  ],
+};
+
+/**
+ * A fetch stub for the chat page: GET /api/models answers `models` (or fails with `models: "fail"`), every other call
+ * goes to `chat`, so tests only see (and count) the chat calls.
+ */
+type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+export function chatPageFetch(chat: ReturnType<typeof vi.fn> | FetchLike, models: unknown = MODELS): FetchLike {
+  return (input, init) => {
+    if (String(input).endsWith("/api/models")) {
+      return models === "fail" ? Promise.reject(new TypeError("Failed to fetch")) : Promise.resolve(jsonResponse(models));
+    }
+    return (chat as FetchLike)(input, init);
   };
 }
 

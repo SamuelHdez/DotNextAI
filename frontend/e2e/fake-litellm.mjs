@@ -12,10 +12,18 @@
 //   image parts          -> "I see N image(s) (types): <question>" when every image is a base64 data URI
 //   anything else        -> "Echo: <question>"
 // With "stream": true the answer is sent as OpenAI chat.completion.chunk Server-Sent Events, one word per chunk.
+// GET /models (and /v1/models) lists two chat models plus non-chat ones, with LiteLLM's "mode"; answers name the
+// model that was asked for, so the tests see which model answered.
 import { createServer } from "node:http";
 
 const port = Number(process.argv[2] ?? process.env.FAKE_LITELLM_PORT ?? 4010);
 const MODEL = "e2e-model";
+const MODELS = [
+  { id: "e2e-model", object: "model", owned_by: "openai", mode: "chat", max_input_tokens: 922000, max_output_tokens: 128000 },
+  { id: "e2e-model-fast", object: "model", owned_by: "openai", mode: "chat", max_input_tokens: 128000, max_output_tokens: 16000 },
+  { id: "e2e-embedding", object: "model", owned_by: "openai", mode: "embedding", max_input_tokens: 8192 },
+  { id: "e2e-image", object: "model", owned_by: "openai", mode: "image_generation" },
+];
 
 function textOf(content) {
   if (typeof content === "string") return content;
@@ -28,12 +36,12 @@ function send(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-function completion(text) {
+function completion(text, model) {
   return {
     id: `chatcmpl-e2e-${Date.now()}`,
     object: "chat.completion",
     created: Math.floor(Date.now() / 1000),
-    model: MODEL,
+    model,
     choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }],
     usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
   };
@@ -64,24 +72,24 @@ function answerFor(messages) {
   return `Echo: ${question}`;
 }
 
-function chunk(delta, finishReason = null) {
+function chunk(delta, model, finishReason = null) {
   return `data: ${JSON.stringify({
     id: "chatcmpl-e2e",
     object: "chat.completion.chunk",
     created: Math.floor(Date.now() / 1000),
-    model: MODEL,
+    model,
     choices: [{ index: 0, delta, finish_reason: finishReason }],
   })}\n\n`;
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function stream(response, text, { slow, drop }) {
+async function stream(response, text, model, { slow, drop }) {
   response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
   if (slow) await wait(1500);
   const words = text.split(/(?<=\s)/);
   for (const [index, word] of words.entries()) {
-    response.write(chunk(index === 0 ? { role: "assistant", content: word } : { content: word }));
+    response.write(chunk(index === 0 ? { role: "assistant", content: word } : { content: word }, model));
     if (drop) {
       // Let the first word reach the client, then break the connection mid-answer.
       await wait(200);
@@ -90,13 +98,20 @@ async function stream(response, text, { slow, drop }) {
     }
     await wait(slow ? 400 : 15);
   }
-  response.write(chunk({}, "stop"));
+  response.write(chunk({}, model, "stop"));
   response.end("data: [DONE]\n\n");
 }
 
 const server = createServer((request, response) => {
   const path = (request.url ?? "").split("?")[0];
   if (request.method === "GET" && path === "/health") return send(response, 200, { status: "healthy" });
+
+  if (request.method === "GET" && /^\/(v1\/)?models$/.test(path)) {
+    if (!/^Bearer \S+$/.test(request.headers.authorization ?? "")) {
+      return send(response, 401, { error: { message: "Authentication Error, no api key passed in." } });
+    }
+    return send(response, 200, { data: MODELS, object: "list" });
+  }
 
   if (request.method !== "POST" || !/^\/(v1\/)?chat\/completions$/.test(path)) {
     return send(response, 404, { error: { message: `No route for ${request.method} ${path}` } });
@@ -132,10 +147,10 @@ const server = createServer((request, response) => {
 
     const slow = question.includes("[e2e:slow]");
     if (body.stream === true) {
-      stream(response, answerFor(messages), { slow, drop: question.includes("[e2e:drop]") }).catch(() => response.destroy());
+      stream(response, answerFor(messages), body.model ?? MODEL, { slow, drop: question.includes("[e2e:drop]") }).catch(() => response.destroy());
       return;
     }
-    setTimeout(() => send(response, 200, completion(answerFor(messages))), slow ? 1500 : 0);
+    setTimeout(() => send(response, 200, completion(answerFor(messages), body.model ?? MODEL)), slow ? 1500 : 0);
   });
 });
 

@@ -12,12 +12,14 @@ internal static class ProxyErrorDetail
 {
     public const int MaxLength = 300;
 
-    public static string? From(ClientResultException exception, string? apiKey)
+    public static string? From(ClientResultException exception, string? apiKey) =>
+        FromBody(exception.GetRawResponse()?.Content?.ToString(), apiKey);
+
+    public static string? FromBody(string? body, string? apiKey)
     {
         string? message;
         try
         {
-            var body = exception.GetRawResponse()?.Content?.ToString();
             if (string.IsNullOrWhiteSpace(body))
             {
                 return null;
@@ -49,5 +51,32 @@ internal static class ProxyErrorDetail
         }
 
         return firstLine.Length <= MaxLength ? firstLine : string.Concat(firstLine.AsSpan(0, MaxLength), "…");
+    }
+
+    /// <summary>
+    /// The machine-readable <c>error.type</c> of the body (e.g. LiteLLM's <c>team_model_access_denied</c>), safe to use
+    /// for 401/403 because it never contains the key; null when there is none.
+    /// </summary>
+    public static string? ErrorType(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var json = JsonDocument.Parse(body);
+            return json.RootElement.TryGetProperty("error", out var error)
+                && error.ValueKind == JsonValueKind.Object
+                && error.TryGetProperty("type", out var type)
+                && type.ValueKind == JsonValueKind.String
+                    ? type.GetString()
+                    : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }

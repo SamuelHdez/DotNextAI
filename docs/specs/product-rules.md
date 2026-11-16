@@ -29,13 +29,13 @@ The course backlog, with how this repository maps each step. The spec of each st
 | 05 | Web app | Web UI | Streamlit or React, run locally. | **Done 2026-11-16.** `frontend/`: Next.js + Fluent UI dashboard (ValidatorHub layout, ERNI brand, English/Spanish) with a chat over `POST /api/chat` ([web app](feature-web-app.md)). |
 | 06 | Web app | Image input | Add images in the input, converted to base64. | **Done 2026-11-16.** Up to 4 images per question in the web (button or paste) and the CLI (`--image`, `/image`), base64 over the API, `DataContent` to the agent; images go with their question only ([chat service](feature-llm-chat.md#images)). |
 | 07 | Web app | Streaming | Stream the response so the user sees it being generated. | **Done 2026-11-16.** `POST /api/chat/stream` (Server-Sent Events from the agent's `RunStreamingAsync`); the web app renders the pieces with a Stop button, and the CLI prints them as they arrive ([API](../design/api.md#post-apichatstream)). |
-| 08 | Extra features | Model selector | Let the user change the model. | Model list from the proxy (`/v1/models`), selected per request. |
+| 08 | Extra features | Model selector | Let the user change the model. | **Done 2026-11-16.** `GET /api/models` (the proxy's chat models, cached); a `model` per request, checked against that list; a selector in the web (remembered), `models` / `--model` / `/model` in the CLI ([API](../design/api.md#get-apimodels)). |
 | 09 | Extra features | Image generation | Generate images with a gpt-image model. | OpenAI .NET SDK `ImageClient` through the proxy. |
 | 10 | Extra features | Token metrics | Consumed tokens per call and in total for the conversation. | Usage of each answer (`UsageDetails`), with per-call and conversation totals. |
 
 ## Models available through the proxy
 
-Model list reported by the ERNI LiteLLM proxy on 2026-11-16. Each entry has a `mode` field. The model selector (step 08) reads the list at runtime and offers only `mode = chat` models, so nothing is hard-coded.
+Model list reported by the ERNI LiteLLM proxy on 2026-11-16. Each entry has a `mode` field. The model selector (step 08, done) reads the list at runtime through `GET /api/models` and offers only `mode = chat` models, so nothing is hard-coded.
 
 | Model | Mode | Limits (input / output tokens) | Used for |
 | ----- | ---- | ------------------------------ | -------- |
@@ -46,6 +46,13 @@ Model list reported by the ERNI LiteLLM proxy on 2026-11-16. Each entry has a `m
 | `text-embedding-3-small` | embedding | 8,192 / — | Not used. |
 
 Image input (step 06) assumes that `gpt-5.6-luna` accepts images (decided 2026-11-16, to be confirmed against the real proxy).
+
+**Findings of 2026-11-16 (`GET /v2/model/info` and probes with our key):**
+
+- The proxy also runs `gpt-6-luna`, `gpt-6.1-terra`, `gpt-6.1-sol` and `gpt-6-astra` (chat, 922,000 / 128,000 tokens, `supports_vision: true`).
+- Our key's team only has access to `gpt-5.6-luna` and `gpt-5.6-terra` (the `/models` list above), and those have **no healthy deployments**.
+- The `gpt-6.x` models answer 403 `team_model_access_denied` to our key.
+- Real answers need the proxy administrator to give the key's team access to the `gpt-6.x` models (or to restore `gpt-5.6`). Then set `Llm:DefaultModel` with `./scripts/dev.sh secrets`, or pick the model in the selector.
 
 ## Global rules
 

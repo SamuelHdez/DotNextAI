@@ -7,7 +7,7 @@ namespace DotNextAI.Cli.Commands;
 /// Backlog step 01: one question, one answer. The question comes from the arguments, from stdin when it is
 /// redirected, or from an interactive prompt.
 /// </summary>
-internal sealed class AskCommand(IChatService chat, CliConsole console)
+internal sealed class AskCommand(IChatService chat, IModelCatalog catalog, CliConsole console)
 {
     public const string Name = "ask";
 
@@ -26,18 +26,24 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
             AllowMultipleArgumentsPerToken = false,
         };
 
+        var model = new Option<string?>("--model", "-m")
+        {
+            Description = "Chat model to answer (see `dotnextai models`); the default model when omitted.",
+        };
+
         var command = new Command(Name, "Ask one question and print the answer.");
         command.Arguments.Add(question);
         command.Options.Add(images);
+        command.Options.Add(model);
         command.SetAction((parseResult, cancellationToken) =>
-            RunAsync(parseResult.GetValue(question), parseResult.GetValue(images), cancellationToken));
+            RunAsync(parseResult.GetValue(question), parseResult.GetValue(images), parseResult.GetValue(model), cancellationToken));
         return command;
     }
 
     public Task<int> RunAsync(string[]? words, CancellationToken cancellationToken) =>
-        RunAsync(words, [], cancellationToken);
+        RunAsync(words, [], null, cancellationToken);
 
-    public async Task<int> RunAsync(string[]? words, string[]? imagePaths, CancellationToken cancellationToken)
+    public async Task<int> RunAsync(string[]? words, string[]? imagePaths, string? model, CancellationToken cancellationToken)
     {
         // Checked before asking for the question, so nobody types a question that cannot be sent.
         if (!chat.IsConfigured)
@@ -65,8 +71,16 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
             return ExitCodes.UsageError;
         }
 
+        model = string.IsNullOrWhiteSpace(model) ? null : model.Trim();
         try
         {
+            // Checked before the question is read, like the images: a typo fails at once.
+            if (model is not null && !await ModelChoice.IsChatModelAsync(catalog, model, console.Error, cancellationToken))
+            {
+                await console.Error.WriteLineAsync("Run 'dotnextai models' for the list.");
+                return ExitCodes.UsageError;
+            }
+
             var raw = await ReadQuestionAsync(words, cancellationToken);
             if (!ChatRules.TryNormalizeQuestion(raw, out var question, out var error))
             {
@@ -74,7 +88,7 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
                 return ExitCodes.UsageError;
             }
 
-            var answer = await AnswerWriter.WriteAsync(chat.AskStreamingAsync(question, [], images, cancellationToken), console.Out);
+            var answer = await AnswerWriter.WriteAsync(chat.AskStreamingAsync(new ChatRequest(question, [], images, model), cancellationToken), console.Out);
             if (answer.Truncated)
             {
                 await console.Error.WriteLineAsync(CliMessages.Truncated);

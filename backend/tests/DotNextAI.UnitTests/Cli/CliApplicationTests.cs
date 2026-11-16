@@ -12,7 +12,8 @@ public class CliApplicationTests
         string[] args,
         string stdin = "",
         bool inputRedirected = false,
-        CancellationToken? cancellationToken = null)
+        CancellationToken? cancellationToken = null,
+        FakeModelCatalog? catalog = null)
     {
         using var input = new StringReader(stdin);
         using var output = new StringWriter();
@@ -22,6 +23,7 @@ public class CliApplicationTests
         var exitCode = await CliApplication.RunAsync(
             args,
             chat,
+            catalog ?? new FakeModelCatalog(),
             console,
             cancellationToken ?? TestContext.Current.CancellationToken);
         return new Run(exitCode, output.ToString(), error.ToString());

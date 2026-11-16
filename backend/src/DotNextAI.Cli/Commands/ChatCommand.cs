@@ -7,7 +7,7 @@ namespace DotNextAI.Cli.Commands;
 /// Backlog step 03: a multi-turn chat. Every line is a question sent with the previous turns of the conversation;
 /// lines starting with <c>/</c> are chat commands. The history lives only in this process.
 /// </summary>
-internal sealed class ChatCommand(IChatService chat, CliConsole console)
+internal sealed class ChatCommand(IChatService chat, IModelCatalog catalog, CliConsole console)
 {
     public const string Name = "chat";
 
@@ -18,6 +18,8 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
         Commands:
           /image <path> Attach an image (PNG, JPEG, WebP or GIF) to your next question; repeat for up to 4
           /images       List the images attached to your next question
+          /model        Show the current chat model and the available ones
+          /model <name> Answer the next questions with another model (the conversation goes on)
           /new          Start a new conversation (forget the previous questions, answers and attached images)
           /help         Show this list
           /exit, /quit  Leave the chat (also Ctrl+D, or Ctrl+Z then Enter on Windows)
@@ -75,7 +77,7 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
 
                 if (input.StartsWith('/'))
                 {
-                    if (await RunChatCommandAsync(input, conversation, attachments))
+                    if (await RunChatCommandAsync(input, conversation, attachments, cancellationToken))
                     {
                         return ExitCodes.Success;
                     }
@@ -139,7 +141,11 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
     }
 
     /// <returns>True when the chat must end.</returns>
-    private async Task<bool> RunChatCommandAsync(string input, ChatConversation conversation, Attachments attachments)
+    private async Task<bool> RunChatCommandAsync(
+        string input,
+        ChatConversation conversation,
+        Attachments attachments,
+        CancellationToken cancellationToken)
     {
         var separator = input.IndexOf(' ', StringComparison.Ordinal);
         var name = (separator < 0 ? input : input[..separator]).ToUpperInvariant();
@@ -149,6 +155,9 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
         {
             case "/IMAGE":
                 await AttachAsync(argument, attachments);
+                return false;
+            case "/MODEL":
+                await ChooseModelAsync(argument, conversation, cancellationToken);
                 return false;
             case "/IMAGES":
                 await console.Error.WriteLineAsync(attachments.Count == 0
@@ -168,6 +177,34 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
             default:
                 await console.Error.WriteLineAsync($"Unknown command '{input}'. Type /help for the list.");
                 return false;
+        }
+    }
+
+    private async Task ChooseModelAsync(string model, ChatConversation conversation, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (model.Length == 0)
+            {
+                var current = conversation.Model ?? catalog.DefaultModel;
+                await console.Error.WriteLineAsync($"Model: {current}");
+                foreach (var line in ModelChoice.Describe(await catalog.GetChatModelsAsync(cancellationToken), current))
+                {
+                    await console.Error.WriteLineAsync(line);
+                }
+
+                return;
+            }
+
+            if (await ModelChoice.IsChatModelAsync(catalog, model, console.Error, cancellationToken))
+            {
+                conversation.Model = string.Equals(model, catalog.DefaultModel, StringComparison.Ordinal) ? null : model;
+                await console.Error.WriteLineAsync($"Now using {model}. The conversation goes on with it.");
+            }
+        }
+        catch (ChatServiceException ex)
+        {
+            await CliMessages.WriteFailureAsync(console.Error, ex);
         }
     }
 

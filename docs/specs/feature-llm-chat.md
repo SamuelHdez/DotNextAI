@@ -1,6 +1,6 @@
 # LLM chat service
 
-> **Status:** Step 07 (streaming) implemented on 2026-11-16, on top of steps 02, 03 and 06 (Microsoft Agent Framework agent, conversation history, images).
+> **Status:** Step 08 (model selection) implemented on 2026-11-16, on top of steps 02, 03, 06 and 07 (Microsoft Agent Framework agent, conversation history, images, streaming).
 
 How DotNextAI talks to the language model. The contract lives in Application (`DotNextAI.Application/Chat`) and the implementation in Infrastructure (`DotNextAI.Infrastructure/Chat`). Every front end uses it: the CLI and the API (`POST /api/chat`, [API contract](../design/api.md)).
 
@@ -24,6 +24,11 @@ How DotNextAI talks to the language model. The contract lives in Application (`D
 | Images only with their question | An image travels with the question it was attached to; the history stays text. Later questions see the model's earlier answer about the image, not the image. Resending every image with every turn would make each request up to tens of MB and multiply the image tokens. | 2026-11-16 |
 | Format from the bytes | `ImageFormats.Detect` reads the file signature (PNG, JPEG, GIF, WebP). A declared media type that does not match the bytes is rejected; file names and extensions are never trusted. | 2026-11-16 |
 | Streaming (step 07) | `AskStreamingAsync(question, history, images)` returns `IAsyncEnumerable<ChatStreamUpdate>`: text pieces as the agent's `RunStreamingAsync` yields them, then one final update with the whole `ChatAnswer`. Same request as `AskAsync` plus `"stream": true`. The non-streaming `AskAsync` stays for callers that want the whole answer at once. | 2026-11-16 |
+| Request object (step 08) | `AskAsync(ChatRequest)` and `AskStreamingAsync(ChatRequest)`, with `ChatRequest(Question, History, Images, Model)`. Extension methods keep the earlier `(question[, history[, images]])` forms. | 2026-11-16 |
+| Models (step 08) | `IModelCatalog` (`LiteLlmModelCatalog`) reads the proxy's `GET {endpoint}models` with the same named `HttpClient`. Its JSON is read directly, because the OpenAI SDK's model client drops LiteLLM's `mode`. It keeps `mode = chat` entries (or entries without `mode`), always includes the default first, and caches the list for 5 minutes; failures are not cached. | 2026-11-16 |
+| Catalog source | `GET /models`, not LiteLLM's `GET /v2/model/info`. `/v2/model/info` lists **every** model of the proxy, including ones the key's team may not use: on 2026-11-16 it showed `gpt-6-luna`, `gpt-6.1-terra`, `gpt-6.1-sol` and `gpt-6-astra`, which answer 403 `team_model_access_denied` to our key. `/models` is filtered by the key's access, so the selector only offers usable models. | 2026-11-16 |
+| Model access denied | A 403 whose `error.type` is `team_model_access_denied` is `ModelNotFound` (*"The API key has no access to the model 'x' in the LiteLLM proxy."*), not `Unauthorized`: the key is valid, the model must change. Only the `type` field is read; 401/403 bodies are still never quoted. | 2026-11-16 |
+| One agent per model | `AgentChatService` creates a `ChatClientAgent` per model on first use and keeps it. A model other than the default must be in the catalog (`ModelNotFound`, *"'x' is not a chat model of the LiteLLM proxy."*, without calling the proxy); the default needs no lookup. | 2026-11-16 |
 | Package line | Agent Framework 1.28.0 depends on `Microsoft.Extensions.AI` 10.11.0 and `OpenAI` ≥ 2.14, so it stays on the .NET 10 line (no 11.x package in any lock file). | 2026-11-16 |
 
 ## Rules
@@ -86,8 +91,8 @@ Every question resends the whole history, so tokens and latency grow with the co
 | `ChatFailure` | When | Message (shown to the user) |
 | ------------- | ---- | --------------------------- |
 | `NotConfigured` | Endpoint, key or default model missing | `The LiteLLM proxy is not configured (Llm:Endpoint, Llm:ApiKey and Llm:DefaultModel).` |
-| `Unauthorized` | 401, 403 | `The LiteLLM proxy rejected the API key.` |
-| `ModelNotFound` | 404 | `The LiteLLM proxy does not know the model '<model>'` + `: <proxy detail>` or `.` |
+| `Unauthorized` | 401, 403 (other than model access) | `The LiteLLM proxy rejected the API key.` |
+| `ModelNotFound` | 404, 403 `team_model_access_denied`, or a requested model not in the catalog | `The LiteLLM proxy does not know the model '<model>'` + `: <proxy detail>` or `.` |
 | `ModelUnavailable` | 400 with "no healthy deployments" | `The model '<model>' is currently unavailable in the LiteLLM proxy (no healthy deployments).` |
 | `BadRequest` | 400, 413, 422 | `The LiteLLM proxy rejected the request` + `: <proxy detail>` or `.` |
 | `RateLimited` | 429 after the retries | `The rate limit or budget of the API key was reached. Try again later.` |
@@ -105,11 +110,19 @@ Every question resends the whole history, so tokens and latency grow with the co
 | `Llm:TimeoutSeconds` | 120 | 5-600 | Timeout of each attempt |
 | `Llm:MaxRetries` | 2 | 0-5 | SDK retries |
 
+The model list cache (5 minutes) is not configurable.
+
 ## Verification
 
 - `AgentChatServiceTests` (unit, stub `HttpMessageHandler`), the step 01 suite kept and extended for the agent:
   - Agent: instructions sent as the system message before the question; without history, each question goes alone; with history, the turns go in order; a history over the limit is rejected without HTTP; model reported by the proxy.
 - `ChatConversationTests`: turns recorded on success only (also when streaming; nothing when stopped early or broken), snapshot of the history, limit, reset, images sent once with the text kept in the history.
+- `LiteLlmModelCatalogTests`:
+  - The list: the real ERNI proxy list filtered to its two chat models with their limits, the `{endpoint}models` URL with the key, a missing default added, a list without `mode`.
+  - Caching: 5 minutes with a manual clock; failures not cached.
+  - Errors: statuses, invalid JSON, network, not configured.
+- `AgentChatServiceTests` (403 `team_model_access_denied`, the real ERNI body): `ModelNotFound`, not `Unauthorized`.
+- `AgentChatServiceTests` (models): another chat model sent to the proxy; the default reads no list; a non-chat model rejected without HTTP; switching models.
 - `AgentChatServiceStreamingTests` (stub OpenAI `chat.completion.chunk` streams):
   - Answers: the pieces then the whole answer, with `"stream": true`; `length` marks it truncated.
   - Failures: a refusal before the stream; a connection broken after the first piece; no text.

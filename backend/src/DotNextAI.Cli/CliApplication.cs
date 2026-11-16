@@ -10,14 +10,16 @@ namespace DotNextAI.Cli;
 /// </summary>
 internal static class CliApplication
 {
-    public static RootCommand Build(IChatService chat, CliConsole console)
+    public static RootCommand Build(IChatService chat, IModelCatalog catalog, CliConsole console)
     {
-        var ask = new AskCommand(chat, console);
-        var chatCommand = new ChatCommand(chat, console);
+        var ask = new AskCommand(chat, catalog, console);
+        var chatCommand = new ChatCommand(chat, catalog, console);
+        var models = new ModelsCommand(chat, catalog, console);
 
         var root = new RootCommand("DotNextAI: an LLM chatbot in the terminal, through ERNI's LiteLLM proxy.");
         root.Subcommands.Add(chatCommand.Build());
         root.Subcommands.Add(ask.Build());
+        root.Subcommands.Add(models.Build());
 
         // Without a command: the chat (step 03). Until step 03 it asked one question, as `ask` does.
         root.SetAction((_, cancellationToken) => chatCommand.RunAsync(cancellationToken));
@@ -27,10 +29,11 @@ internal static class CliApplication
     public static async Task<int> RunAsync(
         string[] args,
         IChatService chat,
+        IModelCatalog catalog,
         CliConsole console,
         CancellationToken cancellationToken = default)
     {
-        var parseResult = Build(chat, console).Parse(args);
+        var parseResult = Build(chat, catalog, console).Parse(args);
 
         // Unknown commands or options: list the errors and exit with the usage error code (System.CommandLine's
         // default would print the whole help and exit with 1, the model-error code).

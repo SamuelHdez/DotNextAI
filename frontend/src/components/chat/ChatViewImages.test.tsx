@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatView } from "@/components/chat/ChatView";
 import { PNG_BASE64, pngFile, textFile } from "@/test/images";
-import { jsonResponse, renderWithProviders, streamedAnswer } from "@/test/render";
+import { chatPageFetch, jsonResponse, renderWithProviders, streamedAnswer } from "@/test/render";
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   fetchMock = vi.fn();
-  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal("fetch", chatPageFetch(fetchMock));
 });
 
 afterEach(() => vi.unstubAllGlobals());

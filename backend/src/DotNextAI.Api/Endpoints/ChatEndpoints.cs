@@ -49,6 +49,7 @@ internal static class ChatEndpoints
     private static async Task<Results<Ok<ChatResponseDto>, ValidationProblem, ProblemHttpResult>> AskAsync(
         ChatRequestDto request,
         IChatService chat,
+        IModelCatalog catalog,
         CancellationToken cancellationToken)
     {
         if (!TryValidate(request, out var input, out var errors))
@@ -63,7 +64,12 @@ internal static class ChatEndpoints
 
         try
         {
-            var answer = await chat.AskAsync(input.Question, input.History, input.Images, cancellationToken);
+            if (await UnknownModelAsync(input.Model, catalog, cancellationToken) is { } unknown)
+            {
+                return unknown;
+            }
+
+            var answer = await chat.AskAsync(input.ToRequest(), cancellationToken);
             return TypedResults.Ok(new ChatResponseDto(answer.Text, answer.Model, answer.Truncated));
         }
         catch (ChatServiceException ex)
@@ -77,7 +83,11 @@ internal static class ChatEndpoints
     /// unavailable, timeout) still answer with their ProblemDetails and status code. Only a failure after the first
     /// piece of text, when the 200 headers are already sent, arrives as an <c>error</c> event.
     /// </summary>
-    private static async Task<IResult> AskStreamingAsync(ChatRequestDto request, IChatService chat, CancellationToken cancellationToken)
+    private static async Task<IResult> AskStreamingAsync(
+        ChatRequestDto request,
+        IChatService chat,
+        IModelCatalog catalog,
+        CancellationToken cancellationToken)
     {
         if (!TryValidate(request, out var input, out var errors))
         {
@@ -89,7 +99,19 @@ internal static class ChatEndpoints
             return ChatProblems.NotConfigured();
         }
 
-        var updates = chat.AskStreamingAsync(input.Question, input.History, input.Images, cancellationToken).GetAsyncEnumerator(cancellationToken);
+        try
+        {
+            if (await UnknownModelAsync(input.Model, catalog, cancellationToken) is { } unknown)
+            {
+                return unknown;
+            }
+        }
+        catch (ChatServiceException ex)
+        {
+            return ChatProblems.FromException(ex);
+        }
+
+        var updates = chat.AskStreamingAsync(input.ToRequest(), cancellationToken).GetAsyncEnumerator(cancellationToken);
         bool hasFirst;
         try
         {
@@ -109,7 +131,31 @@ internal static class ChatEndpoints
         return TypedResults.ServerSentEvents(ChatStreamEvents.From(updates, hasFirst, cancellationToken));
     }
 
-    private sealed record ValidInput(string Question, ChatTurn[] History, ChatImage[] Images);
+    private sealed record ValidInput(string Question, ChatTurn[] History, ChatImage[] Images, string? Model)
+    {
+        public ChatRequest ToRequest() => new(Question, History, Images, Model);
+    }
+
+    /// <summary>
+    /// 400 when the requested model is not a chat model of the proxy (step 08), so callers can only use listed models.
+    /// The default model needs no lookup.
+    /// </summary>
+    /// <exception cref="ChatServiceException">The model list could not be read.</exception>
+    private static async Task<ValidationProblem?> UnknownModelAsync(string? model, IModelCatalog catalog, CancellationToken cancellationToken)
+    {
+        if (model is null || string.Equals(model, catalog.DefaultModel, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var models = await catalog.GetChatModelsAsync(cancellationToken);
+        return models.Any(chatModel => string.Equals(chatModel.Id, model, StringComparison.Ordinal))
+            ? null
+            : TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["model"] = [$"'{model}' is not a chat model of the LiteLLM proxy (see GET /api/models)."],
+            });
+    }
 
     /// <summary>The rules of both chat endpoints: 400 ValidationProblem with errors per field.</summary>
     private static bool TryValidate(
@@ -154,7 +200,14 @@ internal static class ChatEndpoints
             return false;
         }
 
-        input = new ValidInput(question, history!, images);
+        var model = string.IsNullOrWhiteSpace(request.Model) ? null : request.Model.Trim();
+        if (model is { Length: > 200 })
+        {
+            errors["model"] = ["The model name is too long."];
+            return false;
+        }
+
+        input = new ValidInput(question, history!, images, model);
         return true;
     }
 

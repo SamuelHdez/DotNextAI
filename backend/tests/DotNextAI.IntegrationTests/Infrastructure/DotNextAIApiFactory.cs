@@ -24,7 +24,7 @@ public class DotNextAIApiFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>A client of an API whose chat service is <paramref name="chat"/>.</summary>
-    public HttpClient CreateClientWith(IChatService chat, int? chatPermitsPerMinute = null) =>
+    public HttpClient CreateClientWith(IChatService chat, int? chatPermitsPerMinute = null, IModelCatalog? catalog = null) =>
         WithWebHostBuilder(builder =>
         {
             if (chatPermitsPerMinute is { } permits)
@@ -34,6 +34,10 @@ public class DotNextAIApiFactory : WebApplicationFactory<Program>
                     permits.ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
 
-            builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton(chat)));
+            builder.ConfigureTestServices(services =>
+            {
+                services.Replace(ServiceDescriptor.Singleton(chat));
+                services.Replace(ServiceDescriptor.Singleton(catalog ?? new Chat.FakeModelCatalog()));
+            });
         }).CreateClient();
 }

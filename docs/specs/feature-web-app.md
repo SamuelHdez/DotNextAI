@@ -1,6 +1,6 @@
 # Web app
 
-> **Status:** Step 07 (streamed answers) implemented on 2026-11-16, on top of steps 05 and 06 (web UI with chat, images).
+> **Status:** Step 08 (model selector) implemented on 2026-11-16, on top of steps 05-07 (web UI with chat, images, streamed answers).
 
 `frontend/` is the browser front end of DotNextAI: a Next.js app with Fluent UI v9 and the ERNI brand, laid out as a dashboard like ValidatorHub. It talks only to `DotNextAI.Api` ([API contract](../design/api.md)). The terminal app stays next to it ([CLI](feature-cli.md)).
 
@@ -20,6 +20,7 @@
 | Security | Strict CSP with a per-request nonce (`src/proxy.ts`). `connect-src` allows only the app and the API origin, so a model answer can never make the page call anywhere else. Static security headers come from ValidatorHub. No authentication: local use, like the API. | 2026-11-16 |
 | Images (step 06) | Attach with a button or by pasting (e.g. a screenshot). The browser checks count, size and the file signature before reading or sending, as the backend does. Previews are `data:` URIs (the CSP's `img-src` already allows them), so there are no object URLs to revoke. | 2026-11-16 |
 | Streaming (step 07) | The chat calls `POST /api/chat/stream` and reads its Server-Sent Events with a small reader of its own (`src/services/sse.ts`, about 30 lines, no library): `EventSource` cannot send a POST body. A **Stop** button replaces Send while an answer is written. | 2026-11-16 |
+| Model selector (step 08) | A Fluent `Dropdown` labelled *Model* in the chat header, filled from `GET /api/models`. The choice is remembered in `localStorage` (`dnai-model`); a remembered model the server no longer offers falls back to the default, and choosing the default forgets the choice. Only a model other than the default is sent. The control keeps the same element in every state: wrapping it in a tooltip on failure re-mounted it and lost its state, so a described hint sits next to it instead. | 2026-11-16 |
 | Dependencies | Versions at least 7 days old (`npm install --before`), npm only, `npm ci --ignore-scripts`. | 2026-11-16 |
 
 ## Pages
@@ -45,6 +46,7 @@ A dashboard with three cards:
   - Rules: up to 4 images of 4 MB each, the format checked from the bytes. Errors under the field: *"notes.png is not a PNG, JPEG, WebP or GIF image."*, *"…is too large…"*, *"You can attach up to 4 images…"*. The button is disabled at 4.
   - Sending: images go in base64 with that question only and show above it in the conversation. On failure they come back with the question; *New conversation* discards them.
 - **While waiting:** the question is shown with a *"DotNextAI is thinking…"* spinner until the first piece arrives. Then the answer grows in its bubble as it is written. Typing goes on, and **Send** becomes **Stop**.
+- **Model:** the *Model* selector lists the proxy's chat models, the default as *"gpt-5.6-luna (default)"*. Changing it applies to the next questions and the conversation goes on. Each answer shows the model that wrote it. While the list loads the selector says *"Loading models…"*. If the list fails it is disabled at *"Default model"*, with the hint *"The model list could not be loaded; the default model answers."*
 - **Screen readers:** the conversation region is `aria-busy` while an answer streams, so the answer is announced once, complete, instead of piece by piece.
 - **Stop:** what had arrived stays in the conversation as the answer, with *"Stopped before the end."*, and is part of the history. With nothing yet, the question and its images go back to the composer.
 - **Broken answer:** an `error` event or a stream that closes early drops the partial text and shows the failure like any other, with the question given back.
@@ -70,6 +72,7 @@ A dashboard with three cards:
   - Lifecycle: a new conversation without history; empty question.
 - `ChatView.test.tsx` (streaming): the streaming endpoint is called; thinking, then partial text with `aria-busy` and Stop, then the complete answer; Stop keeps the partial answer (the request aborted); Stop before any text gives the question back; a broken stream shows the failure.
 - `sse.test.ts`: events split across chunks (also inside a line and inside a UTF-8 character), CRLF, comments, multi-line data. `apiClient.test.ts` (`streamChat`): deltas and the whole answer, an `error` event, problem details before the stream, a stream ending without `done`.
+- `ChatViewModels.test.tsx`: the default shown and not sent; the chosen model sent with the conversation going on and remembered; a remembered model restored; the default forgetting the choice; a list failure falling back (in Spanish). `initialModel` rules.
 - `ChatViewLimit.test.tsx`: the question limit warning and the disabled composer.
 - `ChatViewImages.test.tsx`:
   - Sending: preview and base64 payload, images not resent in the history.

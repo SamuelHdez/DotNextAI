@@ -26,6 +26,21 @@ export interface ChatRequest {
   history: ChatTurn[];
   /** Images for this question only (step 06); the history stays text. */
   images?: ChatImage[];
+  /** Chat model from GET /api/models (step 08); omitted for the default. */
+  model?: string;
+}
+
+/** A chat model of the proxy; token limits are null when the proxy does not report them. */
+export interface ChatModel {
+  id: string;
+  isDefault: boolean;
+  maxInputTokens: number | null;
+  maxOutputTokens: number | null;
+}
+
+export interface ModelsResponse {
+  defaultModel: string;
+  models: ChatModel[];
 }
 
 export interface ChatResponse {

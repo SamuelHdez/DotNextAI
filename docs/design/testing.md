@@ -37,7 +37,7 @@ No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on e
 | "what is my name" | `Your name is X.` from an earlier "My name is X" in the history, or `I do not know your name yet.` Proves that the history crosses the whole chain |
 | anything else | `Echo: <question>` |
 
-With `"stream": true` it answers in OpenAI's `chat.completion.chunk` Server-Sent Events format, one word per chunk, ending with `data: [DONE]`. It answers 401 without a bearer key and 404 on unknown routes. Model name: `e2e-model`.
+`GET /models` (and `/v1/models`) lists `e2e-model` and `e2e-model-fast` (chat) plus an embedding and an image model, and answers name the model asked for. With `"stream": true` it answers in OpenAI's `chat.completion.chunk` Server-Sent Events format, one word per chunk, ending with `data: [DONE]`. It answers 401 without a bearer key and 404 on unknown routes. Model name: `e2e-model`.
 
 ### Scenarios
 
@@ -49,6 +49,7 @@ With `"stream": true` it answers in OpenAI's `chat.completion.chunk` Server-Sent
   - Answers: answer with model, history ("Ana"), suggestion click, Shift+Enter.
   - Streaming: thinking, then a partial answer, then the complete one; Stop keeps what arrived; a connection dropped mid-answer shows the failure and gives the question back.
   - Failures and reset: outage message with the question given back, new conversation forgets the history.
+  - Models: only the two chat models are offered; the chosen one answers and is remembered after a reload.
   - Images: an image reaches the model as a base64 PNG data URI and shows in the conversation; a non-image is rejected before sending; axe with attachments.
   - axe, empty and with messages.
 - `preferences.spec.ts`:

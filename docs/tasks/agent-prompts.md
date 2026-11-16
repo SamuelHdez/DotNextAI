@@ -79,3 +79,15 @@ Outcome: images in every front end (web button and paste with previews, CLI `--i
 > Yes (go with streaming).
 
 Outcome: `IChatService.AskStreamingAsync` over Agent Framework's `RunStreamingAsync`, and `POST /api/chat/stream` with Server-Sent Events. The first piece is awaited before streaming, so the common failures keep their status codes; failures mid-answer come as an `error` event. The web app has its own SSE reader, the answer grows as it is written, there is a Stop button, and `aria-busy` while streaming. The CLI prints the pieces as they arrive. The fake LiteLLM now streams real `chat.completion.chunk` events, with slow and dropped-connection modes. 182 .NET tests, 224 Vitest tests and 19 Playwright scenarios.
+
+## 2026-11-16 — Step 08: model selector
+
+> Yes (go with the model selector).
+
+Outcome: `IModelCatalog` reads the proxy's model list. The real ERNI proxy reports `mode` and token limits on `/models`; the list is filtered to chat models and cached for 5 minutes. `ChatRequest` carries an optional model, which is accepted only if listed, with one agent per model. New `GET /api/models`; the web has a remembered selector, the CLI has `models`, `--model` and `/model`. A test caught a re-mount bug in the selector's failure state, which was fixed. 222 .NET tests, 235 Vitest tests and 20 Playwright scenarios.
+
+## 2026-11-16 — LiteLLM `/v2/model/info`
+
+> There is a `/v2/model/info` endpoint that returns these models (gpt-6.1-sol, gpt-6-astra, gpt-6-luna, gpt-6.1-terra, gpt-image-2, …).
+
+Outcome: probing with our key explained the outage. The key's team only reaches `gpt-5.6-*`, which has no healthy deployments, and the live `gpt-6.x` models answer 403 `team_model_access_denied`. The catalog keeps `/models` because it is filtered by the key's access, while `/v2/model/info` lists models the key cannot use. That 403 now maps to `ModelNotFound` ("no access to the model") instead of the misleading "rejected the API key". Follow-up: ask the proxy administrator for access to `gpt-6.x`.

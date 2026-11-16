@@ -14,19 +14,23 @@ import { ArrowCounterclockwise20Regular, Dismiss20Regular, Sparkle24Regular } fr
 import { useEffect, useRef, useState } from "react";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatMessageList } from "@/components/chat/ChatMessageList";
+import { ModelPicker, type ModelList } from "@/components/chat/ModelPicker";
 import { PageBody, PageHeader } from "@/components/ui/PageLayout";
 import { chatErrorMessage, type LocalizedError } from "@/lib/chat/chatErrors";
 import { checkQuestion, MAX_CONVERSATION_QUESTIONS, MAX_QUESTION_LENGTH } from "@/lib/chat/chatRules";
 import { MAX_IMAGE_MEGABYTES, MAX_IMAGES_PER_QUESTION, readImageFile, type ImageAttachment } from "@/lib/chat/images";
 import { questionCount, toHistory, type ChatMessage } from "@/lib/chat/conversation";
+import { initialModel, readModelPreference, storeModelPreference } from "@/lib/chat/modelPreference";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { MessageKey } from "@/lib/i18n/messages/en";
 import { streamChat } from "@/services/chatService";
+import { getModels } from "@/services/modelsService";
 
 const SUGGESTIONS: MessageKey[] = ["chat.suggestion.1", "chat.suggestion.2", "chat.suggestion.3"];
 
 const useStyles = makeStyles({
   page: { gap: tokens.spacingVerticalL },
+  actions: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: tokens.spacingHorizontalM },
   conversation: { flexGrow: 1, display: "flex", flexDirection: "column", gap: tokens.spacingVerticalL },
   empty: {
     display: "flex",
@@ -68,11 +72,35 @@ export function ChatView() {
   // The answer so far, in a ref for Stop (state updates are batched) and in state for rendering.
   const [pendingAnswer, setPendingAnswer] = useState("");
   const answerSoFar = useRef("");
+  const [modelList, setModelList] = useState<ModelList>({ state: "loading" });
+  const [model, setModel] = useState<string | null>(null);
   const request = useRef<{ controller: AbortController; question: string; text: string; images: ImageAttachment[] } | null>(null);
   const nextId = useRef(0);
 
   // Leaving the page cancels the question in flight.
   useEffect(() => () => request.current?.controller.abort(), []);
+
+  // The model list (step 08). If it cannot be loaded the selector is disabled and the server's default answers.
+  useEffect(() => {
+    const controller = new AbortController();
+    getModels(controller.signal)
+      .then(({ models, defaultModel }) => {
+        setModelList({ state: "ready", models, defaultModel });
+        setModel(initialModel(models.map((m) => m.id), defaultModel, readModelPreference()));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setModelList({ state: "failed" });
+      });
+    return () => controller.abort();
+  }, []);
+
+  function chooseModel(next: string) {
+    setModel(next);
+    if (modelList.state === "ready") storeModelPreference(next, modelList.defaultModel);
+  }
+
+  // Only a model other than the server's default is sent.
+  const requestedModel = modelList.state === "ready" && model && model !== modelList.defaultModel ? model : undefined;
 
   const full = questionCount(messages) >= MAX_CONVERSATION_QUESTIONS;
 
@@ -106,6 +134,7 @@ export function ChatView() {
           question: check.question,
           history: toHistory(messages),
           ...(sentImages.length > 0 && { images: sentImages.map(({ mediaType, data }) => ({ mediaType, data })) }),
+          ...(requestedModel && { model: requestedModel }),
         },
         (piece) => {
           answerSoFar.current += piece;
@@ -206,9 +235,12 @@ export function ChatView() {
         title={t("chat.title")}
         subtitle={t("chat.subtitle")}
         actions={
-          <Button icon={<ArrowCounterclockwise20Regular />} onClick={newConversation} disabled={isEmpty}>
-            {t("chat.new")}
-          </Button>
+          <div className={styles.actions}>
+            <ModelPicker list={modelList} value={model} onChange={chooseModel} />
+            <Button icon={<ArrowCounterclockwise20Regular />} onClick={newConversation} disabled={isEmpty}>
+              {t("chat.new")}
+            </Button>
+          </div>
         }
       />
 

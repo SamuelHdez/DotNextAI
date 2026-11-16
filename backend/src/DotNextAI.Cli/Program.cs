@@ -35,4 +35,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 using var host = builder.Build();
 
-return await CliApplication.RunAsync(args, host.Services.GetRequiredService<IChatService>(), CliConsole.System());
+return await CliApplication.RunAsync(
+    args,
+    host.Services.GetRequiredService<IChatService>(),
+    host.Services.GetRequiredService<IModelCatalog>(),
+    CliConsole.System());

@@ -120,6 +120,21 @@ public class ChatConversationTests
     }
 
     [Fact]
+    public async Task AskAsync_SendsTheChosenModelAndKeepsTheHistoryAcrossModels()
+    {
+        var chat = new FakeChatService();
+        var conversation = new ChatConversation(chat);
+
+        await conversation.AskAsync("one", TestContext.Current.CancellationToken);
+        conversation.Model = "gpt-5.6-terra";
+        await conversation.AskAsync("two", TestContext.Current.CancellationToken);
+
+        Assert.Null(chat.Calls[0].Model);
+        Assert.Equal("gpt-5.6-terra", chat.Calls[1].Model);
+        Assert.Equal(2, chat.Calls[1].History.Length);
+    }
+
+    [Fact]
     public async Task Reset_ForgetsEveryTurn()
     {
         var conversation = new ChatConversation(new FakeChatService());

@@ -41,7 +41,8 @@ public class AgentChatServiceTests
         StubHttpHandler handler,
         string? endpoint = "https://litellm.example.com/",
         string? apiKey = null,
-        string? model = Model) =>
+        string? model = Model,
+        Cli.FakeModelCatalog? catalog = null) =>
         new(
             Microsoft.Extensions.Options.Options.Create(new LlmOptions
             {
@@ -52,7 +53,8 @@ public class AgentChatServiceTests
                 MaxRetries = 0,
             }),
             new StubHttpClientFactory(handler),
-            NullLoggerFactory.Instance);
+            NullLoggerFactory.Instance,
+            catalog ?? new Cli.FakeModelCatalog());
 
     [Fact]
     public async Task AskAsync_SuccessfulCompletion_ReturnsAnswerAndModel()
@@ -198,6 +200,61 @@ public class AgentChatServiceTests
     }
 
     [Fact]
+    public async Task AskAsync_WithAnotherChatModel_SendsItToTheProxy()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong", model: "gpt-5.6-terra"));
+        var catalog = new Cli.FakeModelCatalog();
+        var service = CreateService(handler, catalog: catalog);
+
+        var answer = await service.AskAsync(new ChatRequest("ping", [], [], "gpt-5.6-terra"), TestContext.Current.CancellationToken);
+
+        using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
+        Assert.Equal("gpt-5.6-terra", body.RootElement.GetProperty("model").GetString());
+        Assert.Equal("gpt-5.6-terra", answer.Model);
+        Assert.Equal(1, catalog.Reads);
+    }
+
+    [Fact]
+    public async Task AskAsync_DefaultModel_NeedsNoCatalogLookup()
+    {
+        var catalog = new Cli.FakeModelCatalog();
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong")), catalog: catalog);
+
+        await service.AskAsync(new ChatRequest("ping", [], [], Model), TestContext.Current.CancellationToken);
+        await service.AskAsync("ping", TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, catalog.Reads);
+    }
+
+    [Fact]
+    public async Task AskAsync_ModelThatIsNotAChatModel_ThrowsModelNotFoundWithoutCallingTheProxy()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong"));
+        var service = CreateService(handler);
+
+        var ex = await Assert.ThrowsAsync<ChatServiceException>(
+            () => service.AskAsync(new ChatRequest("ping", [], [], "text-embedding-3-small"), TestContext.Current.CancellationToken));
+
+        Assert.Equal(ChatFailure.ModelNotFound, ex.Failure);
+        Assert.Equal("'text-embedding-3-small' is not a chat model of the LiteLLM proxy.", ex.Message);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task AskAsync_SwitchingModels_SendsEachQuestionToItsModel()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong"));
+        var service = CreateService(handler);
+
+        await service.AskAsync(new ChatRequest("one", [], [], "gpt-5.6-terra"), TestContext.Current.CancellationToken);
+        await service.AskAsync(new ChatRequest("two", [], []), TestContext.Current.CancellationToken);
+        await service.AskAsync(new ChatRequest("three", [], [], "gpt-5.6-terra"), TestContext.Current.CancellationToken);
+
+        var models = handler.Requests.Select(request => JsonDocument.Parse(request.Body!).RootElement.GetProperty("model").GetString());
+        Assert.Equal(["gpt-5.6-terra", Model, "gpt-5.6-terra"], models);
+    }
+
+    [Fact]
     public async Task AskAsync_ModelReportedByTheProxy_IsTheAnswerModel()
     {
         var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong", model: "gpt-5.6-luna-2026-10-01")));
@@ -326,6 +383,28 @@ public class AgentChatServiceTests
             () => service.AskAsync("ping", TestContext.Current.CancellationToken));
 
         Assert.Equal("The LiteLLM proxy rejected the API key.", ex.Message);
+    }
+
+    [Fact]
+    public async Task AskAsync_ModelNotAllowedForTheKey_ThrowsModelNotFoundNotUnauthorized()
+    {
+        // Real ERNI proxy answer for a model the key's team may not use (2026-11-16).
+        var body = JsonSerializer.Serialize(new
+        {
+            error = new
+            {
+                message = $"The requested model '{Model}' is not available for this API key, or the model name is invalid. Check the models available to you and try again.",
+                type = "team_model_access_denied",
+                param = "model",
+                code = "403",
+            },
+        });
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.Forbidden, body));
+
+        var ex = await Assert.ThrowsAsync<ChatServiceException>(() => service.AskAsync("ping", TestContext.Current.CancellationToken));
+
+        Assert.Equal(ChatFailure.ModelNotFound, ex.Failure);
+        Assert.Equal($"The API key has no access to the model '{Model}' in the LiteLLM proxy.", ex.Message);
     }
 
     [Fact]

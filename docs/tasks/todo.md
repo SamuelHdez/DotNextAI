@@ -41,7 +41,7 @@
 
 ## Phase 3 — Extra features
 
-- [ ] 08 Model selector.
+- [x] 2026-11-16 — 08 Model selector: `GET /api/models` (proxy chat models, 5-minute cache), optional `model` checked against the list, one agent per model; web selector (remembered), CLI `models`, `--model`, `/model` ([API](../design/api.md#get-apimodels)).
 - [ ] 09 Image generation (gpt-image).
 - [ ] 10 Token metrics per call and per conversation.
 
@@ -49,5 +49,6 @@
 
 - [x] 2026-11-16 — UI languages: English (default) and Spanish, with a selector.
 - [x] 2026-11-16 — Models of the ERNI LiteLLM proxy: chat `gpt-5.6-luna` (default) and `gpt-5.6-terra`, image `gpt-image-2` (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)).
-- [ ] Confirm that `gpt-5.6-luna` accepts image input (assumed for step 06) once the proxy has healthy deployments.
+- [ ] **Ask the ERNI proxy administrator** to give our key's team access to `gpt-6.x` (`gpt-6-luna`, `gpt-6.1-terra`…): today the key only reaches `gpt-5.6-*`, which has no healthy deployments, and `gpt-6.x` answers 403 `team_model_access_denied` (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)). Then set `Llm:DefaultModel`.
+- [ ] Confirm image input with the real model (`/v2/model/info` reports `supports_vision: true` for `gpt-6.x`).
 - [x] 2026-11-16 — CLI language: English only (invariant culture). Multi-language is for the web UI.

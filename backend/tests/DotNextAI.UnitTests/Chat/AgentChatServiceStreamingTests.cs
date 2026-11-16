@@ -47,7 +47,8 @@ public class AgentChatServiceStreamingTests
                 MaxRetries = 0,
             }),
             new StubHttpClientFactory(handler),
-            NullLoggerFactory.Instance);
+            NullLoggerFactory.Instance,
+            new Cli.FakeModelCatalog());
 
     private static async Task<List<ChatStreamUpdate>> CollectAsync(IAsyncEnumerable<ChatStreamUpdate> updates)
     {

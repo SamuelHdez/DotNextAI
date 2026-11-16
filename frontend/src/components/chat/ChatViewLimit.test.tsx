@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChatView } from "@/components/chat/ChatView";
-import { renderWithProviders, streamedAnswer } from "@/test/render";
+import { chatPageFetch, renderWithProviders, streamedAnswer } from "@/test/render";
 
 // A limit of one question keeps the test short; the real value (50) is checked in chat.test.ts.
 vi.mock("@/lib/chat/chatRules", async (importOriginal) => ({
@@ -14,7 +14,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("ChatView at the question limit", () => {
   it("asks for a new conversation and disables the composer", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(streamedAnswer("ok")));
+    vi.stubGlobal("fetch", chatPageFetch(vi.fn().mockResolvedValue(streamedAnswer("ok"))));
     const user = userEvent.setup();
     renderWithProviders(<ChatView />);
 
