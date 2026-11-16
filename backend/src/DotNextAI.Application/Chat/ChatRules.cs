@@ -48,20 +48,34 @@ public static class ChatRules
     }
 
     /// <summary>Checks the history passed with a question.</summary>
-    /// <exception cref="ArgumentException">More than <see cref="MaxHistoryTurns"/> turns, or an empty turn.</exception>
-    public static void ValidateHistory(IReadOnlyList<ChatTurn> history)
+    /// <param name="history">Previous turns, oldest first.</param>
+    /// <param name="error">User-facing reason when invalid.</param>
+    public static bool TryValidateHistory(IReadOnlyList<ChatTurn?> history, [NotNullWhen(false)] out string? error)
     {
         ArgumentNullException.ThrowIfNull(history);
         if (history.Count > MaxHistoryTurns)
         {
-            throw new ArgumentException(
-                $"The conversation is too long ({history.Count} turns; the maximum is {MaxHistoryTurns}).",
-                nameof(history));
+            error = $"The conversation is too long ({history.Count} turns; the maximum is {MaxHistoryTurns}).";
+            return false;
         }
 
         if (history.Any(turn => turn is null || string.IsNullOrWhiteSpace(turn.Text)))
         {
-            throw new ArgumentException("The conversation contains an empty turn.", nameof(history));
+            error = "The conversation contains an empty turn.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    /// <summary>Checks the history passed with a question.</summary>
+    /// <exception cref="ArgumentException">More than <see cref="MaxHistoryTurns"/> turns, or an empty turn.</exception>
+    public static void ValidateHistory(IReadOnlyList<ChatTurn> history)
+    {
+        if (!TryValidateHistory(history, out var error))
+        {
+            throw new ArgumentException(error, nameof(history));
         }
     }
 

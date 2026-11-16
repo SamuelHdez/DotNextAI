@@ -17,7 +17,8 @@ One `feature-*.md` per backlog step or feature is added when it starts.
 
 | Document | Description | Status |
 | -------- | ----------- | ------ |
-| [Architecture](./design/architecture.md) | Components, ports, configuration, project layering, and the technology decisions log. | Step 03 implemented |
+| [Architecture](./design/architecture.md) | Components, ports, configuration, project layering, and the technology decisions log. | Step 04 implemented |
+| [API contract](./design/api.md) | Endpoints, request and response JSON, validation, status codes and the `failure` extension, rate limit, CORS. Source for the web app's types. | Step 04 implemented |
 
 ## Tasks — day-to-day work
 

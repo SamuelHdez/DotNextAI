@@ -1,5 +1,9 @@
+using DotNextAI.Application.Chat;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DotNextAI.IntegrationTests.Infrastructure;
 
@@ -15,5 +19,21 @@ public class DotNextAIApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("Cors:AllowedOrigins:0", FrontendOrigin);
+        // High enough for every test; the rate-limit tests lower it.
+        builder.UseSetting("RateLimiting:ChatPermitsPerMinute", "10000");
     }
+
+    /// <summary>A client of an API whose chat service is <paramref name="chat"/>.</summary>
+    public HttpClient CreateClientWith(IChatService chat, int? chatPermitsPerMinute = null) =>
+        WithWebHostBuilder(builder =>
+        {
+            if (chatPermitsPerMinute is { } permits)
+            {
+                builder.UseSetting(
+                    "RateLimiting:ChatPermitsPerMinute",
+                    permits.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton(chat)));
+        }).CreateClient();
 }

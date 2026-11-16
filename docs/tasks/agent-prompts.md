@@ -49,3 +49,9 @@ Outcome: the question now goes through a Microsoft Agent Framework `ChatClientAg
 > Go (with the defaults proposed for leaving the chat, chat commands and a limit).
 
 Outcome: `dotnextai` (and `dotnextai chat`) is a multi-turn chat with `/new`, `/help`, `/exit`, `/quit` and Ctrl+D, capped at 50 questions. The history is kept by the front end and sent with every question (`IChatService.AskAsync(question, history)`, `ChatConversation`), not in an `AgentSession`, so the step 04 API can stay stateless. 97 tests green; the proxy still had no healthy chat deployments.
+
+## 2026-11-16 — Step 04: API
+
+> Go with step 04.
+
+Outcome: `POST /api/chat`, stateless (question + history), over the same `IChatService` as the CLI. Errors are `ProblemDetails` with a `failure` code for the multi-language web app, and the proxy's 401/403 become 502. Added unprompted: a per-IP rate limit (20/min, configurable), because the endpoint is unauthenticated and spends the server's key. New contract document `docs/design/api.md`. 123 tests green; a live call through the API returned the proxy's real `ModelUnavailable` as a 503.

@@ -8,7 +8,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 | Path | What | Stack |
 | ---- | ---- | ----- |
-| `backend/src/DotNextAI.Api/` | HTTP API (port 5100): health today; chat, streaming, models and images in later steps | ASP.NET Core 10 Minimal API, OpenAPI + Swagger UI |
+| `backend/src/DotNextAI.Api/` | HTTP API (port 5100): `/api/health`, `/api/chat` (stateless, rate-limited); streaming, models and images in later steps. Contract in [`docs/design/api.md`](docs/design/api.md) | ASP.NET Core 10 Minimal API, OpenAPI + Swagger UI, built-in rate limiter |
 | `backend/src/DotNextAI.Application/` | Contracts shared by the API and the CLI: DTOs and the interfaces Infrastructure implements | .NET 10 class library |
 | `backend/src/DotNextAI.Infrastructure/` | LLM access: `LlmOptions`, `LlmChatClientFactory` (OpenAI client of the proxy), `AgentChatService` (Agent Framework agent), `ChatFailureMapper` | Microsoft Agent Framework 1.28, Microsoft.Extensions.AI 10.11, OpenAI .NET SDK, `IHttpClientFactory` |
 | `backend/src/DotNextAI.Cli/` | Terminal app `dotnextai` (**permanent**, grows with the backlog): `chat` (default, with history) and `ask` commands | .NET 10 console, Generic Host, System.CommandLine 2.0 |
@@ -71,7 +71,9 @@ Backend:
 - Agent Framework and `Microsoft.Extensions.AI` must stay on the 10.x line of `Microsoft.Extensions.AI`. Before updating Agent Framework, check its `.nuspec` dependencies; a version that needs `Microsoft.Extensions.AI` 11.x waits for the move to .NET 11.
 
 - Layering: Api → Application ← Infrastructure, and Cli → Application + Infrastructure. Application references no other project and no SDKs. Agent Framework, OpenAI and HTTP details stay in Infrastructure.
-- Endpoints are Minimal APIs grouped in `DotNextAI.Api/Endpoints/*Endpoints.cs`. They return `TypedResults` and errors as `ProblemDetails`.
+- Endpoints are Minimal APIs grouped in `DotNextAI.Api/Endpoints/*Endpoints.cs`. They return `TypedResults` and errors as `ProblemDetails`. HTTP DTOs live in `DotNextAI.Api/Contracts`.
+- Model failures become problems through `ChatProblems`: status per `ChatFailure` and a `failure` extension that the web app translates. Never forward the proxy's 401/403 as 401/403 (the key is the server's). Keep `docs/design/api.md` in sync with every endpoint, field, status code and `failure` value.
+- Every endpoint that spends the LiteLLM key needs `RequireRateLimiting(...)`. Validate input with `ChatRules` before calling the model and answer 400 `ValidationProblem` with errors per field.
 - `IChatService` is stateless: the front end keeps the conversation and passes its history with each question (`ChatConversation`). Do not add server-side sessions or conversation storage without recording the decision in the specs first.
 - Configuration goes through options classes in `DotNextAI.Infrastructure/Options` with `ValidateDataAnnotations` and `ValidateOnStart`. A missing LLM configuration must not stop the API from starting. It reports `LlmConfigured = false`.
 - Analyzers (`latest-recommended`, security rules `All`) run on every build, and CI treats warnings as errors. Fix warnings rather than suppressing them. When a suppression is justified, scope it and explain it in a comment.

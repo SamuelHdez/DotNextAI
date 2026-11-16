@@ -4,3 +4,27 @@ GET {{DotNextAI.Api_HostAddress}}/api/health
 Accept: application/json
 
 ###
+
+# First question of a conversation
+POST {{DotNextAI.Api_HostAddress}}/api/chat
+Content-Type: application/json
+
+{
+  "question": "My name is Ana. Reply only: ok"
+}
+
+###
+
+# Follow-up: the client sends the previous turns
+POST {{DotNextAI.Api_HostAddress}}/api/chat
+Content-Type: application/json
+
+{
+  "question": "What is my name?",
+  "history": [
+    { "role": "user", "text": "My name is Ana. Reply only: ok" },
+    { "role": "assistant", "text": "ok" }
+  ]
+}
+
+###

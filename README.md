@@ -4,7 +4,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 Technical documentation, backlog and decisions: [docs/](docs/README.md).
 
-> **Status:** backlog step 03 done. The terminal app chats with history (`dotnextai`) or answers single questions (`dotnextai ask`) through a Microsoft Agent Framework agent and the LiteLLM proxy; the API answers `/api/health`.
+> **Status:** backlog step 04 done (Phase 1 complete). The terminal app chats with history (`dotnextai`) or answers single questions (`dotnextai ask`), and the API offers the same chat (`POST /api/chat`), both through a Microsoft Agent Framework agent and the LiteLLM proxy.
 
 ## Requirements
 
@@ -48,6 +48,7 @@ The settings live in the `Llm` section. The API and the CLI share one `dotnet us
 | `Llm:DefaultModel` | Model name as exposed by the proxy | user-secrets |
 | `Llm:TimeoutSeconds` | Timeout of each model call attempt, 5-600 (default 120) | `appsettings.json` |
 | `Llm:MaxRetries` | Retries on 408/429/5xx and network errors, 0-5 (default 2) | `appsettings.json` |
+| `RateLimiting:ChatPermitsPerMinute` | Requests to `/api/chat` per client IP and minute, 1-10,000 (default 20) | `appsettings.json` |
 | `Cors:AllowedOrigins` | Browser origins allowed to call the API (`http://localhost:3030` in Development) | `appsettings*.json` |
 
 Environment variables override both, using the `Llm__ApiKey` form. While the three `Llm` values are missing, the API still starts and `/api/health` reports `"llmConfigured": false`. The CLI exits with a hint.
@@ -68,13 +69,24 @@ dotnextai --help
 
 Answers go to stdout and everything else to stderr, so answers can be piped. Exit codes: `0` answer or chat ended, `1` model error, `2` usage error, `3` not configured, `130` Ctrl+C. Run it with `./scripts/dev.sh cli …` or `dotnet run --project backend/src/DotNextAI.Cli -- …`.
 
+## API
+
+```bash
+curl -s -H "Content-Type: application/json" \
+  -d '{"question":"What is my name?","history":[{"role":"user","text":"My name is Ana."},{"role":"assistant","text":"Hi Ana!"}]}' \
+  http://localhost:5100/api/chat
+# {"answer":"Your name is Ana.","model":"gpt-5.6-luna","truncated":false}
+```
+
+The API is stateless: the client sends the history with every question. Errors are `ProblemDetails` with a `failure` code (`ModelUnavailable`, `Timeout`, …). See the [API contract](docs/design/api.md), or use `backend/src/DotNextAI.Api/DotNextAI.Api.http` and Swagger UI.
+
 ## Project layout
 
 ```text
 global.json  SDK line and Microsoft.Testing.Platform (applies to the whole repository)
 backend/
   DotNextAI.slnx  Directory.Build.props
-  src/DotNextAI.Api             Minimal API (port 5100)
+  src/DotNextAI.Api             Minimal API (port 5100): /api/health, /api/chat
   src/DotNextAI.Application     DTOs and interfaces
   src/DotNextAI.Infrastructure  LLM options and clients (Agent Framework)
   src/DotNextAI.Cli             terminal app (dotnextai)
@@ -91,6 +103,7 @@ See [architecture](docs/design/architecture.md) for the components and the decis
 - Prompts and answers are never logged; logs hold model, duration and status only.
 - The build runs the .NET security analyzers and fails on vulnerable NuGet packages (`NuGetAudit`). Restores are reproducible from `packages.lock.json`.
 - The API accepts browser calls only from the origins in `Cors:AllowedOrigins`.
+- The API has no authentication and is meant for local use; `/api/chat` is rate-limited per IP because every call spends the LiteLLM key. Add authentication before exposing it anywhere else.
 - Tests never call the real proxy and need no secrets.
 
 ## CI
@@ -111,4 +124,4 @@ All actions are pinned by commit SHA, tool binaries by version and checksum, and
 ./scripts/dev.sh test
 ```
 
-Expected: build with 0 warnings, all tests green (`LlmOptionsTests`, `ChatRulesTests`, `ChatConversationTests`, `AgentChatServiceTests`, `CliApplicationTests`, `ChatCommandTests`, `HealthEndpointTests`). End to end, against the proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.
+Expected: build with 0 warnings, all tests green (`LlmOptionsTests`, `ChatRulesTests`, `ChatConversationTests`, `AgentChatServiceTests`, `CliApplicationTests`, `ChatCommandTests`, `HealthEndpointTests`, `ChatEndpointTests`). End to end, against the proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.

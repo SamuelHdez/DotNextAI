@@ -2,7 +2,7 @@
 
 > **Status:** Step 03 (conversation history) implemented on 2026-11-16, on top of step 02 (call through a Microsoft Agent Framework agent).
 
-How DotNextAI talks to the language model. The contract lives in Application (`DotNextAI.Application/Chat`) and the implementation in Infrastructure (`DotNextAI.Infrastructure/Chat`). Every front end uses it: the CLI today, the API from step 04.
+How DotNextAI talks to the language model. The contract lives in Application (`DotNextAI.Application/Chat`) and the implementation in Infrastructure (`DotNextAI.Infrastructure/Chat`). Every front end uses it: the CLI and the API (`POST /api/chat`, [API contract](../design/api.md)).
 
 ## Decisions
 
