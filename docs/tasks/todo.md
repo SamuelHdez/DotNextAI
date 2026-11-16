@@ -24,7 +24,8 @@
 
 ## Phase 1 — Backend basics
 
-- [ ] 01 Terminal Q&A: one question and answer from `DotNextAI.Cli` through the proxy (OpenAI .NET SDK).
+- [x] 2026-11-16 — 01 Terminal Q&A: `dotnextai ask` (argument, stdin or prompt) through the proxy with the OpenAI .NET SDK; `IChatService` contract, failure mapping, 20,000-character limit, exit codes ([CLI](../specs/feature-cli.md), [chat service](../specs/feature-llm-chat.md)).
+- [ ] 01 follow-up: confirm a real answer from the proxy. On 2026-11-16 every chat model answered *"no healthy deployments"* (proxy side); the CLI shows it as `ModelUnavailable`.
 - [ ] 02 Agent Framework: the same call through a `ChatClientAgent`.
 - [ ] 03 Chat history: multi-turn conversation in the CLI.
 - [ ] 04 API: chat endpoint in `DotNextAI.Api` over the same services.
@@ -46,3 +47,4 @@
 - [ ] UI languages: confirm the list (English and Spanish proposed) and the default.
 - [x] 2026-11-16 — Models of the ERNI LiteLLM proxy: chat `gpt-5.6-luna` (default) and `gpt-5.6-terra`, image `gpt-image-2` (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)).
 - [ ] Check that `gpt-5.6-luna` accepts image input (step 06).
+- [x] 2026-11-16 — CLI language: English only (invariant culture). Multi-language is for the web UI.

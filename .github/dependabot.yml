@@ -19,6 +19,9 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "Microsoft.Extensions.*"
         update-types: ["version-update:semver-major"]
+      # System.CommandLine 3.x is the .NET 11 line.
+      - dependency-name: "System.CommandLine"
+        update-types: ["version-update:semver-major"]
 
   # Base images pinned by digest in backend/Dockerfile. The .NET major must match the target framework.
   - package-ecosystem: docker

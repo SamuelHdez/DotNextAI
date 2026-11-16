@@ -20,8 +20,13 @@ public sealed class LlmOptions
     /// <summary>Model name as exposed by the proxy (its <c>/v1/models</c> list).</summary>
     public string? DefaultModel { get; init; }
 
+    /// <summary>Maximum time for one model call (each attempt), in seconds.</summary>
     [Range(5, 600)]
     public int TimeoutSeconds { get; init; } = 120;
+
+    /// <summary>Retries of the OpenAI SDK on 408, 429 and 5xx answers and on network errors, with exponential back-off.</summary>
+    [Range(0, 5)]
+    public int MaxRetries { get; init; } = 2;
 
     public bool IsConfigured =>
         IsAllowedEndpoint(Endpoint)

@@ -4,7 +4,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 Technical documentation, backlog and decisions: [docs/](docs/README.md).
 
-> **Status:** step 00 (repository and backend skeleton). The API answers `/api/health`; chat arrives with backlog step 01.
+> **Status:** backlog step 01 done. The terminal app answers one question at a time through the LiteLLM proxy (`dotnextai ask`); the API answers `/api/health`.
 
 ## Requirements
 
@@ -22,7 +22,8 @@ From the repository root, in Git Bash:
 ./scripts/dev.sh secrets      # once: LiteLLM endpoint, default model and API key
 ./scripts/dev.sh              # API on http://localhost:5100, Swagger UI on http://localhost:5100/swagger
 ./scripts/dev.sh api --watch  # same, under dotnet watch (hot reload)
-./scripts/dev.sh cli          # terminal chatbot
+./scripts/dev.sh cli ask "What is .NET?"   # terminal app: one question, one answer
+./scripts/dev.sh cli          # terminal app, interactive
 ./scripts/dev.sh test         # Release build with warnings as errors + unit and integration tests (as in CI)
 ./scripts/dev.sh status       # SDK, LLM settings (never the key) and whether the API answers
 ./scripts/dev.sh --help
@@ -45,12 +46,26 @@ The settings live in the `Llm` section. The API and the CLI share one `dotnet us
 | `Llm:Endpoint` | Base URL of the LiteLLM proxy. HTTPS (HTTP only on `localhost`) | user-secrets |
 | `Llm:ApiKey` | Proxy virtual key (**secret**) | user-secrets |
 | `Llm:DefaultModel` | Model name as exposed by the proxy | user-secrets |
-| `Llm:TimeoutSeconds` | Timeout of a model call, 5-600 (default 120) | `appsettings.json` |
+| `Llm:TimeoutSeconds` | Timeout of each model call attempt, 5-600 (default 120) | `appsettings.json` |
+| `Llm:MaxRetries` | Retries on 408/429/5xx and network errors, 0-5 (default 2) | `appsettings.json` |
 | `Cors:AllowedOrigins` | Browser origins allowed to call the API (`http://localhost:3030` in Development) | `appsettings*.json` |
 
 Environment variables override both, using the `Llm__ApiKey` form. While the three `Llm` values are missing, the API still starts and `/api/health` reports `"llmConfigured": false`. The CLI exits with a hint.
 
 To read or reset the store: `dotnet user-secrets list --project backend/src/DotNextAI.Api` (or `clear`). Windows and WSL keep separate stores.
+
+## Terminal app
+
+`dotnextai` is a permanent part of the project: it keeps working, and grows with the backlog, next to the web app. Full behavior in the [CLI spec](docs/specs/feature-cli.md).
+
+```bash
+dotnextai ask "What is .NET?"        # question as argument (quotes optional)
+echo "Summarize: ..." | dotnextai ask  # question from stdin
+dotnextai                            # interactive: asks for one question
+dotnextai --help
+```
+
+Answers go to stdout and everything else to stderr, so answers can be piped. Exit codes: `0` answer, `1` model error, `2` usage error, `3` not configured, `130` Ctrl+C. Run it with `./scripts/dev.sh cli …` or `dotnet run --project backend/src/DotNextAI.Cli -- …`.
 
 ## Project layout
 
@@ -61,7 +76,7 @@ backend/
   src/DotNextAI.Api             Minimal API (port 5100)
   src/DotNextAI.Application     DTOs and interfaces
   src/DotNextAI.Infrastructure  LLM options and clients (Agent Framework)
-  src/DotNextAI.Cli             terminal chatbot (dotnextai)
+  src/DotNextAI.Cli             terminal app (dotnextai)
   tests/DotNextAI.UnitTests  tests/DotNextAI.IntegrationTests
 docs/       specs, design, tasks
 scripts/    dev.sh
@@ -71,7 +86,8 @@ See [architecture](docs/design/architecture.md) for the components and the decis
 
 ## Security notes
 
-- The LiteLLM key stays in the backend: it is not in API responses, logs or tracked files. A test checks that `/api/health` does not leak it.
+- The LiteLLM key stays in the backend: it is not in API responses, error messages, logs or tracked files. Tests check `/api/health` and the error messages (the key is masked even if the proxy echoes it).
+- Prompts and answers are never logged; logs hold model, duration and status only.
 - The build runs the .NET security analyzers and fails on vulnerable NuGet packages (`NuGetAudit`). Restores are reproducible from `packages.lock.json`.
 - The API accepts browser calls only from the origins in `Cors:AllowedOrigins`.
 - Tests never call the real proxy and need no secrets.
@@ -94,4 +110,4 @@ All actions are pinned by commit SHA, tool binaries by version and checksum, and
 ./scripts/dev.sh test
 ```
 
-Expected: build with 0 warnings, all tests green (`LlmOptionsTests`, `HealthEndpointTests`).
+Expected: build with 0 warnings, all tests green (`LlmOptionsTests`, `ChatRulesTests`, `OpenAiChatServiceTests`, `CliApplicationTests`, `HealthEndpointTests`). End to end, against the proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.

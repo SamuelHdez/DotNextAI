@@ -11,9 +11,10 @@ DotNextAI is the ERNI course exercise *Project 1: Basic LLM Chatbot App*: build 
 | Backend | .NET 10 + Microsoft Agent Framework instead of the course's suggested Python + LangChain + FastAPI. | 2026-11-16 |
 | LLM access | Only through ERNI's LiteLLM proxy (OpenAI-compatible API), with a URL and a virtual key. | 2026-11-16 |
 | Web app | Next.js + React + Fluent UI v9 (the course suggests Streamlit or React). | 2026-11-16 |
-| UI languages | Multi-language UI. Languages are still to be confirmed; English and Spanish are proposed. | 2026-11-16 |
+| UI languages | Multi-language web UI. Languages are still to be confirmed; English and Spanish are proposed. The CLI stays English only. | 2026-11-16 |
 | Code language | Code, comments, docs and commit messages in English. | 2026-11-16 |
 | Delivery | Small increments, one backlog step (or less) at a time, each with docs and tests. | 2026-11-16 |
+| Terminal app | The CLI (steps 01-03) is a permanent deliverable, not a prototype replaced by the web app. It keeps working, and later features are added to it where they make sense ([CLI spec](feature-cli.md#roadmap)). | 2026-11-16 |
 
 ## Backlog
 
@@ -21,7 +22,7 @@ The course backlog, with how this repository maps each step. The spec of each st
 
 | # | Phase | Step | Course wording | In DotNextAI |
 | -- | ----- | ---- | -------------- | ------------ |
-| 01 | Backend basics | Terminal Q&A app | Single question and answer with direct OpenAI API calls (through LiteLLM). | `DotNextAI.Cli` calls the proxy with the OpenAI .NET SDK (`ChatClient`), with no orchestration layer. |
+| 01 | Backend basics | Terminal Q&A app | Single question and answer with direct OpenAI API calls (through LiteLLM). | **Done 2026-11-16.** `dotnextai ask` calls the proxy with the OpenAI .NET SDK (`ChatClient`), with no orchestration layer ([CLI](feature-cli.md), [chat service](feature-llm-chat.md)). |
 | 02 | Backend basics | Orchestration framework | Call the LLM through LangChain. | Same call through a Microsoft Agent Framework agent (`ChatClientAgent` over `IChatClient`). |
 | 03 | Backend basics | Chat history | Add chat history to the conversation. | Multi-turn conversation in the CLI (agent thread / message list). |
 | 04 | Backend basics | API | Encapsulate the LLM logic into an API. | `DotNextAI.Api` Minimal API endpoints over the same Infrastructure services. |
@@ -53,6 +54,7 @@ Image input (step 06) needs a chat model that accepts images. Check this with `g
 - **No persistence for now.** Conversations live in memory, in the CLI process or the browser. Adding storage is a decision to record here first.
 - **No personal data in logs.** Prompts, images and answers are not logged above `Debug`.
 - **Testable without the proxy.** Every feature can be tested with a fake model client; CI has no LLM secrets.
+- **One implementation, two front ends.** Features live in Application and Infrastructure behind interfaces (`IChatService`…); the CLI and the API (and through it the web app) only adapt input and output.
 
 ## Verification
 
@@ -60,3 +62,5 @@ Each step's spec names its tests. Global rules covered today:
 
 - Key not exposed: `HealthEndpointTests.GetHealth_NeverExposesLlmSecrets`.
 - Endpoint must be HTTPS (HTTP only on loopback): `LlmOptionsTests`.
+- Key never in error messages: `OpenAiChatServiceTests.AskAsync_ProxyErrorEchoingTheKey_MasksIt` and `AskAsync_Unauthorized_NeverQuotesTheProxyBody`.
+- No model call for invalid or unconfigured input: `OpenAiChatServiceTests.AskAsync_NotConfigured_*`, `AskAsync_EmptyQuestion_*`.

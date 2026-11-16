@@ -10,8 +10,8 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 | ---- | ---- | ----- |
 | `backend/src/DotNextAI.Api/` | HTTP API (port 5100): health today; chat, streaming, models and images in later steps | ASP.NET Core 10 Minimal API, OpenAPI + Swagger UI |
 | `backend/src/DotNextAI.Application/` | Contracts shared by the API and the CLI: DTOs and the interfaces Infrastructure implements | .NET 10 class library |
-| `backend/src/DotNextAI.Infrastructure/` | LLM access: `LlmOptions` today; Microsoft Agent Framework agents and the OpenAI clients in later steps | Microsoft Agent Framework, Microsoft.Extensions.AI, OpenAI .NET SDK |
-| `backend/src/DotNextAI.Cli/` | Terminal chatbot (steps 01-03), executable `dotnextai` | .NET 10 console, Generic Host |
+| `backend/src/DotNextAI.Infrastructure/` | LLM access: `LlmOptions`, `OpenAiChatService` (step 01); Microsoft Agent Framework agents from step 02 | OpenAI .NET SDK, `IHttpClientFactory`; Microsoft Agent Framework, Microsoft.Extensions.AI |
+| `backend/src/DotNextAI.Cli/` | Terminal app `dotnextai` (**permanent**, grows with the backlog): `ask` command, interactive mode | .NET 10 console, Generic Host, System.CommandLine 2.0 |
 | `backend/tests/DotNextAI.UnitTests/` | Unit tests | xUnit v3, Microsoft.Testing.Platform |
 | `backend/tests/DotNextAI.IntegrationTests/` | HTTP tests against the in-memory API | xUnit v3, `WebApplicationFactory` |
 | `frontend/` | *(Not created yet)* Web app (port 3030) | Next.js, React, Fluent UI v9, multi-language |
@@ -27,7 +27,7 @@ There is no database: the backend keeps no state yet.
 ```bash
 ./scripts/dev.sh secrets      # once: LiteLLM endpoint, default model and API key (user-secrets)
 ./scripts/dev.sh              # API on http://localhost:5100 (Swagger UI at /swagger)
-./scripts/dev.sh cli          # terminal chatbot
+./scripts/dev.sh cli ask "…"   # terminal app (or `cli` alone for interactive mode)
 ./scripts/dev.sh test         # restore + Release build with warnings as errors + unit and integration tests
 ./scripts/dev.sh --help       # everything else (api --watch, build, status)
 ```
@@ -64,6 +64,7 @@ LLM and security:
 - The API key never leaves the backend. Keep it out of API responses, the frontend bundle, logs, exceptions and test output. `GetHealth_NeverExposesLlmSecrets` guards the health endpoint; add the same check to new endpoints that echo configuration.
 - Tests never call the real proxy. Use a fake `IChatClient` (Microsoft.Extensions.AI) or a stub `HttpMessageHandler`. CI has no LLM secrets.
 - Do not log prompts, images or model answers above `Debug`. They may contain personal data.
+- Model failures surface as `ChatServiceException` with a `ChatFailure`. Map new HTTP statuses in `OpenAiChatService.MapFailure`. Only quote the proxy's error body through `ProxyErrorDetail`, which keeps the first line and masks the key, and never for 401/403.
 
 Backend:
 
@@ -71,6 +72,13 @@ Backend:
 - Endpoints are Minimal APIs grouped in `DotNextAI.Api/Endpoints/*Endpoints.cs`. They return `TypedResults` and errors as `ProblemDetails`.
 - Configuration goes through options classes in `DotNextAI.Infrastructure/Options` with `ValidateDataAnnotations` and `ValidateOnStart`. A missing LLM configuration must not stop the API from starting. It reports `LlmConfigured = false`.
 - Analyzers (`latest-recommended`, security rules `All`) run on every build, and CI treats warnings as errors. Fix warnings rather than suppressing them. When a suppression is justified, scope it and explain it in a comment.
+
+Terminal app (`DotNextAI.Cli`):
+
+- The CLI is a permanent deliverable. A backend change must keep it building, tested and documented, and new features are added to it where they make sense ([CLI spec](docs/specs/feature-cli.md#roadmap)).
+- Commands are classes in `DotNextAI.Cli/Commands` wired in `CliApplication`. They take `IChatService`-style interfaces and `CliConsole`, never `Console` directly, so `CliApplicationTests` can drive them.
+- stdout carries only answers; prompts, warnings and errors go to stderr. Keep the exit codes of `ExitCodes` (0, 1, 2, 3, 130) and document new ones in the spec.
+- The CLI's texts are English (invariant culture).
 
 Tests and CI:
 

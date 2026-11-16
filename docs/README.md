@@ -8,7 +8,10 @@ Central index for the specs, design and day-to-day tasks of DotNextAI. Setup and
 | -------- | ----------- | ------ |
 | [Product rules](./specs/product-rules.md) | Course goal, the ten backlog steps, the models of the proxy, and the global rules (LLM through LiteLLM only, secrets, languages, no persistence). | Active |
 
-One `feature-*.md` per backlog step is added when that step starts.
+| [Terminal app (CLI)](./specs/feature-cli.md) | `dotnextai`: commands, input modes, messages, exit codes, and the plan for the CLI in later steps. Permanent deliverable. | Step 01 implemented |
+| [LLM chat service](./specs/feature-llm-chat.md) | `IChatService` contract shared by the CLI and the API, OpenAI SDK call through LiteLLM, rules, failure mapping, configuration. | Step 01 implemented |
+
+One `feature-*.md` per backlog step or feature is added when it starts.
 
 ## Design — architecture and decisions
 

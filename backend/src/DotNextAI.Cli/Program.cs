@@ -1,28 +1,38 @@
+using System.Globalization;
+using System.Text;
+using DotNextAI.Application.Chat;
+using DotNextAI.Cli;
 using DotNextAI.Infrastructure;
-using DotNextAI.Infrastructure.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
-// Terminal chatbot (backlog steps 01-03). The CLI is a local development tool, so it runs in Development by default:
-// that loads the user-secrets shared with the API.
+// The CLI speaks English (docs/specs/feature-cli.md): System.CommandLine's own texts (help, parse errors) would
+// otherwise follow the OS language. UTF-8 without BOM keeps accents intact in Windows terminals and in redirected
+// output.
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
+Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+Console.InputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+// The CLI is a local development tool, so it runs in Development by default: that loads the user-secrets shared with
+// the API (the LiteLLM settings).
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
-    Args = args,
+    Args = [],
     EnvironmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? Environments.Development,
 });
+
+// stdout carries only the answers. Logs are off by default and go to stderr when enabled, e.g. with
+// Logging__LogLevel__Default=Debug.
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
+builder.Logging.SetMinimumLevel(LogLevel.None);
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
 using var host = builder.Build();
 
-var llm = host.Services.GetRequiredService<IOptions<LlmOptions>>().Value;
-if (!llm.IsConfigured)
-{
-    await Console.Error.WriteLineAsync("The LiteLLM proxy is not configured. Run ./scripts/dev.sh secrets first.");
-    return 1;
-}
-
-Console.WriteLine($"DotNextAI CLI ready: model '{llm.DefaultModel}' through {llm.Endpoint}");
-Console.WriteLine("Questions and answers arrive with backlog step 01.");
-return 0;
+return await CliApplication.RunAsync(args, host.Services.GetRequiredService<IChatService>(), CliConsole.System());
