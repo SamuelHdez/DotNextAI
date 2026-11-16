@@ -15,6 +15,8 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 | `backend/tests/DotNextAI.UnitTests/` | Unit tests | xUnit v3, Microsoft.Testing.Platform |
 | `backend/tests/DotNextAI.IntegrationTests/` | HTTP tests against the in-memory API | xUnit v3, `WebApplicationFactory` |
 | `frontend/` | *(Not created yet)* Web app (port 3030) | Next.js, React, Fluent UI v9, multi-language |
+| `backend/Dockerfile` | API image (non-root, digest-pinned base images); built and scanned in CI, never pushed | Docker |
+| `.github/` | CI workflows (`backend-ci.yml`, `security.yml`) and `dependabot.yml` | GitHub Actions |
 | `scripts/dev.sh` | Local orchestrator | bash (Git Bash, WSL, macOS, Linux) |
 | `docs/` | Specs, design and tasks (see below) | Markdown |
 
@@ -32,7 +34,7 @@ There is no database: the backend keeps no state yet.
 
 Before saying a change is done, run what it touches and report the real result. If something could not run, say so:
 
-- .NET: `./scripts/dev.sh test`, which runs `dotnet build backend/DotNextAI.slnx -warnaserror` and `dotnet test --solution backend/DotNextAI.slnx`. The root `global.json` selects Microsoft.Testing.Platform, so `dotnet test` needs `--solution` or `--project`. It is found by walking up from the current directory, so run .NET commands from the repository or any folder below it. CI (from a later step) restores in locked mode and builds with analyzer warnings as errors.
+- .NET: `./scripts/dev.sh test`, which runs `dotnet build backend/DotNextAI.slnx -warnaserror` and `dotnet test --solution backend/DotNextAI.slnx`. The root `global.json` selects Microsoft.Testing.Platform, so `dotnet test` needs `--solution` or `--project`. It is found by walking up from the current directory, so run .NET commands from the repository or any folder below it. CI (`backend-ci.yml`) restores in locked mode, builds with analyzer warnings as errors, runs Semgrep and scans the API image with Trivy.
 - Manual check of the API: `./scripts/dev.sh status` while `./scripts/dev.sh` runs.
 
 ## Documentation is part of every change
@@ -75,7 +77,8 @@ Tests and CI:
 - Test names: `Method_Scenario_ExpectedResult`. Use `TestContext.Current.CancellationToken` in async calls.
 - The integration tests run the API in the `Testing` environment (`DotNextAIApiFactory`), so the developer's user-secrets never reach them.
 - Semgrep (`p/secrets`) will block CI on literal keys or tokens. Generate them at runtime in tests (`$"sk-{Guid.NewGuid():N}"`).
-- Workflows (from a later step) mirror the ValidatorHub and ctf-janus pipelines: actions pinned by commit SHA, tool binaries pinned by version and checksum (Gitleaks, Trivy), `permissions: contents: read`, `persist-credentials: false`, no secrets, and zizmor checks.
+- Workflows (`.github/workflows/`) mirror the ValidatorHub and ctf-janus pipelines: actions pinned by commit SHA, tool binaries pinned by version and checksum (Gitleaks, Trivy), `permissions: contents: read`, `persist-credentials: false`, no secrets, and zizmor checks them (`security.yml`). Before pushing a workflow change, run `uvx --from zizmor zizmor .github/`.
+- The API image (`backend/Dockerfile`, build context `backend/`) copies each project's `.csproj` and `packages.lock.json` before the restore: add new `src/` projects there too. Base images are pinned by digest.
 
 Repository hygiene:
 

@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Step 00 implemented on 2026-11-16 (backend skeleton, health endpoint, CLI shell). Components marked *planned* arrive with later backlog steps.
+> **Status:** Step 00 implemented on 2026-11-16 (backend skeleton, health endpoint, CLI shell, backend CI). Components marked *planned* arrive with later backlog steps.
 
 ## Components
 
@@ -55,7 +55,8 @@ Errors use `ProblemDetails` (`AddProblemDetails`, `UseExceptionHandler`, `UseSta
 - `backend/Directory.Build.props`: `net10.0`, nullable, .NET analyzers `latest-recommended` with the security rules set to `All`, `NuGetAudit` (vulnerable packages fail the build), and `packages.lock.json` with locked-mode restore when `ContinuousIntegrationBuild=true`.
 - `global.json` (repository root, so it applies from the root and from `backend/`): SDK 10.0.100 or a later feature band; tests run on Microsoft.Testing.Platform (xUnit v3).
 - `backend/tests/Directory.Build.props`: test projects are executables; `CA1707` allowed for `Method_Scenario_Expected` names.
-- CI (planned, mirroring ValidatorHub and ctf-janus): `backend-ci.yml` (Semgrep, locked restore, vulnerable-package check, `-warnaserror` build, tests with coverage, Docker image with an SBOM and a Trivy scan), `frontend-ci.yml`, `e2e.yml` (Playwright), and `security.yml` (Gitleaks, zizmor), plus Dependabot with a 7-day cooldown.
+- `backend/Dockerfile`: multi-stage image of the API (SDK and ASP.NET base images pinned by digest, locked restore, non-root `$APP_UID`, port 8080, `Production`). The LLM settings come from environment variables at run time. The CLI has no image.
+- CI, mirroring ValidatorHub and ctf-janus (see the [README](../../README.md#ci)): `backend-ci.yml` and `security.yml` are implemented, with Dependabot on a 7-day cooldown. `frontend-ci.yml` and `e2e.yml` (Playwright) are planned.
 
 ## Decisions log
 
@@ -69,3 +70,5 @@ Errors use `ProblemDetails` (`AddProblemDetails`, `UseExceptionHandler`, `UseSta
 | 2026-11-16 | Secrets | `dotnet user-secrets`, one store shared by the API and the CLI, written by `dev.sh secrets` through stdin. | Same practice as the reference repos. One setup serves both executables, and the key never shows up in a process list. |
 | 2026-11-16 | Tests | xUnit v3 on Microsoft.Testing.Platform, `WebApplicationFactory` in the `Testing` environment, and fake model clients. | Same as ValidatorHub. Tests and CI need no proxy and no secrets. |
 | 2026-11-16 | Web app | Next.js + React + Fluent UI v9, port 3030 (planned). | Same stack as the ValidatorHub frontend and the ctf-janus admin. The port avoids clashing with them (3000, 3010). |
+| 2026-11-16 | CI | `backend-ci.yml` = ValidatorHub's build job (MTP `--solution` tests) + ctf-janus's Docker job (Trivy binary verified by checksum, not `trivy-action`). `security.yml` copied unchanged (identical in both repos). | Same guarantees as the reference repos. ctf-janus moved away from `trivy-action` after it was compromised in 2026. |
+| 2026-11-16 | Dependabot | Ignore semver-major updates of `Microsoft.AspNetCore.*`, `Microsoft.Extensions.*` and the `dotnet/*` base images. | Keeps the backend on the .NET 10 LTS line. A move to 11.x is a manual change of the target framework, packages and images together. |

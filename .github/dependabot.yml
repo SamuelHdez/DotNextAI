@@ -1,0 +1,42 @@
+version: 2
+
+# Updates wait 7 days after publication: most malicious package releases are detected and pulled within that window.
+# The npm (/frontend) entry is added with the web app.
+updates:
+  - package-ecosystem: nuget
+    directory: /backend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      nuget-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # The backend stays on the .NET 10 (LTS) line: majors (11.x) of the framework packages are done manually,
+      # together with the target framework and the base images.
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+
+  # Base images pinned by digest in backend/Dockerfile. The .NET major must match the target framework.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "dotnet/*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]

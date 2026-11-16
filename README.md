@@ -11,7 +11,8 @@ Technical documentation, backlog and decisions: [docs/](docs/README.md).
 - .NET SDK 10 (LTS).
 - Git Bash on Windows (it comes with Git for Windows), or WSL, macOS or Linux, to run `scripts/dev.sh`.
 - A LiteLLM proxy URL and virtual key from ERNI, plus the name of a model it exposes.
-- Later steps: Node.js 24 LTS and npm (web app), Docker (images) and Playwright browsers (E2E).
+- Optional: Docker, to build the API image locally (`docker build backend`). CI builds it on every backend change.
+- Later steps: Node.js 24 LTS and npm (web app) and Playwright browsers (E2E).
 
 ## Running the project
 
@@ -74,6 +75,18 @@ See [architecture](docs/design/architecture.md) for the components and the decis
 - The build runs the .NET security analyzers and fails on vulnerable NuGet packages (`NuGetAudit`). Restores are reproducible from `packages.lock.json`.
 - The API accepts browser calls only from the origins in `Cors:AllowedOrigins`.
 - Tests never call the real proxy and need no secrets.
+
+## CI
+
+GitHub Actions, the same pipelines as ValidatorHub and ctf-janus:
+
+| Workflow | Runs on | What it does |
+| -------- | ------- | ------------ |
+| `backend-ci.yml` | Changes to `backend/`, `global.json`, `nuget.config` | Semgrep (C#, Dockerfile, secrets) → locked restore → vulnerable-package check → Release build with `-warnaserror` → unit and integration tests with coverage → API image build, CycloneDX SBOM and Trivy scan (fails on fixable HIGH/CRITICAL) |
+| `security.yml` | Every push and PR to `main`, plus weekly | Gitleaks over the whole git history, and zizmor over the workflows |
+| `dependabot.yml` | Weekly | NuGet, Docker base images and GitHub Actions, each update 7 days after its release. Framework majors (11.x) are done manually |
+
+All actions are pinned by commit SHA, tool binaries by version and checksum, and the workflows use `permissions: contents: read` and need no secrets.
 
 ## Verification
 

@@ -25,3 +25,9 @@ Outcome: both reference repos were analyzed, and a layout plus the list of pipel
 > ERNI LiteLLM proxy with URL and token. Playwright E2E: yes. Code, docs and commits in English, multi-language UI. Working from Windows. Add a `dev.sh`. Go step by step: first only the backend project setup, `AGENTS.md` and the documentation.
 
 Outcome: step 00 in [todo.md](todo.md). The backend solution builds with 0 warnings, all tests pass, and `dev.sh` and the docs are written. CI, frontend and Docker are left for later steps.
+
+## 2026-11-16 — Initial commit and backend CI
+
+> Commit, then set up the pipelines.
+
+Outcome: initial commit `be84b7c` (the user pushes it). Added `backend-ci.yml`, `security.yml`, `dependabot.yml` and `backend/Dockerfile`, mirroring ValidatorHub and ctf-janus. Checked locally with zizmor 1.30.1, Semgrep 1.180.0 (CI rulesets) and Gitleaks 8.30.1: no findings. The Docker job was not run locally.

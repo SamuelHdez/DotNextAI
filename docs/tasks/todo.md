@@ -13,10 +13,11 @@
 
 ## Repository and CI
 
-- [ ] `backend-ci.yml`: Semgrep, locked restore, vulnerable-package check, `-warnaserror` build, tests with coverage (same as ValidatorHub and ctf-janus).
-- [ ] `security.yml`: Gitleaks and zizmor.
-- [ ] `.github/dependabot.yml`: NuGet, GitHub Actions (later npm and Docker), with a 7-day cooldown.
-- [ ] Backend `Dockerfile` (digest-pinned images, non-root user) plus a Docker job in `backend-ci.yml` (SBOM and a Trivy binary verified by checksum).
+- [x] 2026-11-16 — `backend-ci.yml`: Semgrep, locked restore, vulnerable-package check, `-warnaserror` build, tests with coverage, API image with SBOM and Trivy scan (same as ValidatorHub and ctf-janus).
+- [x] 2026-11-16 — `security.yml`: Gitleaks and zizmor.
+- [x] 2026-11-16 — `.github/dependabot.yml`: NuGet, Docker and GitHub Actions with a 7-day cooldown. Add npm with the frontend.
+- [x] 2026-11-16 — Backend `Dockerfile` (digest-pinned images, non-root user).
+- [ ] Confirm the first `backend-ci.yml` and `security.yml` runs on GitHub are green (the Docker job has not been run locally: no Docker on the dev machine).
 - [ ] `frontend-ci.yml` (with step 05).
 - [ ] `e2e.yml` with Playwright against the production build and the API using a fake model client (`./scripts/dev.sh e2e`).
 - [ ] Branch protection on `main` and secret scanning with push protection in the GitHub repository settings.

@@ -1,0 +1,177 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "global.json"
+      - "nuget.config"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "global.json"
+      - "nuget.config"
+      - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: backend
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  # Picked up by MSBuild: enables deterministic CI builds and locked-mode restore (see Directory.Build.props).
+  ContinuousIntegrationBuild: "true"
+  SOLUTION: DotNextAI.slnx
+
+jobs:
+  semgrep:
+    name: Semgrep (SAST)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.180.0@sha256:529ee8a277ec8adc5b534d7c74eea0a47e9de21d62852b6ba7ac6ba9566845c3
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Semgrep
+        run: >-
+          semgrep scan
+          --config p/default
+          --config p/csharp
+          --config p/dockerfile
+          --config p/secrets
+          --error
+          --metrics off
+          --sarif-output semgrep-backend.sarif
+          backend
+
+      - name: Upload Semgrep report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: semgrep-backend
+          path: semgrep-backend.sarif
+          if-no-files-found: ignore
+
+  build:
+    name: Restore, analyze, build & test (unit + integration)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: backend/**/packages.lock.json
+
+      - name: Restore (locked mode)
+        run: dotnet restore "$SOLUTION" --locked-mode
+
+      - name: Check vulnerable packages
+        run: |
+          dotnet list "$SOLUTION" package --vulnerable --include-transitive --format json > vulnerable.json
+          count=$(jq '[.projects[].frameworks[]? | (.topLevelPackages // []) + (.transitivePackages // []) | .[] | select(.vulnerabilities)] | length' vulnerable.json)
+          if [ "$count" -gt 0 ]; then
+            jq '.projects[] | {path, frameworks}' vulnerable.json
+            echo "::error::$count vulnerable NuGet package(s) detected"
+            exit 1
+          fi
+          echo "No vulnerable NuGet packages found."
+
+      # .NET security analyzers (Directory.Build.props) run as part of the build; -warnaserror makes them blocking.
+      - name: Build
+        run: dotnet build "$SOLUTION" --configuration Release --no-restore -warnaserror
+
+      # Unit tests + HTTP tests against the in-memory API (WebApplicationFactory, Testing environment). Model calls are
+      # faked: no LiteLLM proxy and no repository secrets are needed. The root global.json opts into
+      # Microsoft.Testing.Platform, hence the --solution syntax.
+      - name: Test
+        run: >-
+          dotnet test --solution "$SOLUTION"
+          --configuration Release
+          --no-build
+          --coverage
+          --coverage-output-format cobertura
+          --results-directory TestResults
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-backend
+          path: backend/TestResults/*.cobertura.xml
+          if-no-files-found: ignore
+
+  docker:
+    name: API image (build, SBOM, scan)
+    needs: [semgrep, build]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    env:
+      # Pinned and checksum-verified binary instead of a third-party action (trivy-action was compromised in 2026).
+      # Version chosen at least 7 days after its release, like the Dependabot cooldown.
+      TRIVY_VERSION: 0.76.1
+      TRIVY_SHA256: c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
+      IMAGE: dotnextai-api:ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Built, never pushed: publishing is part of a (deferred) deployment.
+      - name: Build image
+        run: docker build --tag "$IMAGE" backend
+
+      - name: Install Trivy (checksum verified)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/trivy.tar.gz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP" trivy
+
+      - name: SBOM (CycloneDX)
+        run: '"$RUNNER_TEMP/trivy" image --quiet --format cyclonedx --output "$RUNNER_TEMP/sbom-api.cdx.json" "$IMAGE"'
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom-api
+          path: ${{ runner.temp }}/sbom-api.cdx.json
+          if-no-files-found: error
+
+      # Fails on fixable critical or high vulnerabilities of the OS packages or the .NET dependencies.
+      - name: Scan image
+        run: >-
+          "$RUNNER_TEMP/trivy" image
+          --quiet
+          --scanners vuln
+          --severity CRITICAL,HIGH
+          --ignore-unfixed
+          --exit-code 1
+          "$IMAGE"
