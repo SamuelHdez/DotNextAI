@@ -1,0 +1,170 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: frontend
+
+env:
+  NODE_VERSION: "24"
+  NEXT_TELEMETRY_DISABLED: "1"
+  # Inlined into the client bundle; CI only checks that the app builds.
+  NEXT_PUBLIC_API_BASE_URL: http://localhost:5100
+
+jobs:
+  semgrep:
+    name: Semgrep (SAST)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.180.0@sha256:529ee8a277ec8adc5b534d7c74eea0a47e9de21d62852b6ba7ac6ba9566845c3
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Semgrep
+        run: >-
+          semgrep scan
+          --config p/default
+          --config p/typescript
+          --config p/react
+          --config p/nextjs
+          --config p/dockerfile
+          --config p/secrets
+          --error
+          --metrics off
+          --sarif-output semgrep-frontend.sarif
+          frontend
+
+      - name: Upload Semgrep report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: semgrep-frontend
+          path: semgrep-frontend.sarif
+          if-no-files-found: ignore
+
+  build:
+    name: Dependency checks, lint, type-check, unit tests & build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Lifecycle scripts are a common malware vector in compromised packages.
+      - name: Install dependencies (no install scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Verify registry signatures and provenance
+        run: npm audit signatures
+
+      - name: Audit production dependencies (high+)
+        run: npm audit --omit=dev --audit-level=high
+
+      # Dev-only tooling (ESLint chain) carries moderate advisories (minimatch) whose fixes are younger than the 7-day
+      # cooldown; block only on critical.
+      - name: Audit all dependencies (critical)
+        run: npm audit --audit-level=critical
+
+      - name: Lint
+        run: npm run lint
+
+      # Generates the Next.js route types (LayoutProps, PageProps...) before running tsc.
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit and component tests (Vitest, with coverage)
+        run: npm run test:coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-frontend
+          path: frontend/coverage/lcov.info
+          if-no-files-found: ignore
+
+      - name: Build
+        run: npm run build
+
+  docker:
+    name: Web image (build, SBOM, scan)
+    needs: [semgrep, build]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    env:
+      # Pinned and checksum-verified binary instead of a third-party action (trivy-action was compromised in 2026).
+      TRIVY_VERSION: 0.76.1
+      TRIVY_SHA256: c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
+      IMAGE: dotnextai-web:ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Built, never pushed: publishing is part of a (deferred) deployment.
+      - name: Build image
+        run: docker build --build-arg NEXT_PUBLIC_API_BASE_URL="$NEXT_PUBLIC_API_BASE_URL" --tag "$IMAGE" frontend
+
+      - name: Install Trivy (checksum verified)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/trivy.tar.gz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP" trivy
+
+      - name: SBOM (CycloneDX)
+        run: '"$RUNNER_TEMP/trivy" image --quiet --format cyclonedx --output "$RUNNER_TEMP/sbom-web.cdx.json" "$IMAGE"'
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom-web
+          path: ${{ runner.temp }}/sbom-web.cdx.json
+          if-no-files-found: error
+
+      # Fails on fixable critical or high vulnerabilities of the OS packages or the npm dependencies.
+      - name: Scan image
+        run: >-
+          "$RUNNER_TEMP/trivy" image
+          --quiet
+          --scanners vuln
+          --severity CRITICAL,HIGH
+          --ignore-unfixed
+          --exit-code 1
+          "$IMAGE"

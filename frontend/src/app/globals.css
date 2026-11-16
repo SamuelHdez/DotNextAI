@@ -1,0 +1,44 @@
+/* Visual design comes from Fluent UI tokens (see src/lib/theme/fluentThemeCss.ts); this is only a minimal reset. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--colorNeutralBackground2);
+  color: var(--colorNeutralForeground1);
+  font-family: var(--fontFamilyBase);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ERNI logo variants (Brand Book p.27): full logo on light surfaces, white coat of arms on dark surfaces.
+   Selectors mirror the theme resolution in src/lib/theme/fluentThemeCss.ts. */
+.erni-logo-dark-surface {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .erni-logo-light-surface {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .erni-logo-dark-surface {
+    display: inline-block;
+  }
+}
+
+:root[data-theme="dark"] .erni-logo-light-surface {
+  display: none;
+}
+
+:root[data-theme="dark"] .erni-logo-dark-surface {
+  display: inline-block;
+}

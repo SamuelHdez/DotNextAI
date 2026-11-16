@@ -3,6 +3,27 @@ version: 2
 # Updates wait 7 days after publication: most malicious package releases are detected and pulled within that window.
 # The npm (/frontend) entry is added with the web app.
 updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Major upgrades are done manually:
+      # - typescript: typescript-eslint (used by eslint-config-next) caps the supported TypeScript range.
+      # - @types/node: must match the Node.js runtime line (24 LTS in CI and Docker).
+      # - eslint: the plugins bundled by eslint-config-next must support the new major first.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: nuget
     directory: /backend
     schedule:
@@ -23,15 +44,18 @@ updates:
       - dependency-name: "System.CommandLine"
         update-types: ["version-update:semver-major"]
 
-  # Base images pinned by digest in backend/Dockerfile. The .NET major must match the target framework.
+  # Base images pinned by digest in the Dockerfiles. The .NET major must match the target framework, and the Node.js
+  # major the LTS line used in CI.
   - package-ecosystem: docker
-    directory: /backend
+    directories: [/backend, /frontend]
     schedule:
       interval: weekly
     cooldown:
       default-days: 7
     ignore:
       - dependency-name: "dotnet/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: node
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions

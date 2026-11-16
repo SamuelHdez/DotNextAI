@@ -11,7 +11,7 @@ DotNextAI is the ERNI course exercise *Project 1: Basic LLM Chatbot App*: build 
 | Backend | .NET 10 + Microsoft Agent Framework instead of the course's suggested Python + LangChain + FastAPI. | 2026-11-16 |
 | LLM access | Only through ERNI's LiteLLM proxy (OpenAI-compatible API), with a URL and a virtual key. | 2026-11-16 |
 | Web app | Next.js + React + Fluent UI v9 (the course suggests Streamlit or React). | 2026-11-16 |
-| UI languages | Multi-language web UI. Languages are still to be confirmed; English and Spanish are proposed. The CLI stays English only. | 2026-11-16 |
+| UI languages | Web UI in English (default) and Spanish, switched with a selector in the header and remembered in a cookie ([web app](feature-web-app.md)). The CLI stays English only. | 2026-11-16 |
 | Code language | Code, comments, docs and commit messages in English. | 2026-11-16 |
 | Delivery | Small increments, one backlog step (or less) at a time, each with docs and tests. | 2026-11-16 |
 | Terminal app | The CLI (steps 01-03) is a permanent deliverable, not a prototype replaced by the web app. It keeps working, and later features are added to it where they make sense ([CLI spec](feature-cli.md#roadmap)). | 2026-11-16 |
@@ -26,7 +26,7 @@ The course backlog, with how this repository maps each step. The spec of each st
 | 02 | Backend basics | Orchestration framework | Call the LLM through LangChain. | **Done 2026-11-16.** Same call through a Microsoft Agent Framework agent (`ChatClientAgent`, with instructions) behind `IChatService` ([chat service](feature-llm-chat.md#agent)). |
 | 03 | Backend basics | Chat history | Add chat history to the conversation. | **Done 2026-11-16.** `dotnextai chat`: multi-turn conversation; the front end keeps the history and sends it with every question ([CLI](feature-cli.md), [chat service](feature-llm-chat.md#conversation-history)). |
 | 04 | Backend basics | API | Encapsulate the LLM logic into an API. | **Done 2026-11-16.** `POST /api/chat` (question + history → answer) over the same `IChatService` as the CLI ([API contract](../design/api.md)). |
-| 05 | Web app | Web UI | Streamlit or React, run locally. | `frontend/` Next.js + Fluent UI chat that calls the API. |
+| 05 | Web app | Web UI | Streamlit or React, run locally. | **Done 2026-11-16.** `frontend/`: Next.js + Fluent UI dashboard (ValidatorHub layout, ERNI brand, English/Spanish) with a chat over `POST /api/chat` ([web app](feature-web-app.md)). |
 | 06 | Web app | Image input | Add images in the input, converted to base64. | Image attachments sent as base64 data URIs (`DataContent`). |
 | 07 | Web app | Streaming | Stream the response so the user sees it being generated. | Server-Sent Events from the API, rendered incrementally. |
 | 08 | Extra features | Model selector | Let the user change the model. | Model list from the proxy (`/v1/models`), selected per request. |

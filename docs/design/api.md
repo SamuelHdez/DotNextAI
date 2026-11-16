@@ -1,6 +1,6 @@
 # API contract
 
-> **Status:** Step 04 (chat endpoint) implemented on 2026-11-16. The web app (step 05) mirrors these contracts in its TypeScript types.
+> **Status:** Step 04 (chat endpoint) implemented on 2026-11-16. The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
 
 `DotNextAI.Api` is an ASP.NET Core 10 Minimal API on `http://localhost:5100`. It exposes the same chat service as the CLI ([chat service](../specs/feature-llm-chat.md)) and is meant for local use by the web app. In Development the OpenAPI document is at `/openapi/v1.json` and Swagger UI at `/swagger`; `backend/src/DotNextAI.Api/DotNextAI.Api.http` has ready-made requests.
 

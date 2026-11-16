@@ -55,3 +55,9 @@ Outcome: `dotnextai` (and `dotnextai chat`) is a multi-turn chat with `/new`, `/
 > Go with step 04.
 
 Outcome: `POST /api/chat`, stateless (question + history), over the same `IChatService` as the CLI. Errors are `ProblemDetails` with a `failure` code for the multi-language web app, and the proxy's 401/403 become 502. Added unprompted: a per-IP rate limit (20/min, configurable), because the endpoint is unauthenticated and spends the server's key. New contract document `docs/design/api.md`. 123 tests green; a live call through the API returned the proxy's real `ModelUnavailable` as a 503.
+
+## 2026-11-16 — Step 05: web app
+
+> Those languages are fine; the language is changed with a selector. Build a dashboard structure like ValidatorHub's, with Fluent UI and the ERNI colours.
+
+Outcome: `frontend/` with Next.js 16 and Fluent UI v9. The ValidatorHub shell, ERNI theme, Griffel SSR and security headers are reused. A typed English/Spanish i18n with a cookie-backed selector. Home page: service status and course backlog. Chat page over `POST /api/chat`, with errors from the `failure` code. Also `frontend-ci.yml`, the Dockerfile, Dependabot npm, and `dev.sh` starting the API and the web together. All npm versions at least 7 days old (`--before`). 184 Vitest tests, lint and type-check clean, production build OK. Manually checked in light and dark mode, and in English and Spanish rendered on the server.

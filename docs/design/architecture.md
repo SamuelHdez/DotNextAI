@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Step 04 implemented on 2026-11-16 (chat API), on top of steps 00-03 (backend skeleton, backend CI, CLI with chat history, Agent Framework agent). Components marked *planned* arrive with later backlog steps.
+> **Status:** Step 05 implemented on 2026-11-16 (web app), on top of steps 00-04 (backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API). Components marked *planned* arrive with later backlog steps.
 
 ## Components
 
@@ -8,7 +8,7 @@
 flowchart LR
     user([User])
     cli["DotNextAI.Cli<br/>terminal chatbot"]
-    web["frontend<br/>Next.js + Fluent UI<br/>:3030 (planned)"]
+    web["frontend<br/>Next.js + Fluent UI<br/>:3030"]
     api["DotNextAI.Api<br/>ASP.NET Core Minimal API<br/>:5100"]
     infra["DotNextAI.Infrastructure<br/>Agent Framework + OpenAI SDK"]
     litellm[("ERNI LiteLLM proxy<br/>OpenAI-compatible")]
@@ -27,7 +27,7 @@ flowchart LR
 | `DotNextAI.Application` | Contracts with no dependencies: DTOs (`HealthStatusDto`), the chat contract (`IChatService`, `ChatTurn`, `ChatAnswer`, `ChatFailure`, `ChatServiceException`, `ChatRules`), `ChatConversation` (history kept by the front end) and, later, images. |
 | `DotNextAI.Infrastructure` | Configuration (`LlmOptions`) and the model clients. `LlmChatClientFactory` builds the OpenAI .NET SDK `ChatClient` pointed at the proxy over the named `HttpClient` `Llm`. `AgentChatService` (step 02) wraps it as a Microsoft Agent Framework `ChatClientAgent`. `ChatFailureMapper` maps errors ([chat service spec](../specs/feature-llm-chat.md)). |
 | `DotNextAI.Cli` | Terminal app `dotnextai`, a permanent deliverable: System.CommandLine commands (`chat`, the default, and `ask`) over `IChatService`. It uses the same Infrastructure as the API, so the logic is written once ([CLI spec](../specs/feature-cli.md)). |
-| `frontend` | *Planned (step 05).* Multi-language chat UI that only talks to `DotNextAI.Api`. |
+| `frontend` | Next.js 16 + Fluent UI v9 dashboard (ValidatorHub shell, ERNI brand, English/Spanish): home with service status and backlog, chat with the history in the browser. Calls only `DotNextAI.Api`, from the browser ([web app spec](../specs/feature-web-app.md)). |
 
 Project references: `Api → Application, Infrastructure`; `Cli → Application, Infrastructure`; `Infrastructure → Application`. Application references nothing.
 
@@ -36,7 +36,7 @@ Project references: `Api → Application, Infrastructure`; `Cli → Application,
 | Service | URL |
 | ------- | --- |
 | API | `http://localhost:5100` (`launchSettings.json`, profile `http`) |
-| Web app (planned) | `http://localhost:3030`, already allowed by CORS in Development |
+| Web app | `http://localhost:3030` (`next dev --port 3030`; the Docker image listens on 3030), allowed by CORS in Development |
 
 ## API
 
@@ -57,7 +57,8 @@ Full contract, status codes and the `failure` extension: [API contract](api.md).
 - `global.json` (repository root, so it applies from the root and from `backend/`): SDK 10.0.100 or a later feature band; tests run on Microsoft.Testing.Platform (xUnit v3).
 - `backend/tests/Directory.Build.props`: test projects are executables; `CA1707` allowed for `Method_Scenario_Expected` names.
 - `backend/Dockerfile`: multi-stage image of the API (SDK and ASP.NET base images pinned by digest, locked restore, non-root `$APP_UID`, port 8080, `Production`). The LLM settings come from environment variables at run time. The CLI has no image.
-- CI, mirroring ValidatorHub and ctf-janus (see the [README](../../README.md#ci)): `backend-ci.yml` and `security.yml` are implemented, with Dependabot on a 7-day cooldown. `frontend-ci.yml` and `e2e.yml` (Playwright) are planned.
+- `frontend/Dockerfile`: multi-stage Next.js standalone image (`node:24-alpine` pinned by digest, `npm ci --ignore-scripts`, npm/corepack removed from the runtime image, non-root `node` user, port 3030). `NEXT_PUBLIC_API_BASE_URL` is a build argument.
+- CI, mirroring ValidatorHub and ctf-janus (see the [README](../../README.md#ci)): `backend-ci.yml`, `frontend-ci.yml` and `security.yml`, with Dependabot (npm, NuGet, Docker, Actions) on a 7-day cooldown. `e2e.yml` (Playwright) is planned.
 
 ## Decisions log
 
@@ -80,3 +81,5 @@ Full contract, status codes and the `failure` extension: [API contract](api.md).
 | 2026-11-16 | Orchestration (step 02) | `AgentChatService` replaces `OpenAiChatService`: `ChatClient.AsAIAgent(instructions, name)` from `Microsoft.Agents.AI.OpenAI` 1.28.0, a stateless `RunAsync` per question. Client creation and error mapping moved to `LlmChatClientFactory` and `ChatFailureMapper`. | One code path that later steps extend (sessions, streaming, usage), and front ends are untouched. Agent Framework 1.28.0 (2026-11-06) passed the 7-day rule and depends on `Microsoft.Extensions.AI` 10.11.0, so the .NET 10 line holds. |
 | 2026-11-16 | Chat history (step 03) | Stateless `IChatService.AskAsync(question, history)`; the front end keeps the turns (`ChatConversation` in the CLI, the browser for the web app). No `AgentSession`. Limit of 50 questions per conversation. | The API stays stateless (no per-user storage or affinity) and the rule "conversations live in the CLI process or the browser" holds. The limit bounds the cost of resending the history. |
 | 2026-11-16 | Chat API (step 04) | `POST /api/chat` over `IChatService`, stateless. `ProblemDetails` with a `failure` extension; proxy 401/403 become 502. Built-in ASP.NET Core rate limiter: a fixed window per IP on the chat endpoint, 20 per minute by default. | One implementation for the CLI and the web. The `failure` code lets the multi-language UI translate errors. The unauthenticated endpoint spends the server's key, so it is capped, as ValidatorHub caps its sensitive endpoints. |
+| 2026-11-16 | Web app (step 05) | Next.js 16 + Fluent UI v9 in `frontend/`, the ValidatorHub shell and ERNI theme files reused. Own typed i18n (English default, Spanish) with a cookie, browser → API directly, per-request CSP nonce. | The same look and the same hardening as the other ERNI apps. The i18n is small enough not to need a library. Direct calls keep the API the only holder of the key and make step 07's streaming straightforward. |
+| 2026-11-16 | npm versions | `npm install --before=<7 days ago>` for the whole tree (direct and transitive). The dev-only ESLint chain keeps 9 moderate `minimatch` advisories whose fixes are younger than that; CI blocks production on high+ and everything on critical, as in the reference repos. | The 7-day cooldown is the supply-chain rule of every ERNI repo here; a moderate dev-tool advisory is the lesser risk. |

@@ -14,7 +14,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 | `backend/src/DotNextAI.Cli/` | Terminal app `dotnextai` (**permanent**, grows with the backlog): `chat` (default, with history) and `ask` commands | .NET 10 console, Generic Host, System.CommandLine 2.0 |
 | `backend/tests/DotNextAI.UnitTests/` | Unit tests | xUnit v3, Microsoft.Testing.Platform |
 | `backend/tests/DotNextAI.IntegrationTests/` | HTTP tests against the in-memory API | xUnit v3, `WebApplicationFactory` |
-| `frontend/` | *(Not created yet)* Web app (port 3030) | Next.js, React, Fluent UI v9, multi-language |
+| `frontend/` | Web app (port 3030): dashboard shell, home, chat. Spec in [`docs/specs/feature-web-app.md`](docs/specs/feature-web-app.md) | Next.js 16, React 19, TypeScript 5, Fluent UI v9, Vitest |
 | `backend/Dockerfile` | API image (non-root, digest-pinned base images); built and scanned in CI, never pushed | Docker |
 | `.github/` | CI workflows (`backend-ci.yml`, `security.yml`) and `dependabot.yml` | GitHub Actions |
 | `scripts/dev.sh` | Local orchestrator | bash (Git Bash, WSL, macOS, Linux) |
@@ -26,16 +26,17 @@ There is no database: the backend keeps no state yet.
 
 ```bash
 ./scripts/dev.sh secrets      # once: LiteLLM endpoint, default model and API key (user-secrets)
-./scripts/dev.sh              # API on http://localhost:5100 (Swagger UI at /swagger)
+./scripts/dev.sh              # API on http://localhost:5100 + web app on http://localhost:3030
 ./scripts/dev.sh cli           # terminal app: chat with history (`cli ask "…"` for one question)
-./scripts/dev.sh test         # restore + Release build with warnings as errors + unit and integration tests
+./scripts/dev.sh test         # as in CI: .NET build + tests, then ESLint, type-check, Vitest (`test frontend` for one part)
 ./scripts/dev.sh --help       # everything else (api --watch, build, status)
 ```
 
 Before saying a change is done, run what it touches and report the real result. If something could not run, say so:
 
 - .NET: `./scripts/dev.sh test`, which runs `dotnet build backend/DotNextAI.slnx -warnaserror` and `dotnet test --solution backend/DotNextAI.slnx`. The root `global.json` selects Microsoft.Testing.Platform, so `dotnet test` needs `--solution` or `--project`. It is found by walking up from the current directory, so run .NET commands from the repository or any folder below it. CI (`backend-ci.yml`) restores in locked mode, builds with analyzer warnings as errors, runs Semgrep and scans the API image with Trivy.
-- Manual check of the API: `./scripts/dev.sh status` while `./scripts/dev.sh` runs.
+- Web: `npm --prefix frontend run lint`, `typecheck`, `test` and `build` (or `./scripts/dev.sh test frontend`). CI also runs `npm audit` and Semgrep.
+- Manual check: `./scripts/dev.sh status` while `./scripts/dev.sh` runs.
 
 ## Documentation is part of every change
 
@@ -85,6 +86,16 @@ Terminal app (`DotNextAI.Cli`):
 - stdout carries only answers; prompts, warnings and errors go to stderr. Keep the exit codes of `ExitCodes` (0, 1, 2, 3, 130) and document new ones in the spec.
 - The CLI's texts are English (invariant culture). Chat commands start with `/` and are never sent to the model.
 
+Web app (`frontend/`):
+
+- **No hard-coded UI text.** Every string is a key in `src/lib/i18n/messages/en.ts` with its Spanish text in `es.ts` (same keys and `{placeholders}`, enforced by the compiler and `messages.test.ts`). Use `useI18n().t(...)` in client components and `translate(await getRequestLocale(), ...)` in server code (metadata).
+- Error texts come from the API's `failure` code (`chatErrorMessage`), never from `detail`.
+- Keep `src/services/types.ts` in sync with `docs/design/api.md`, `src/lib/chat/chatRules.ts` with the backend's `ChatRules`, and `src/lib/backlog.ts` with the backlog in `docs/specs/product-rules.md`.
+- Styling only with Fluent `makeStyles` and `tokens` (ERNI theme in `src/lib/theme`), no hard-coded colours. Pages use `PageBody` / `PageHeader`; new pages get a link in `SideNav` (`NAV_GROUPS`).
+- Keep the CSP strict: no new inline scripts without the nonce, and any new origin the browser must reach goes into `buildContentSecurityPolicy`.
+- npm only. New or updated packages must be at least 7 days old (`npm install --before=<date>`), installed with `--ignore-scripts`, and the `package-lock.json` committed.
+- Tests: Vitest + Testing Library next to the code (`*.test.ts(x)`), rendered with `renderWithProviders`, and `fetch` stubbed (never a real API).
+
 Tests and CI:
 
 - Test names: `Method_Scenario_ExpectedResult`. Use `TestContext.Current.CancellationToken` in async calls.
@@ -99,7 +110,7 @@ Repository hygiene:
 - Stay on the .NET 10 (LTS) line for ASP.NET Core and `Microsoft.Extensions.*` packages. Do not mix in 11.x versions.
 - Text files are stored with LF (`.gitattributes`); `*.sh` must stay LF.
 - Secrets live in user-secrets (`./scripts/dev.sh secrets`), never in tracked files. `.env*` and `appsettings.*.local.json` are git-ignored.
-- npm only (no pnpm/yarn) once the frontend exists.
+- npm only (no pnpm/yarn). `node_modules` installed from Windows does not work in WSL and vice versa; `frontend/.env.local` is generated by `dev.sh` and git-ignored.
 
 Language:
 

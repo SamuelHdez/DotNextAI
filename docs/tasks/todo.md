@@ -18,7 +18,7 @@
 - [x] 2026-11-16 — `.github/dependabot.yml`: NuGet, Docker and GitHub Actions with a 7-day cooldown. Add npm with the frontend.
 - [x] 2026-11-16 — Backend `Dockerfile` (digest-pinned images, non-root user).
 - [ ] Confirm the first `backend-ci.yml` and `security.yml` runs on GitHub are green (the Docker job has not been run locally: no Docker on the dev machine).
-- [ ] `frontend-ci.yml` (with step 05).
+- [x] 2026-11-16 — `frontend-ci.yml` (Semgrep, npm audits, lint, type-check, Vitest, build, web image with SBOM and Trivy), `frontend/Dockerfile`, npm and `/frontend` Docker in Dependabot.
 - [ ] `e2e.yml` with Playwright against the production build and the API using a fake model client (`./scripts/dev.sh e2e`).
 - [ ] Branch protection on `main` and secret scanning with push protection in the GitHub repository settings.
 
@@ -33,7 +33,9 @@
 
 ## Phase 2 — Web app
 
-- [ ] 05 Web UI: `frontend/` Next.js + Fluent UI v9, multi-language, calling the API.
+- [x] 2026-11-16 — 05 Web UI: `frontend/` Next.js 16 + Fluent UI v9 with the ValidatorHub shell and ERNI theme, English/Spanish selector, home (service status, backlog) and chat over `POST /api/chat` ([web app](../specs/feature-web-app.md)).
+- [ ] 05 follow-up: render answers as Markdown with a sanitizing renderer.
+- [ ] 05 follow-up: remove the 9 moderate dev-only `minimatch` advisories (ESLint chain) once the fixed versions pass the 7-day cooldown (Dependabot).
 - [ ] 06 Image input: attachments as base64.
 - [ ] 07 Streaming: SSE from the API, incremental rendering.
 
@@ -45,7 +47,7 @@
 
 ## Open questions
 
-- [ ] UI languages: confirm the list (English and Spanish proposed) and the default.
+- [x] 2026-11-16 — UI languages: English (default) and Spanish, with a selector.
 - [x] 2026-11-16 — Models of the ERNI LiteLLM proxy: chat `gpt-5.6-luna` (default) and `gpt-5.6-terra`, image `gpt-image-2` (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)).
 - [ ] Check that `gpt-5.6-luna` accepts image input (step 06).
 - [x] 2026-11-16 — CLI language: English only (invariant culture). Multi-language is for the web UI.
