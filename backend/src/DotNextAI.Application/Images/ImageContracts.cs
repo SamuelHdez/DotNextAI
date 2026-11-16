@@ -24,7 +24,8 @@ public sealed record ImageRequest(string Prompt, ImageSize Size = ImageSize.Squa
 /// <param name="Image">The file: media type detected from its bytes, and the bytes.</param>
 /// <param name="Model">Image model that drew it.</param>
 /// <param name="RevisedPrompt">The prompt as the model rewrote it, when it reports one.</param>
-public sealed record GeneratedImage(ChatImage Image, string Model, string? RevisedPrompt);
+/// <param name="Usage">Tokens of the generation (step 10); null when the proxy does not report them.</param>
+public sealed record GeneratedImage(ChatImage Image, string Model, string? RevisedPrompt, TokenUsage? Usage = null);
 
 /// <summary>
 /// Generates images with the image model of the LiteLLM proxy (<c>Llm:ImageModel</c>, e.g. gpt-image-2). Failures are

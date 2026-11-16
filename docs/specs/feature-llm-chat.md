@@ -1,6 +1,6 @@
 # LLM chat service
 
-> **Status:** Step 08 (model selection) implemented on 2026-11-16, on top of steps 02, 03, 06 and 07 (Microsoft Agent Framework agent, conversation history, images, streaming).
+> **Status:** Step 10 (token metrics) implemented on 2026-11-16, on top of steps 02, 03 and 06-08 (Microsoft Agent Framework agent, conversation history, images, streaming, models).
 
 How DotNextAI talks to the language model. The contract lives in Application (`DotNextAI.Application/Chat`) and the implementation in Infrastructure (`DotNextAI.Infrastructure/Chat`). Every front end uses it: the CLI and the API (`POST /api/chat`, [API contract](../design/api.md)).
 
@@ -29,6 +29,7 @@ How DotNextAI talks to the language model. The contract lives in Application (`D
 | Catalog source | `GET /models`, not LiteLLM's `GET /v2/model/info`. `/v2/model/info` lists **every** model of the proxy, including ones the key's team may not use: on 2026-11-16 it showed `gpt-6-luna`, `gpt-6.1-terra`, `gpt-6.1-sol` and `gpt-6-astra`, which answer 403 `team_model_access_denied` to our key. `/models` is filtered by the key's access, so the selector only offers usable models. | 2026-11-16 |
 | Model access denied | A 403 whose `error.type` is `team_model_access_denied` is `ModelNotFound` (*"The API key has no access to the model 'x' in the LiteLLM proxy."*), not `Unauthorized`: the key is valid, the model must change. Only the `type` field is read; 401/403 bodies are still never quoted. | 2026-11-16 |
 | One agent per model | `AgentChatService` creates a `ChatClientAgent` per model on first use and keeps it. A model other than the default must be in the catalog (`ModelNotFound`, *"'x' is not a chat model of the LiteLLM proxy."*, without calling the proxy); the default needs no lookup. | 2026-11-16 |
+| Usage (step 10) | `ChatAnswer.Usage` (`TokenUsage`) from `AgentResponse.Usage`, or from the `UsageContent` of the final streamed chunk; null when not reported. `ChatConversation.TotalUsage` sums the answered calls ([token metrics](feature-token-metrics.md)). | 2026-11-16 |
 | Package line | Agent Framework 1.28.0 depends on `Microsoft.Extensions.AI` 10.11.0 and `OpenAI` ≥ 2.14, so it stays on the .NET 10 line (no 11.x package in any lock file). | 2026-11-16 |
 
 ## Rules

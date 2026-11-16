@@ -25,7 +25,7 @@ import { chatErrorMessage, type LocalizedError } from "@/lib/chat/chatErrors";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { checkPrompt, downloadName, MAX_PROMPT_LENGTH } from "@/lib/images/imageRules";
 import { generateImage } from "@/services/imagesService";
-import type { ImageSize } from "@/services/types";
+import type { ImageSize, TokenUsage } from "@/services/types";
 
 const SIZES: ImageSize[] = ["square", "landscape", "portrait"];
 
@@ -60,6 +60,7 @@ interface Generated {
   mediaType: string;
   model: string;
   revisedPrompt: string | null;
+  usage: TokenUsage | null;
 }
 
 /**
@@ -110,6 +111,7 @@ export function ImagesView() {
           mediaType: image.mediaType,
           model: image.model,
           revisedPrompt: image.revisedPrompt,
+          usage: image.usage ?? null,
         },
         ...current,
       ]);
@@ -186,6 +188,11 @@ export function ImagesView() {
                 <Caption1 className={styles.caption}>
                   {image.revisedPrompt ? t("images.revised", { prompt: image.revisedPrompt }) : image.prompt}
                 </Caption1>
+                {image.usage && (
+                  <Caption1 className={styles.caption}>
+                    {t("images.tokens", { total: image.usage.totalTokens, input: image.usage.inputTokens, output: image.usage.outputTokens })}
+                  </Caption1>
+                )}
                 <CardFooter>
                   <Caption1 className={styles.caption}>{image.model}</Caption1>
                   <Button as="a" href={image.src} download={downloadName(image.id, image.mediaType)} icon={<ArrowDownload20Regular />}>

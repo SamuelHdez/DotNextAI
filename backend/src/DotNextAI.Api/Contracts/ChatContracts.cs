@@ -23,7 +23,15 @@ public sealed record ChatTurnDto(ChatTurnRole? Role, string? Text);
 /// <param name="Answer">Answer text.</param>
 /// <param name="Model">Model that answered.</param>
 /// <param name="Truncated">True when the answer stopped at the maximum output length.</param>
-public sealed record ChatResponseDto(string Answer, string Model, bool Truncated);
+/// <param name="Usage">Tokens of this call (step 10); null when the proxy does not report them.</param>
+public sealed record ChatResponseDto(string Answer, string Model, bool Truncated, TokenUsageDto? Usage = null);
+
+/// <summary>Tokens of one call. Input tokens include the history sent with the question.</summary>
+public sealed record TokenUsageDto(long InputTokens, long OutputTokens, long TotalTokens)
+{
+    public static TokenUsageDto? From(DotNextAI.Application.Chat.TokenUsage? usage) =>
+        usage is null ? null : new(usage.InputTokens, usage.OutputTokens, usage.TotalTokens);
+}
 
 /// <summary>Answer of <c>GET /api/models</c>: the chat models of the proxy, the default first.</summary>
 public sealed record ModelsResponseDto(string DefaultModel, IReadOnlyList<ChatModelDto> Models);
@@ -35,5 +43,5 @@ public sealed record ChatModelDto(string Id, bool IsDefault, int? MaxInputTokens
 public sealed record ImageRequestDto(string? Prompt, DotNextAI.Application.Images.ImageSize? Size = null);
 
 /// <summary>A generated image: the file in base64 (no <c>data:</c> prefix) with its media type.</summary>
-public sealed record ImageResponseDto(string MediaType, string Data, string Model, string? RevisedPrompt);
+public sealed record ImageResponseDto(string MediaType, string Data, string Model, string? RevisedPrompt, TokenUsageDto? Usage = null);
 

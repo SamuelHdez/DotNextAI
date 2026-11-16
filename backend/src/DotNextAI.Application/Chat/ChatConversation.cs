@@ -14,6 +14,12 @@ public sealed class ChatConversation(IChatService chat)
     /// <summary>Questions answered in this conversation.</summary>
     public int QuestionCount => _turns.Count / 2;
 
+    /// <summary>
+    /// Tokens of every answered question so far (step 10): what the conversation cost, history resends included.
+    /// Answers whose usage the proxy did not report add nothing.
+    /// </summary>
+    public TokenUsage TotalUsage { get; private set; } = TokenUsage.Zero;
+
     /// <summary>True when <see cref="ChatRules.MaxConversationQuestions"/> is reached: start a new conversation.</summary>
     public bool IsFull => QuestionCount >= ChatRules.MaxConversationQuestions;
 
@@ -45,8 +51,7 @@ public sealed class ChatConversation(IChatService chat)
         var normalized = ChatRules.NormalizeQuestion(question);
         var answer = await chat.AskAsync(new ChatRequest(normalized, _turns.ToArray(), images, Model), cancellationToken).ConfigureAwait(false);
 
-        _turns.Add(new ChatTurn(ChatTurnRole.User, normalized));
-        _turns.Add(new ChatTurn(ChatTurnRole.Assistant, answer.Text));
+        Record(normalized, answer);
         return answer;
     }
 
@@ -72,14 +77,27 @@ public sealed class ChatConversation(IChatService chat)
         {
             if (update.Completed is { } answer)
             {
-                _turns.Add(new ChatTurn(ChatTurnRole.User, normalized));
-                _turns.Add(new ChatTurn(ChatTurnRole.Assistant, answer.Text));
+                Record(normalized, answer);
             }
 
             yield return update;
         }
     }
 
-    /// <summary>Forgets every turn: the next question starts a new conversation.</summary>
-    public void Reset() => _turns.Clear();
+    /// <summary>Forgets every turn and the token total: the next question starts a new conversation.</summary>
+    public void Reset()
+    {
+        _turns.Clear();
+        TotalUsage = TokenUsage.Zero;
+    }
+
+    private void Record(string question, ChatAnswer answer)
+    {
+        _turns.Add(new ChatTurn(ChatTurnRole.User, question));
+        _turns.Add(new ChatTurn(ChatTurnRole.Assistant, answer.Text));
+        if (answer.Usage is { } usage)
+        {
+            TotalUsage = TotalUsage.Add(usage);
+        }
+    }
 }

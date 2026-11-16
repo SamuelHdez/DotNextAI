@@ -1,6 +1,6 @@
 # Web app
 
-> **Status:** Step 09 (image generation page) implemented on 2026-11-16, on top of steps 05-08 (web UI with chat, image input, streamed answers, model selector).
+> **Status:** Step 10 (token metrics) implemented on 2026-11-16, on top of steps 05-09 (web UI with chat, image input, streamed answers, model selector, images page).
 
 `frontend/` is the browser front end of DotNextAI: a Next.js app with Fluent UI v9 and the ERNI brand, laid out as a dashboard like ValidatorHub. It talks only to `DotNextAI.Api` ([API contract](../design/api.md)). The terminal app stays next to it ([CLI](feature-cli.md)).
 
@@ -51,6 +51,7 @@ Image generation (step 09): description, shape, Generate, and a gallery of the s
   - Rules: up to 4 images of 4 MB each, the format checked from the bytes. Errors under the field: *"notes.png is not a PNG, JPEG, WebP or GIF image."*, *"…is too large…"*, *"You can attach up to 4 images…"*. The button is disabled at 4.
   - Sending: images go in base64 with that question only and show above it in the conversation. On failure they come back with the question; *New conversation* discards them.
 - **While waiting:** the question is shown with a *"DotNextAI is thinking…"* spinner until the first piece arrives. Then the answer grows in its bubble as it is written. Typing goes on, and **Send** becomes **Stop**.
+- **Tokens:** each answer shows its tokens next to the model, and the conversation total sits above the composer with a hint that input tokens grow with the history ([token metrics](feature-token-metrics.md#formats)). A stopped answer has none.
 - **Model:** the *Model* selector lists the proxy's chat models, the default as *"gpt-5.6-luna (default)"*. Changing it applies to the next questions and the conversation goes on. Each answer shows the model that wrote it. While the list loads the selector says *"Loading models…"*. If the list fails it is disabled at *"Default model"*, with the hint *"The model list could not be loaded; the default model answers."*
 - **Screen readers:** the conversation region is `aria-busy` while an answer streams, so the answer is announced once, complete, instead of piece by piece.
 - **Stop:** what had arrived stays in the conversation as the answer, with *"Stopped before the end."*, and is part of the history. With nothing yet, the question and its images go back to the composer.
@@ -78,6 +79,7 @@ Image generation (step 09): description, shape, Generate, and a gallery of the s
 - `ChatView.test.tsx` (streaming): the streaming endpoint is called; thinking, then partial text with `aria-busy` and Stop, then the complete answer; Stop keeps the partial answer (the request aborted); Stop before any text gives the question back; a broken stream shows the failure.
 - `sse.test.ts`: events split across chunks (also inside a line and inside a UTF-8 character), CRLF, comments, multi-line data. `apiClient.test.ts` (`streamChat`): deltas and the whole answer, an `error` event, problem details before the stream, a stream ending without `done`.
 - `ImagesView.test.tsx`: see [image generation](feature-images.md#verification).
+- `ChatViewUsage.test.tsx`: see [token metrics](feature-token-metrics.md#verification).
 - `ChatViewModels.test.tsx`: the default shown and not sent; the chosen model sent with the conversation going on and remembered; a remembered model restored; the default forgetting the choice; a list failure falling back (in Spanish). `initialModel` rules.
 - `ChatViewLimit.test.tsx`: the question limit warning and the disabled composer.
 - `ChatViewImages.test.tsx`:

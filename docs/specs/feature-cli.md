@@ -1,6 +1,6 @@
 # Terminal app (CLI)
 
-> **Status:** Step 09 (image generation) implemented on 2026-11-16, on top of steps 01, 03 and 06-08 (single question and answer, multi-turn chat, images, streamed answers, models). The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
+> **Status:** Step 10 (token metrics) implemented on 2026-11-16, on top of steps 01, 03 and 06-09 (single question and answer, multi-turn chat, images, streamed answers, models, image generation). The roadmap is complete. The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
 
 `dotnextai` (project `backend/src/DotNextAI.Cli`) is the terminal front end of DotNextAI. It uses the same Application and Infrastructure services as the API, so a feature is written once and offered in both front ends.
 
@@ -40,6 +40,7 @@ Rules:
 - The question is trimmed. Empty questions and questions longer than 20,000 characters are rejected before any model call ([chat rules](feature-llm-chat.md#rules)).
 - Configuration is checked **before** the question is read, so nobody types a question that cannot be sent.
 - No history: each `ask` run is independent. For a conversation, use the chat.
+- After the answer, when the proxy reports usage, stderr gets `Tokens: 1,200 in · 34 out · 1,234 total` (step 10).
 - Images (`--image`, `-i`, repeatable): PNG, JPEG, WebP or GIF, recognised by their bytes whatever the extension, at most 4 MB each (the size is checked before reading the file).
 - Ctrl+C cancels the call in progress.
 
@@ -70,6 +71,7 @@ Rules:
 - Empty lines are ignored.
 - A question that fails (model error, too long) is reported and **not** added to the history. The chat goes on, and the question can be asked again.
 - At 50 questions, further questions are refused with the limit message until `/new`.
+- After each answer, when the proxy reports usage, stderr gets `Tokens: … (conversation: N)` (step 10).
 - Attached images go with the next question only. After an answer they are used up; when the question fails they stay attached for the retry. The history keeps the text.
 - Configuration is checked before the banner; when it is missing the chat exits with 3.
 
@@ -79,7 +81,8 @@ Rules:
 | `/images` | Lists the images waiting for the next question, or `No images attached.` |
 | `/model` | Shows the current model (`Model: gpt-5.6-luna`) and the list, the current one marked with `*`. |
 | `/model <name>` | Answers the next questions with another chat model: `Now using gpt-5.6-terra. The conversation goes on with it.` The history goes to the new model. A non-chat or unknown model is refused with the list. |
-| `/new` | Forgets the conversation and the attached images, and writes `Started a new conversation.` |
+| `/usage` | Tokens of the conversation so far (step 10), see [token metrics](feature-token-metrics.md#formats). |
+| `/new` | Forgets the conversation, its token total and the attached images, and writes `Started a new conversation.` |
 | `/help` | Lists the chat commands. |
 | `/exit`, `/quit` | Ends the chat (exit code 0). |
 | any other `/…` | `Unknown command '/…'. Type /help for the list.` |
@@ -166,13 +169,14 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 | 07 Streaming | **Done 2026-11-16.** `ask` and the chat print the answer as it is generated. |
 | 08 Model selector | **Done 2026-11-16.** `dotnextai models`, `ask --model`, `/model` in the chat. |
 | 09 Image generation | **Done 2026-11-16.** `dotnextai image` saves the image to a file ([image generation](feature-images.md)). |
-| 10 Token metrics | Tokens per call and per conversation. |
+| 10 Token metrics | **Done 2026-11-16.** A `Tokens:` line after each answer and image, `/usage` for the conversation ([token metrics](feature-token-metrics.md)). |
 
 ## Verification
 
 - `ChatCommandTests` (unit, fake `IChatService`): history sent with each question, stdout with only the answers, banner and prompts, `/exit` `/quit` `/new` `/help`, unknown commands, empty lines, failed question not recorded, too-long question, 50-question limit, not configured (3), Ctrl+C (130).
 - `CliApplicationTests` (unit, fake `IChatService`): `ask` with quoted and unquoted questions, stdin, interactive prompt, no history, empty and too-long questions, not configured (checked before reading), failures with their hints and exit codes, truncation warning, Ctrl+C (130), `--help`, unknown command or option (2).
 - `CliApplicationTests` and `ChatCommandTests` (streaming): the answer written piece by piece as one line; an answer broken midway ends its line, reports the error (exit 1) and is not recorded in the chat.
+- `UsageCommandTests`: see [token metrics](feature-token-metrics.md#verification).
 - `ImageGenerationCommandTests`: see [image generation](feature-images.md#verification).
 - `ModelCommandTests`:
   - `models`: the list with the default marked, a failure, not configured.

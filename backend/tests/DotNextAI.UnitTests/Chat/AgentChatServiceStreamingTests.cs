@@ -81,6 +81,36 @@ public class AgentChatServiceStreamingTests
     }
 
     [Fact]
+    public async Task AskStreamingAsync_UsageInTheFinalChunk_IsOnTheWholeAnswer()
+    {
+        // With stream_options.include_usage the API ends with a chunk that has no choices and the usage.
+        var usageChunk = "data: " + JsonSerializer.Serialize(new
+        {
+            id = "chatcmpl-stream",
+            @object = "chat.completion.chunk",
+            created = 1_700_000_000,
+            model = Model,
+            choices = Array.Empty<object>(),
+            usage = new { prompt_tokens = 42, completion_tokens = 7, total_tokens = 49 },
+        }) + "\n\n";
+        var service = CreateService(StubHttpHandler.Sse(Chunk("Hi") + Chunk(null, "stop") + usageChunk + "data: [DONE]\n\n"));
+
+        var updates = await CollectAsync(service.AskStreamingAsync("Hi", [], [], TestContext.Current.CancellationToken));
+
+        Assert.Equal(new TokenUsage(42, 7, 49), updates[^1].Completed!.Usage);
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_NoUsageChunk_ReportsNone()
+    {
+        var service = CreateService(StubHttpHandler.Sse(Stream("Hi")));
+
+        var updates = await CollectAsync(service.AskStreamingAsync("Hi", [], [], TestContext.Current.CancellationToken));
+
+        Assert.Null(updates[^1].Completed!.Usage);
+    }
+
+    [Fact]
     public async Task AskStreamingAsync_FinishReasonLength_MarksTheAnswerAsTruncated()
     {
         var service = CreateService(StubHttpHandler.Sse(Chunk("A long") + Chunk(null, "length") + "data: [DONE]\n\n"));

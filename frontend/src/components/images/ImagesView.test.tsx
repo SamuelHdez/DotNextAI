@@ -45,6 +45,18 @@ describe("ImagesView", () => {
     expect(JSON.parse(init.body as string)).toEqual({ prompt: "A fox reading", size: "square" });
   });
 
+  it("shows the tokens of a generation", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ mediaType: "image/png", data: PNG_BASE64, model: "gpt-image-2", revisedPrompt: null, usage: { inputTokens: 12, outputTokens: 4160, totalTokens: 4172 } }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<ImagesView />);
+
+    await generate(user, "A fox");
+
+    expect(await screen.findByText("4,172 tokens (12 in · 4,160 out)")).toBeInTheDocument();
+  });
+
   it("sends the chosen shape", async () => {
     fetchMock.mockResolvedValue(image());
     const user = userEvent.setup();

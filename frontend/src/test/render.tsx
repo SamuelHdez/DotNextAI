@@ -28,10 +28,18 @@ export function sseResponse(...events: { event: string; data: unknown }[]): Resp
   return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
 }
 
-/** A streamed answer: one `delta` per word, then `done`. */
-export function streamedAnswer(text: string, truncated = false, model = "gpt-5.6-luna"): Response {
+/** A streamed answer: one `delta` per word, then `done` (with `usage` when given). */
+export function streamedAnswer(
+  text: string,
+  truncated = false,
+  model = "gpt-5.6-luna",
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null = null,
+): Response {
   const pieces = text.split(/(?<=\s)/).filter(Boolean);
-  return sseResponse(...pieces.map((piece) => ({ event: "delta", data: { text: piece } })), { event: "done", data: { answer: text, model, truncated } });
+  return sseResponse(
+    ...pieces.map((piece) => ({ event: "delta", data: { text: piece } })),
+    { event: "done", data: { answer: text, model, truncated, usage } },
+  );
 }
 
 /** A streamed Response whose events the test pushes one by one, to see the UI while the answer is being written. */

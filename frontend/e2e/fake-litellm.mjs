@@ -11,7 +11,9 @@
 //   "what is my name"    -> finds "My name is X" in the history: "Your name is X." (proves the history arrives)
 //   image parts          -> "I see N image(s) (types): <question>" when every image is a base64 data URI
 //   anything else        -> "Echo: <question>"
-// With "stream": true the answer is sent as OpenAI chat.completion.chunk Server-Sent Events, one word per chunk.
+// With "stream": true the answer is sent as OpenAI chat.completion.chunk Server-Sent Events, one word per chunk,
+// ending with a usage chunk when stream_options.include_usage is set. Usage is estimated: input = characters of
+// every message / 4 (so it grows with the history), output = words of the answer.
 // POST /images/generations answers a 1×1 PNG in base64 with revised_prompt "Drawn: <prompt>" (or the outage of
 // "[e2e:unavailable]"), and refuses response_format, which gpt-image models do not accept.
 // GET /models (and /v1/models) lists two chat models plus non-chat ones, with LiteLLM's "mode"; answers name the
@@ -38,14 +40,20 @@ function send(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-function completion(text, model) {
+function usageFor(messages, answer) {
+  const prompt_tokens = Math.ceil(messages.reduce((sum, message) => sum + textOf(message.content).length, 0) / 4);
+  const completion_tokens = answer.split(/\s+/).filter(Boolean).length;
+  return { prompt_tokens, completion_tokens, total_tokens: prompt_tokens + completion_tokens };
+}
+
+function completion(text, model, usage) {
   return {
     id: `chatcmpl-e2e-${Date.now()}`,
     object: "chat.completion",
     created: Math.floor(Date.now() / 1000),
     model,
     choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }],
-    usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    usage,
   };
 }
 
@@ -101,10 +109,11 @@ function generateImage(response, body) {
   return send(response, 200, {
     created: Math.floor(Date.now() / 1000),
     data: [{ b64_json: PIXEL_PNG, revised_prompt: `Drawn: ${prompt} (${body.size})` }],
+    usage: { input_tokens: Math.ceil(prompt.length / 4), output_tokens: 4160, total_tokens: Math.ceil(prompt.length / 4) + 4160 },
   });
 }
 
-async function stream(response, text, model, { slow, drop }) {
+async function stream(response, text, model, { slow, drop, usage }) {
   response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
   if (slow) await wait(1500);
   const words = text.split(/(?<=\s)/);
@@ -119,6 +128,9 @@ async function stream(response, text, model, { slow, drop }) {
     await wait(slow ? 400 : 15);
   }
   response.write(chunk({}, model, "stop"));
+  if (usage) {
+    response.write(`data: ${JSON.stringify({ id: "chatcmpl-e2e", object: "chat.completion.chunk", created: Math.floor(Date.now() / 1000), model, choices: [], usage })}\n\n`);
+  }
   response.end("data: [DONE]\n\n");
 }
 
@@ -170,10 +182,13 @@ const server = createServer((request, response) => {
 
     const slow = question.includes("[e2e:slow]");
     if (body.stream === true) {
-      stream(response, answerFor(messages), body.model ?? MODEL, { slow, drop: question.includes("[e2e:drop]") }).catch(() => response.destroy());
+      const answer = answerFor(messages);
+      const usage = body.stream_options?.include_usage ? usageFor(messages, answer) : null;
+      stream(response, answer, body.model ?? MODEL, { slow, drop: question.includes("[e2e:drop]"), usage }).catch(() => response.destroy());
       return;
     }
-    setTimeout(() => send(response, 200, completion(answerFor(messages), body.model ?? MODEL)), slow ? 1500 : 0);
+    const answer = answerFor(messages);
+    setTimeout(() => send(response, 200, completion(answer, body.model ?? MODEL, usageFor(messages, answer))), slow ? 1500 : 0);
   });
 });
 

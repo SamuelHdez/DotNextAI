@@ -31,7 +31,7 @@ The course backlog, with how this repository maps each step. The spec of each st
 | 07 | Web app | Streaming | Stream the response so the user sees it being generated. | **Done 2026-11-16.** `POST /api/chat/stream` (Server-Sent Events from the agent's `RunStreamingAsync`); the web app renders the pieces with a Stop button, and the CLI prints them as they arrive ([API](../design/api.md#post-apichatstream)). |
 | 08 | Extra features | Model selector | Let the user change the model. | **Done 2026-11-16.** `GET /api/models` (the proxy's chat models, cached); a `model` per request, checked against that list; a selector in the web (remembered), `models` / `--model` / `/model` in the CLI ([API](../design/api.md#get-apimodels)). |
 | 09 | Extra features | Image generation | Generate images with a gpt-image model. | **Done 2026-11-16.** `POST /api/images` with `Llm:ImageModel` (`gpt-image-2`) through the proxy's images route; an *Images* page in the web (gallery, download) and `dotnextai image` in the CLI ([image generation](feature-images.md)). |
-| 10 | Extra features | Token metrics | Consumed tokens per call and in total for the conversation. | Usage of each answer (`UsageDetails`), with per-call and conversation totals. |
+| 10 | Extra features | Token metrics | Consumed tokens per call and in total for the conversation. | **Done 2026-11-16.** The proxy's usage for every answer and image; conversation total = sum of the calls (history resends included); web, CLI (`Tokens:` line, `/usage`) and API (`usage`) ([token metrics](feature-token-metrics.md)). |
 
 ## Models available through the proxy
 

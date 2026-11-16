@@ -3,6 +3,7 @@
 import {
   Body1,
   Button,
+  Caption1,
   makeStyles,
   MessageBar,
   MessageBarActions,
@@ -19,7 +20,7 @@ import { PageBody, PageHeader } from "@/components/ui/PageLayout";
 import { chatErrorMessage, type LocalizedError } from "@/lib/chat/chatErrors";
 import { checkQuestion, MAX_CONVERSATION_QUESTIONS, MAX_QUESTION_LENGTH } from "@/lib/chat/chatRules";
 import { MAX_IMAGE_MEGABYTES, MAX_IMAGES_PER_QUESTION, readImageFile, type ImageAttachment } from "@/lib/chat/images";
-import { questionCount, toHistory, type ChatMessage } from "@/lib/chat/conversation";
+import { conversationUsage, questionCount, toHistory, type ChatMessage } from "@/lib/chat/conversation";
 import { initialModel, readModelPreference, storeModelPreference } from "@/lib/chat/modelPreference";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { MessageKey } from "@/lib/i18n/messages/en";
@@ -30,6 +31,8 @@ const SUGGESTIONS: MessageKey[] = ["chat.suggestion.1", "chat.suggestion.2", "ch
 
 const useStyles = makeStyles({
   page: { gap: tokens.spacingVerticalL },
+  usage: { display: "flex", flexDirection: "column", color: tokens.colorNeutralForeground2 },
+  usageHint: { color: tokens.colorNeutralForeground3 },
   actions: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: tokens.spacingHorizontalM },
   conversation: { flexGrow: 1, display: "flex", flexDirection: "column", gap: tokens.spacingVerticalL },
   empty: {
@@ -152,7 +155,14 @@ export function ChatView() {
           text: check.question,
           images: sentImages.length > 0 ? sentImages.map(({ name, previewUrl }) => ({ name, src: previewUrl })) : undefined,
         },
-        { id: `m${id + 1}`, role: "assistant", text: response.answer, model: response.model, truncated: response.truncated },
+        {
+          id: `m${id + 1}`,
+          role: "assistant",
+          text: response.answer,
+          model: response.model,
+          truncated: response.truncated,
+          ...(response.usage && { usage: response.usage }),
+        },
       ]);
     } catch (failure) {
       if (controller.signal.aborted) return;
@@ -228,6 +238,7 @@ export function ChatView() {
   }
 
   const isEmpty = messages.length === 0 && !pendingQuestion;
+  const usage = conversationUsage(messages);
 
   return (
     <PageBody className={styles.page}>
@@ -264,6 +275,14 @@ export function ChatView() {
       </div>
 
       <div className={styles.composer}>
+        {usage && (
+          <div className={styles.usage} aria-live="polite">
+            <Caption1>
+              {t("chat.usage.total", { total: usage.totalTokens, input: usage.inputTokens, output: usage.outputTokens, answers: usage.answers })}
+            </Caption1>
+            <Caption1 className={styles.usageHint}>{t("chat.usage.hint")}</Caption1>
+          </div>
+        )}
         {error && (
           <MessageBar intent="error">
             <MessageBarBody>{t(error.key, error.params)}</MessageBarBody>

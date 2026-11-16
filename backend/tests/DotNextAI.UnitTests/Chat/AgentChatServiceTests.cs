@@ -285,6 +285,34 @@ public class AgentChatServiceTests
     }
 
     [Fact]
+    public async Task AskAsync_ReportsTheTokensOfTheCall()
+    {
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong")));
+
+        var answer = await service.AskAsync("ping", TestContext.Current.CancellationToken);
+
+        Assert.Equal(new TokenUsage(5, 1, 6), answer.Usage);
+    }
+
+    [Fact]
+    public async Task AskAsync_ProxyWithoutUsage_ReportsNone()
+    {
+        var body = JsonSerializer.Serialize(new
+        {
+            id = "x",
+            @object = "chat.completion",
+            created = 1,
+            model = Model,
+            choices = new[] { new { index = 0, message = new { role = "assistant", content = "pong" }, finish_reason = "stop" } },
+        });
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, body));
+
+        var answer = await service.AskAsync("ping", TestContext.Current.CancellationToken);
+
+        Assert.Null(answer.Usage);
+    }
+
+    [Fact]
     public async Task AskAsync_FinishReasonLength_MarksTheAnswerAsTruncated()
     {
         var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("A long answer", finishReason: "length")));

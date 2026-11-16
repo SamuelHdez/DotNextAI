@@ -70,7 +70,7 @@ internal static class ChatEndpoints
             }
 
             var answer = await chat.AskAsync(input.ToRequest(), cancellationToken);
-            return TypedResults.Ok(new ChatResponseDto(answer.Text, answer.Model, answer.Truncated));
+            return TypedResults.Ok(new ChatResponseDto(answer.Text, answer.Model, answer.Truncated, TokenUsageDto.From(answer.Usage)));
         }
         catch (ChatServiceException ex)
         {

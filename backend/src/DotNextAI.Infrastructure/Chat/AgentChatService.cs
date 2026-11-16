@@ -101,7 +101,11 @@ internal sealed partial class AgentChatService : IChatService
         var elapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         LogCallCompleted(model, response.FinishReason?.Value, elapsedMs);
 
-        return new ChatAnswer(text, model, Truncated: response.FinishReason == Microsoft.Extensions.AI.ChatFinishReason.Length);
+        return new ChatAnswer(
+            text,
+            model,
+            Truncated: response.FinishReason == Microsoft.Extensions.AI.ChatFinishReason.Length,
+            Usage: ToUsage(response.Usage));
     }
 
     public async IAsyncEnumerable<ChatStreamUpdate> AskStreamingAsync(
@@ -113,6 +117,7 @@ internal sealed partial class AgentChatService : IChatService
         var started = Stopwatch.GetTimestamp();
         var text = new StringBuilder();
         Microsoft.Extensions.AI.ChatFinishReason? finishReason = null;
+        TokenUsage? usage = null;
 
         var updates = agent.RunStreamingAsync(ToMessages(request.History, prompt, request.Images), cancellationToken: cancellationToken);
         await using var enumerator = updates.GetAsyncEnumerator(cancellationToken);
@@ -146,6 +151,12 @@ internal sealed partial class AgentChatService : IChatService
             }
 
             finishReason = update.FinishReason ?? finishReason;
+            // The SDK asks for stream_options.include_usage: the usage comes in a final chunk without text.
+            foreach (var reported in update.Contents.OfType<UsageContent>())
+            {
+                usage = ToUsage(reported.Details) ?? usage;
+            }
+
             if ((update.RawRepresentation as ChatResponseUpdate)?.ModelId is { Length: > 0 } answeredBy)
             {
                 model = answeredBy;
@@ -167,7 +178,7 @@ internal sealed partial class AgentChatService : IChatService
         LogCallCompleted(model, finishReason?.Value, elapsedMs);
         yield return new ChatStreamUpdate(
             string.Empty,
-            new ChatAnswer(text.ToString(), model, Truncated: finishReason == Microsoft.Extensions.AI.ChatFinishReason.Length));
+            new ChatAnswer(text.ToString(), model, Truncated: finishReason == Microsoft.Extensions.AI.ChatFinishReason.Length, Usage: usage));
     }
 
     /// <summary>The rules of every call; returns the trimmed question and the model to use.</summary>
@@ -204,6 +215,9 @@ internal sealed partial class AgentChatService : IChatService
             .Create(_options, id, _httpClientFactory)
             .AsAIAgent(instructions: Instructions, name: AgentName, loggerFactory: _loggerFactory));
     }
+
+    private static TokenUsage? ToUsage(UsageDetails? details) =>
+        details is null ? null : TokenUsage.From(details.InputTokenCount, details.OutputTokenCount, details.TotalTokenCount);
 
     private static List<ChatMessage> ToMessages(IReadOnlyList<ChatTurn> history, string question, IReadOnlyList<ChatImage> images)
     {

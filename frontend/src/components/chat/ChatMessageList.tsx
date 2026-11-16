@@ -90,6 +90,9 @@ export function ChatMessageList({ messages, pendingQuestion, pendingImages, pend
                   {isUser ? t("chat.you") : t("chat.assistant")}
                 </Text>
                 {message.model && <Caption1>{message.model}</Caption1>}
+              {message.usage && (
+                <Caption1>{t("chat.tokens", { input: message.usage.inputTokens, output: message.usage.outputTokens })}</Caption1>
+              )}
               </div>
               <Images images={message.images} className={styles.images} imageClassName={styles.image} />
               <div className={mergeClasses(styles.bubble, isUser ? styles.userBubble : styles.assistantBubble)}>{message.text}</div>

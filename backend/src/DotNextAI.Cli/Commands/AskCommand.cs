@@ -89,6 +89,7 @@ internal sealed class AskCommand(IChatService chat, IModelCatalog catalog, CliCo
             }
 
             var answer = await AnswerWriter.WriteAsync(chat.AskStreamingAsync(new ChatRequest(question, [], images, model), cancellationToken), console.Out);
+            await CliMessages.WriteUsageAsync(console.Error, answer.Usage);
             if (answer.Truncated)
             {
                 await console.Error.WriteLineAsync(CliMessages.Truncated);

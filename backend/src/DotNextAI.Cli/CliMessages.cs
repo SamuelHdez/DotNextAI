@@ -11,6 +11,32 @@ internal static class CliMessages
 
     public const string Cancelled = "Cancelled.";
 
+    /// <summary>"12 in · 34 out · 46 total" (step 10), with invariant thousands separators.</summary>
+    public static string Tokens(TokenUsage usage) =>
+        string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{usage.InputTokens:N0} in · {usage.OutputTokens:N0} out · {usage.TotalTokens:N0} total");
+
+    /// <summary>
+    /// The token line after an answer, on stderr; nothing when the proxy reported no usage, so scripts and logs stay
+    /// quiet with providers that do not count.
+    /// </summary>
+    public static async Task WriteUsageAsync(TextWriter error, TokenUsage? usage, TokenUsage? conversation = null)
+    {
+        if (usage is null)
+        {
+            return;
+        }
+
+        var line = $"Tokens: {Tokens(usage)}";
+        if (conversation is not null)
+        {
+            line += string.Create(System.Globalization.CultureInfo.InvariantCulture, $" (conversation: {conversation.TotalTokens:N0})");
+        }
+
+        await error.WriteLineAsync(line);
+    }
+
     /// <summary>Writes <c>Error: …</c> and, when there is one, a hint line to stderr.</summary>
     public static async Task WriteFailureAsync(TextWriter error, ChatServiceException exception)
     {

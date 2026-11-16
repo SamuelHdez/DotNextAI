@@ -20,6 +20,7 @@ internal sealed class ChatCommand(IChatService chat, IModelCatalog catalog, CliC
           /images       List the images attached to your next question
           /model        Show the current chat model and the available ones
           /model <name> Answer the next questions with another model (the conversation goes on)
+          /usage        Tokens used by this conversation so far
           /new          Start a new conversation (forget the previous questions, answers and attached images)
           /help         Show this list
           /exit, /quit  Leave the chat (also Ctrl+D, or Ctrl+Z then Enter on Windows)
@@ -123,6 +124,7 @@ internal sealed class ChatCommand(IChatService chat, IModelCatalog catalog, CliC
                 console.Out);
             // Images go with one question only (the history keeps the text); after an answer they are used up.
             attachments.Clear();
+            await CliMessages.WriteUsageAsync(console.Error, answer.Usage, conversation.TotalUsage);
             if (answer.Truncated)
             {
                 await console.Error.WriteLineAsync(CliMessages.Truncated);
@@ -158,6 +160,13 @@ internal sealed class ChatCommand(IChatService chat, IModelCatalog catalog, CliC
                 return false;
             case "/MODEL":
                 await ChooseModelAsync(argument, conversation, cancellationToken);
+                return false;
+            case "/USAGE":
+                await console.Error.WriteLineAsync(conversation.QuestionCount == 0
+                    ? "No questions answered yet."
+                    : conversation.TotalUsage.TotalTokens == 0
+                        ? $"{conversation.QuestionCount} answers; the LiteLLM proxy did not report their tokens."
+                        : $"This conversation: {conversation.QuestionCount} answers, {CliMessages.Tokens(conversation.TotalUsage)} tokens. Every question resends the history, so input tokens grow with each turn.");
                 return false;
             case "/IMAGES":
                 await console.Error.WriteLineAsync(attachments.Count == 0

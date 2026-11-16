@@ -76,7 +76,7 @@ describe("streamChat", () => {
     const answer = await streamChat({ question: "Hi", history: [] }, (piece) => pieces.push(piece));
 
     expect(pieces).toEqual(["Hello ", "Ana!"]);
-    expect(answer).toEqual({ answer: "Hello Ana!", model: "gpt-5.6-luna", truncated: false });
+    expect(answer).toEqual({ answer: "Hello Ana!", model: "gpt-5.6-luna", truncated: false, usage: null });
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
     expect(String(url)).toBe("http://api.test/api/chat/stream");
     expect(new Headers(init.headers).get("Accept")).toBe("text/event-stream");

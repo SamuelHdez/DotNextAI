@@ -1,6 +1,6 @@
 # API contract
 
-> **Status:** Step 09 (image generation) implemented on 2026-11-16, on top of steps 04 and 06-08 (chat endpoint, image input, streaming, models). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
+> **Status:** Step 10 (token metrics) implemented on 2026-11-16, on top of steps 04 and 06-09 (chat endpoint, image input, streaming, models, image generation). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
 
 `DotNextAI.Api` is an ASP.NET Core 10 Minimal API on `http://localhost:5100`. It exposes the same chat service as the CLI ([chat service](../specs/feature-llm-chat.md)) and is meant for local use by the web app. In Development the OpenAPI document is at `/openapi/v1.json` and Swagger UI at `/swagger`; `backend/src/DotNextAI.Api/DotNextAI.Api.http` has ready-made requests.
 
@@ -74,8 +74,15 @@ Request:
 `200`:
 
 ```json
-{ "answer": "Your name is Ana.", "model": "gpt-5.6-luna", "truncated": false }
+{
+  "answer": "Your name is Ana.",
+  "model": "gpt-5.6-luna",
+  "truncated": false,
+  "usage": { "inputTokens": 1200, "outputTokens": 34, "totalTokens": 1234 }
+}
 ```
+
+`usage` (step 10, [token metrics](../specs/feature-token-metrics.md)) holds the tokens of this call as the proxy reports them, or `null` when it reports none. Input tokens include the history.
 
 `truncated` is true when the answer stopped at the maximum output length. To continue the conversation, the client appends `{ role: "user", text: question }` and `{ role: "assistant", text: answer }` to its history. The question goes as sent; the server trims it.
 
@@ -97,7 +104,7 @@ data: {"answer":"Your name is Ana.","model":"gpt-5.6-luna","truncated":false}
 | Event | Data | When |
 | ----- | ---- | ---- |
 | `delta` | `{ text }` | Each piece of the answer, in order. Their concatenation is the answer. |
-| `done` | `{ answer, model, truncated }` | Last event of a complete answer; same shape as the `POST /api/chat` response. |
+| `done` | `{ answer, model, truncated, usage }` | Last event of a complete answer; same shape as the `POST /api/chat` response, `usage` included. |
 | `error` | `{ status, failure, title, detail }` | Last event when the answer breaks after it started (e.g. `Unavailable` when the connection to the proxy drops); the same `failure` codes and statuses as the problems below. |
 
 A stream that ends with neither `done` nor `error` (the connection closed) is a failure for the client. Closing the request stops the model call.
@@ -118,7 +125,7 @@ Generates one image with the server's image model (step 09, [image generation](.
 `200`:
 
 ```json
-{ "mediaType": "image/png", "data": "iVBORw0KGgo...", "model": "gpt-image-2", "revisedPrompt": "A watercolor fox…" }
+{ "mediaType": "image/png", "data": "iVBORw0KGgo...", "model": "gpt-image-2", "revisedPrompt": "A watercolor fox…", "usage": { "inputTokens": 12, "outputTokens": 4160, "totalTokens": 4172 } }
 ```
 
 `data` is the file in base64 (no `data:` prefix); `revisedPrompt` is null when the model reports none. Rate limit: `RateLimiting:ImagePermitsPerMinute` (default 5) per IP, separate from the chat's. Failures use the same `failure` codes and statuses as the chat; a refused prompt is 422 `BadRequest`, an answer without an image 502 `EmptyAnswer`.
@@ -172,6 +179,7 @@ Only the origins in `Cors:AllowedOrigins` (`http://localhost:3030` in Developmen
   - Validation: 400 for an empty, missing or too-long question; empty, role-less or null turns; history over the limit; `"system"` or numeric roles; malformed JSON. None of them calls the model.
   - Failures: 503 when not configured; the status, `failure`, `title` and `detail` of every `ChatFailure`.
   - Limits and CORS: 429 with `Retry-After` over the rate limit, the CORS preflight for `POST`, 405 for `GET`.
+- `UsageEndpointTests` (integration): `usage` on `/api/chat`, on the `done` event and on `/api/images`; null without it.
 - `ImageEndpointTests` (integration): base64 answer and size; 400 for an empty prompt or an unknown size; 503 when not configured; failures; its own rate limit.
 - `ModelsEndpointTests` (integration):
   - `GET /api/models`: the list and its limits; 503 when not configured; the proxy's failure.

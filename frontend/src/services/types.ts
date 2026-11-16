@@ -43,10 +43,19 @@ export interface ModelsResponse {
   models: ChatModel[];
 }
 
+/** Tokens of one call (step 10); input includes the history sent with the question. */
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
 export interface ChatResponse {
   answer: string;
   model: string;
   truncated: boolean;
+  /** Null when the proxy does not report it. */
+  usage?: TokenUsage | null;
 }
 
 /** `failure` values of the API's problems (ChatFailure on the backend). */
@@ -87,5 +96,6 @@ export interface ImageResponse {
   data: string;
   model: string;
   revisedPrompt: string | null;
+  usage?: TokenUsage | null;
 }
 

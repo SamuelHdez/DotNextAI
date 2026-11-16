@@ -48,7 +48,8 @@ internal static class ImageEndpoints
                 image.Image.MediaType,
                 Convert.ToBase64String(image.Image.Data.Span),
                 image.Model,
-                image.RevisedPrompt));
+                image.RevisedPrompt,
+                TokenUsageDto.From(image.Usage)));
         }
         catch (ChatServiceException ex)
         {

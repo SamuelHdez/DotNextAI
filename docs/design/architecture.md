@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Step 09 implemented on 2026-11-16 (image generation in the web, the CLI and the API), on top of steps 00-08 (backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API, web app, image input, streaming, models). Components marked *planned* arrive with later backlog steps.
+> **Status:** Step 10 implemented on 2026-11-16 (token metrics), on top of steps 00-09: the whole course backlog is done (backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API, web app, image input, streaming, models, image generation). Components marked *planned* arrive with later backlog steps.
 
 ## Components
 
@@ -91,3 +91,4 @@ Full contract, status codes and the `failure` extension: [API contract](api.md).
 | 2026-11-16 | Streaming (step 07) | `IChatService.AskStreamingAsync` over `RunStreamingAsync`. `POST /api/chat/stream` with `TypedResults.ServerSentEvents` waits for the first piece before starting the stream. The web app uses its own SSE reader over `fetch`; the CLI writes the pieces to stdout. | Errors keep their status codes in the common case, and the mid-answer case keeps the same `failure` codes. `EventSource` cannot POST a body, and a 30-line reader avoids a dependency. |
 | 2026-11-16 | Models (step 08) | `IModelCatalog` over the proxy's `GET /models` (LiteLLM `mode` kept, 5-minute cache), `ChatRequest` with an optional model, one agent per model, and only listed chat models accepted, both in the API (400) and in the service. | The selector shows what the proxy actually offers. Nobody can make the server call an arbitrary model name, and each model's client and agent are built once. |
 | 2026-11-16 | Image generation (step 09) | `IImageService` (`LiteLlmImageService`): a direct `POST images/generations` through a shared `LiteLlmHttp` helper, with no retries and its own rate limit of 5 per minute. `Llm:ImageModel` defaults to `gpt-image-2`. | gpt-image only answers base64 and rejects `response_format`, so a direct call is simpler and verifiable. Retrying or allowing generous limits would multiply a cost far higher than a chat question. |
+| 2026-11-16 | Token metrics (step 10) | `TokenUsage` on answers and images, taken from the provider's counters (streamed usage included, since the SDK asks for it). The conversation total is the sum of the calls. Tokens only, no costs. | Real counts, not estimates. The sum shows what resending the history costs. Prices belong to the proxy, which tracks spend. |

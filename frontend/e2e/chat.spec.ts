@@ -142,6 +142,22 @@ test.describe("chat", () => {
     await expect(page.getByRole("combobox", { name: "Model" })).toHaveText("e2e-model-fast");
   });
 
+  test("shows the tokens of each answer and the growing total of the conversation", async ({ page }) => {
+    await ask(page, "Hello");
+    await expect(conversation(page).getByText(/^\d[\d,]* in · \d[\d,]* out tokens$/)).toHaveCount(1);
+    const total = page.getByText(/^This conversation: [\d,]+ tokens/);
+    await expect(total).toContainText("over 1 answers");
+    const first = Number((await total.textContent())!.match(/([\d,]+) tokens/)![1].replaceAll(",", ""));
+
+    await ask(page, "Hello again");
+
+    await expect(total).toContainText("over 2 answers");
+    const second = Number((await total.textContent())!.match(/([\d,]+) tokens/)![1].replaceAll(",", ""));
+    // The second question resends the first turn, so it costs more than the first one did.
+    expect(second).toBeGreaterThan(first * 2);
+    await expect(page.getByText("Every question resends the conversation, so input tokens grow with each turn.")).toBeVisible();
+  });
+
   test("has no serious accessibility violations with a conversation", async ({ page }) => {
     await expectNoA11yViolations(page);
 

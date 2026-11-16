@@ -22,6 +22,7 @@ Users describe an image and the proxy's image model draws it. The service lives 
 - The description is trimmed; 1-4,000 characters (`ImageRules.MaxPromptLength`). Invalid descriptions never reach the proxy.
 - One image per call. The answer must contain `data[0].b64_json` with a supported image; otherwise *"The model returned no image."* (`EmptyAnswer`).
 - `revised_prompt`, when the model reports it, is shown as *"The model drew: …"*.
+- The generation's `usage` (step 10) is shown as tokens on the card and on the CLI's stderr.
 - Logs hold the model, size in bytes and duration; never the description.
 
 ## Web app (`/images`)

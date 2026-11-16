@@ -104,12 +104,26 @@ internal sealed partial class LiteLlmImageService(
             var revised = first.TryGetProperty("revised_prompt", out var revisedElement) && revisedElement.ValueKind == JsonValueKind.String
                 ? revisedElement.GetString()
                 : null;
-            return new GeneratedImage(new ChatImage(mediaType, bytes), model, string.IsNullOrWhiteSpace(revised) ? null : revised);
+            return new GeneratedImage(new ChatImage(mediaType, bytes), model, string.IsNullOrWhiteSpace(revised) ? null : revised, UsageOf(json.RootElement));
         }
         catch (JsonException ex)
         {
             throw new ChatServiceException(ChatFailure.Unavailable, "The LiteLLM proxy answered the image request with invalid JSON.", ex);
         }
+    }
+
+    // The images API reports { input_tokens, output_tokens, total_tokens } (step 10).
+    private static TokenUsage? UsageOf(JsonElement root)
+    {
+        if (!root.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        static long? Count(JsonElement usage, string name) =>
+            usage.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var count) ? count : null;
+
+        return TokenUsage.From(Count(usage, "input_tokens"), Count(usage, "output_tokens"), Count(usage, "total_tokens"));
     }
 
     private static ChatServiceException NoImage() => new(ChatFailure.EmptyAnswer, "The model returned no image.");

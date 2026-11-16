@@ -26,7 +26,7 @@ internal static class ChatStreamEvents
                 cancellationToken.ThrowIfCancellationRequested();
                 var update = updates.Current;
                 yield return update.Completed is { } answer
-                    ? Item(Done, new { answer = answer.Text, model = answer.Model, truncated = answer.Truncated })
+                    ? Item(Done, new { answer = answer.Text, model = answer.Model, truncated = answer.Truncated, usage = Contracts.TokenUsageDto.From(answer.Usage) })
                     : Item(Delta, new { text = update.Text });
 
                 try

@@ -79,6 +79,8 @@ internal sealed class ImageCommand(IImageService images, CliConsole console, Tim
                 await console.Error.WriteLineAsync($"The model drew: {revised}");
             }
 
+            await CliMessages.WriteUsageAsync(console.Error, image.Usage);
+
             return ExitCodes.Success;
         }
         catch (ChatServiceException ex)

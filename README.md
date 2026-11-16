@@ -4,7 +4,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 Technical documentation, backlog and decisions: [docs/](docs/README.md).
 
-> **Status:** backlog step 09 done (image generation). A web app (Next.js + Fluent UI, English/Spanish) and the terminal app chat through the same API and Microsoft Agent Framework agent over the LiteLLM proxy.
+> **Status:** the whole course backlog (steps 01-10) is done; step 10 added token metrics. A web app (Next.js + Fluent UI, English/Spanish) and the terminal app chat through the same API and Microsoft Agent Framework agent over the LiteLLM proxy.
 
 ## Requirements
 
@@ -71,6 +71,7 @@ Open `http://localhost:3030` after `./scripts/dev.sh`. A dashboard with the Vali
 - **Home**: service status (API, language model) and the course backlog.
 - **Chat**: the conversation stays in the browser tab and is sent with every question. Enter sends, Shift+Enter adds a line, the answer appears as it is written (**Stop** keeps what arrived), **New conversation** starts over, and the **Model** selector picks one of the proxy's chat models (remembered). Attach up to 4 images (PNG, JPEG, WebP, GIF, 4 MB each) with the paperclip or by pasting; they go with that question only.
 - **Images**: describe an image, pick a shape and generate it with the proxy's image model (`gpt-image-2`); download the results.
+- **Tokens**: every answer and image shows its tokens, and the chat shows the conversation's total (input grows with the history).
 - **Header**: language selector (English / Español, remembered in a cookie) and appearance (system / light / dark).
 
 Details in the [web app spec](docs/specs/feature-web-app.md).
@@ -90,7 +91,7 @@ echo "Summarize: ..." | dotnextai ask  # one multi-line question from stdin
 dotnextai --help
 ```
 
-Answers go to stdout and everything else to stderr, so answers can be piped. Exit codes: `0` answer or chat ended, `1` model error, `2` usage error, `3` not configured, `130` Ctrl+C. Run it with `./scripts/dev.sh cli …` or `dotnet run --project backend/src/DotNextAI.Cli -- …`.
+Answers go to stdout and everything else to stderr, so answers can be piped. After each answer stderr shows `Tokens: … in · … out · … total` when the proxy reports them; `/usage` in the chat gives the conversation's total. Exit codes: `0` answer or chat ended, `1` model error, `2` usage error, `3` not configured, `130` Ctrl+C. Run it with `./scripts/dev.sh cli …` or `dotnet run --project backend/src/DotNextAI.Cli -- …`.
 
 ## API
 

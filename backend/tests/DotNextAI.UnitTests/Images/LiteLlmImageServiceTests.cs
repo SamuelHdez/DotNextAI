@@ -55,6 +55,31 @@ public class LiteLlmImageServiceTests
         Assert.False(body.RootElement.TryGetProperty("response_format", out _));
     }
 
+    [Fact]
+    public async Task GenerateAsync_ReportsTheTokensOfTheGeneration()
+    {
+        var body = JsonSerializer.Serialize(new
+        {
+            data = new[] { new { b64_json = Convert.ToBase64String(TestImages.Png) } },
+            usage = new { input_tokens = 12, output_tokens = 4160, total_tokens = 4172 },
+        });
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, body));
+
+        var image = await service.GenerateAsync(new ImageRequest("x"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(new TokenUsage(12, 4160, 4172), image.Usage);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_WithoutUsage_ReportsNone()
+    {
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Answer(TestImages.Png)));
+
+        var image = await service.GenerateAsync(new ImageRequest("x"), TestContext.Current.CancellationToken);
+
+        Assert.Null(image.Usage);
+    }
+
     [Theory]
     [InlineData(ImageSize.Square, "1024x1024")]
     [InlineData(ImageSize.Landscape, "1536x1024")]

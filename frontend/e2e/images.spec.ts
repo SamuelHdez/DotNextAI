@@ -16,6 +16,7 @@ test.describe("images", () => {
     await expect(gallery.getByRole("img", { name: "Generated image: A fox reading" })).toBeVisible();
     await expect(gallery.getByText("The model drew: Drawn: A fox reading (1024x1536)")).toBeVisible();
     await expect(gallery.getByText("gpt-image-2")).toBeVisible();
+    await expect(gallery.getByText("4,164 tokens (4 in · 4,160 out)")).toBeVisible();
 
     const downloadPromise = page.waitForEvent("download");
     await gallery.getByRole("link", { name: "Download" }).click();
