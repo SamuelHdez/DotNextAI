@@ -16,9 +16,29 @@ public class DotNextAIApiFactory : WebApplicationFactory<Program>
 {
     public const string FrontendOrigin = "http://localhost:3030";
 
+    private readonly List<string> _databases = [];
+
+    /// <summary>A fresh SQLite file for the saved chats, deleted with the factory.</summary>
+    private string NewDatabase()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"dotnextai-tests-{Guid.NewGuid():N}.db");
+        _databases.Add(path);
+        return $"Data Source={path};Pooling=False";
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        foreach (var database in _databases)
+        {
+            File.Delete(database);
+        }
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("ConnectionStrings:Chats", NewDatabase());
         builder.UseSetting("Cors:AllowedOrigins:0", FrontendOrigin);
         // High enough for every test; the rate-limit tests lower it.
         builder.UseSetting("RateLimiting:ChatPermitsPerMinute", "10000");
@@ -34,6 +54,8 @@ public class DotNextAIApiFactory : WebApplicationFactory<Program>
         int? imagePermitsPerMinute = null) =>
         WithWebHostBuilder(builder =>
         {
+            // Every client gets its own database, so tests never see each other's chats.
+            builder.UseSetting("ConnectionStrings:Chats", NewDatabase());
             if (chatPermitsPerMinute is { } permits)
             {
                 builder.UseSetting(

@@ -28,3 +28,34 @@ Content-Type: application/json
 }
 
 ###
+
+# Saved chats (docs/design/api.md#saved-chats). Replace the ids with the ones the API returns.
+POST {{DotNextAI.Api_HostAddress}}/api/folders
+Content-Type: application/json
+
+{ "name": "Work" }
+
+###
+
+POST {{DotNextAI.Api_HostAddress}}/api/conversations
+Content-Type: application/json
+
+{}
+
+###
+
+GET {{DotNextAI.Api_HostAddress}}/api/conversations
+
+###
+
+# Ask in a saved conversation: only the new question, the history comes from the database
+POST {{DotNextAI.Api_HostAddress}}/api/conversations/00000000-0000-0000-0000-000000000000/messages/stream
+Content-Type: application/json
+
+{ "question": "My name is Ana. Reply only: ok" }
+
+###
+
+GET {{DotNextAI.Api_HostAddress}}/api/conversations/00000000-0000-0000-0000-000000000000
+
+###

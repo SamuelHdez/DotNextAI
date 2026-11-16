@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Step 10 implemented on 2026-11-16 (token metrics), on top of steps 00-09: the whole course backlog is done (backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API, web app, image input, streaming, models, image generation). Components marked *planned* arrive with later backlog steps.
+> **Status:** Saved chats (part 1, backend) implemented on 2026-11-16, after the whole course backlog (steps 00-10: backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API, web app, image input, streaming, models, image generation, token metrics). Components marked *planned* arrive with later backlog steps.
 
 ## Components
 
@@ -11,6 +11,8 @@ flowchart LR
     web["frontend<br/>Next.js + Fluent UI<br/>:3030"]
     api["DotNextAI.Api<br/>ASP.NET Core Minimal API<br/>:5100"]
     infra["DotNextAI.Infrastructure<br/>Agent Framework + OpenAI SDK"]
+    persistence["DotNextAI.Persistence<br/>EF Core"]
+    db[("SQLite<br/>saved chats")]
     litellm[("ERNI LiteLLM proxy<br/>OpenAI-compatible")]
 
     user --> cli
@@ -18,6 +20,8 @@ flowchart LR
     web -- "HTTP / SSE (CORS)" --> api
     cli --> infra
     api --> infra
+    api --> persistence
+    persistence --> db
     infra -- "HTTPS + virtual key" --> litellm
 ```
 
@@ -26,10 +30,11 @@ flowchart LR
 | `DotNextAI.Api` | HTTP surface: `GET /api/health`, `POST /api/chat` (step 04) with per-IP rate limiting ([API contract](api.md)). Planned: streaming (SSE), models, image generation. OpenAPI document at `/openapi/v1.json` and Swagger UI at `/swagger` in Development. |
 | `DotNextAI.Application` | Contracts with no dependencies: DTOs (`HealthStatusDto`), the chat contract (`IChatService`, `ChatTurn`, `ChatAnswer`, `ChatFailure`, `ChatServiceException`, `ChatRules`), `ChatConversation` (history kept by the front end) and, later, images. |
 | `DotNextAI.Infrastructure` | Configuration (`LlmOptions`) and the model clients. `LlmChatClientFactory` builds the OpenAI .NET SDK `ChatClient` pointed at the proxy over the named `HttpClient` `Llm`. `AgentChatService` (step 02) wraps it as a Microsoft Agent Framework `ChatClientAgent`. `ChatFailureMapper` maps errors ([chat service spec](../specs/feature-llm-chat.md)). |
+| `DotNextAI.Persistence` | Saved chats: `ChatsDbContext` (EF Core 10, SQLite), its migrations, and `SqliteConversationStore`, the `IConversationStore` of Application. `AddPersistence` registers them with `ConversationService` (Application), which builds the history from the database and saves each exchange ([saved chats](../specs/feature-saved-chats.md)). Used by the API only. |
 | `DotNextAI.Cli` | Terminal app `dotnextai`, a permanent deliverable: System.CommandLine commands (`chat`, the default, and `ask`) over `IChatService`. It uses the same Infrastructure as the API, so the logic is written once ([CLI spec](../specs/feature-cli.md)). |
 | `frontend` | Next.js 16 + Fluent UI v9 dashboard (ValidatorHub shell, ERNI brand, English/Spanish): home with service status and backlog, chat with the history in the browser. Calls only `DotNextAI.Api`, from the browser ([web app spec](../specs/feature-web-app.md)). |
 
-Project references: `Api → Application, Infrastructure`; `Cli → Application, Infrastructure`; `Infrastructure → Application`. Application references nothing.
+Project references: `Api → Application, Infrastructure, Persistence`; `Cli → Application, Infrastructure`; `Infrastructure → Application`; `Persistence → Application`. Application references nothing.
 
 ## Ports
 
@@ -47,12 +52,16 @@ Project references: `Api → Application, Infrastructure`; `Cli → Application,
 | `GET` | `/api/models` | Chat models of the proxy, the default first (cached) |
 | `POST` | `/api/chat/stream` | Same, with the answer as Server-Sent Events (`delta`, `done`, `error`) |
 | `POST` | `/api/chat` | Question + history → answer (stateless, rate-limited) |
+| `GET` `POST` `PATCH` `DELETE` | `/api/folders[/{id}]` | Folders of saved chats |
+| `GET` `POST` `PATCH` `PUT` `DELETE` | `/api/conversations[/{id}…]` | Saved conversations: list, read, rename, move, delete, images, and `POST …/messages/stream` to ask with the saved history |
 
 Full contract, status codes and the `failure` extension: [API contract](api.md). Errors use `ProblemDetails` (`AddProblemDetails`, `UseExceptionHandler`, `UseStatusCodePages`).
 
 ## Configuration
 
 `LlmOptions` (section `Llm`) is bound with `ValidateDataAnnotations` and `ValidateOnStart`. Missing values do not stop the startup, so the API runs and `llmConfigured` is false. An out-of-range `TimeoutSeconds` or `MaxRetries` does stop it. The secrets live in `dotnet user-secrets`, in one store shared by the API and the CLI (same `UserSecretsId`). The CLI runs in `Development` by default so it loads that store. The integration tests use the `Testing` environment so they never load it. See the [README](../../README.md#configuration) for the setting list.
+
+The saved chats database is `ConnectionStrings:Chats` (SQLite, default `App_Data/dotnextai.db` under the API's content root), migrated at startup unless `Database:MigrateOnStartup` is false. The integration tests give every client its own temporary file.
 
 ## Build and quality
 
@@ -71,7 +80,7 @@ Full contract, status codes and the `failure` extension: [API contract](api.md).
 | 2026-11-16 | Orchestration | Microsoft Agent Framework (`Microsoft.Agents.AI`, 1.x stable) on Microsoft.Extensions.AI, instead of LangChain or Semantic Kernel. | It is Microsoft's successor to Semantic Kernel and AutoGen. `IChatClient` gives streaming, multimodal content (`DataContent`) and usage (`UsageDetails`) out of the box. |
 | 2026-11-16 | Direct calls (step 01) | OpenAI .NET SDK with its endpoint set to the LiteLLM proxy. | LiteLLM is a Python library; from .NET, its OpenAI-compatible proxy is the way to use it. |
 | 2026-11-16 | API style | Minimal API with `TypedResults`, not controllers as in ValidatorHub and ctf-janus. | Small surface, and native SSE (`TypedResults.ServerSentEvents`) for streaming. |
-| 2026-11-16 | Layering | ValidatorHub's `backend/src` + `backend/tests` layout without a `Domain` project. | There are no persisted entities. A `Domain` layer can be added if one appears. |
+| 2026-11-16 | Layering | ValidatorHub's `backend/src` + `backend/tests` layout without a `Domain` project. | There are no persisted entities. A `Domain` layer can be added if one appears. (Saved chats added persisted rows on 2026-11-16 with no domain logic, so their entities stay internal to `DotNextAI.Persistence`.) |
 | 2026-11-16 | Secrets | `dotnet user-secrets`, one store shared by the API and the CLI, written by `dev.sh secrets` through stdin. | Same practice as the reference repos. One setup serves both executables, and the key never shows up in a process list. |
 | 2026-11-16 | Tests | xUnit v3 on Microsoft.Testing.Platform, `WebApplicationFactory` in the `Testing` environment, and fake model clients. | Same as ValidatorHub. Tests and CI need no proxy and no secrets. |
 | 2026-11-16 | Web app | Next.js + React + Fluent UI v9, port 3030 (planned). | Same stack as the ValidatorHub frontend and the ctf-janus admin. The port avoids clashing with them (3000, 3010). |
@@ -92,3 +101,4 @@ Full contract, status codes and the `failure` extension: [API contract](api.md).
 | 2026-11-16 | Models (step 08) | `IModelCatalog` over the proxy's `GET /models` (LiteLLM `mode` kept, 5-minute cache), `ChatRequest` with an optional model, one agent per model, and only listed chat models accepted, both in the API (400) and in the service. | The selector shows what the proxy actually offers. Nobody can make the server call an arbitrary model name, and each model's client and agent are built once. |
 | 2026-11-16 | Image generation (step 09) | `IImageService` (`LiteLlmImageService`): a direct `POST images/generations` through a shared `LiteLlmHttp` helper, with no retries and its own rate limit of 5 per minute. `Llm:ImageModel` defaults to `gpt-image-2`. | gpt-image only answers base64 and rejects `response_format`, so a direct call is simpler and verifiable. Retrying or allowing generous limits would multiply a cost far higher than a chat question. |
 | 2026-11-16 | Token metrics (step 10) | `TokenUsage` on answers and images, taken from the provider's counters (streamed usage included, since the SDK asks for it). The conversation total is the sum of the calls. Tokens only, no costs. | Real counts, not estimates. The sum shows what resending the history costs. Prices belong to the proxy, which tracks spend. |
+| 2026-11-16 | Saved chats | `DotNextAI.Persistence` with EF Core 10.0.15 on SQLite, migrations applied at startup, `dotnet-ef` 10.0.15 as a local tool and `has-pending-model-changes` in CI. `IConversationStore` and `ConversationService` in Application; endpoints under `/api/folders` and `/api/conversations`; the history of a saved chat is built on the server. Images stored as BLOBs. Reverses "no persistence" and "the API is stateless" for the web app; the CLI and `/api/chat` stay as they were. | The user wants chats kept and organised in folders. A single local user needs no server database: one file, no extra process, and EF Core keeps the schema in code. Building the history on the server means the client cannot rewrite a saved conversation, and the request stays small. EF Core 10.0.15 is a Microsoft servicing patch on the .NET 10 line. |

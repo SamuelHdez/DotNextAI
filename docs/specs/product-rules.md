@@ -14,6 +14,7 @@ DotNextAI is the ERNI course exercise *Project 1: Basic LLM Chatbot App*: build 
 | UI languages | Web UI in English (default) and Spanish, switched with a selector in the header and remembered in a cookie ([web app](feature-web-app.md)). The CLI stays English only. | 2026-11-16 |
 | Code language | Code, comments, docs and commit messages in English. | 2026-11-16 |
 | Delivery | Small increments, one backlog step (or less) at a time, each with docs and tests. | 2026-11-16 |
+| Storage | **Reverses "no persistence for now".** The web app's conversations are saved, with their images, in a local SQLite database and can be put in folders (one level). A single local user, no login. The CLI keeps its conversations in memory ([saved chats](feature-saved-chats.md)). | 2026-11-16 |
 | Terminal app | The CLI (steps 01-03) is a permanent deliverable, not a prototype replaced by the web app. It keeps working, and later features are added to it where they make sense ([CLI spec](feature-cli.md#roadmap)). | 2026-11-16 |
 
 ## Backlog
@@ -58,7 +59,7 @@ Image input (step 06) assumes that `gpt-5.6-luna` accepts images (decided 2026-1
 
 - **LLM through LiteLLM only.** Endpoint, key and default model come from configuration (`Llm` section). No code calls a provider directly or hard-codes those values.
 - **The key never leaves the backend.** It is never sent to the browser, returned by the API, logged or committed. The web app talks only to DotNextAI's API.
-- **No persistence for now.** Conversations live in memory, in the CLI process or the browser. Adding storage is a decision to record here first.
+- **Saved chats live in the local database.** Since 2026-11-16 the web app's conversations are saved in SQLite through the API (replacing "no persistence for now"); the CLI's live in its process. Anything else stored is a decision to record here first. Saved content is never logged.
 - **No personal data in logs.** Prompts, images and answers are not logged above `Debug`.
 - **Testable without the proxy.** Every feature can be tested with a fake model client; CI has no LLM secrets.
 - **One implementation, two front ends.** Features live in Application and Infrastructure behind interfaces (`IChatService`…); the CLI and the API (and through it the web app) only adapt input and output.
@@ -71,3 +72,4 @@ Each step's spec names its tests. Global rules covered today:
 - Endpoint must be HTTPS (HTTP only on loopback): `LlmOptionsTests`.
 - Key never in error messages: `AgentChatServiceTests.AskAsync_ProxyErrorEchoingTheKey_MasksIt` and `AskAsync_Unauthorized_NeverQuotesTheProxyBody`.
 - No model call for invalid or unconfigured input: `AgentChatServiceTests.AskAsync_NotConfigured_*`, `AskAsync_EmptyQuestion_*`.
+- Saved chats: `SqliteConversationStoreTests`, `ConversationServiceTests`, `ConversationEndpointTests` ([saved chats](feature-saved-chats.md#verification)).

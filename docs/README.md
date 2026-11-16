@@ -6,8 +6,8 @@ Central index for the specs, design and day-to-day tasks of DotNextAI. Setup and
 
 | Document | Description | Status |
 | -------- | ----------- | ------ |
-| [Product rules](./specs/product-rules.md) | Course goal, the ten backlog steps, the models of the proxy, and the global rules (LLM through LiteLLM only, secrets, languages, no persistence). | Active |
-
+| [Product rules](./specs/product-rules.md) | Course goal, the ten backlog steps, the models of the proxy, and the global rules (LLM through LiteLLM only, secrets, languages, saved chats in a local database). | Active |
+| [Saved chats](./specs/feature-saved-chats.md) | Conversations and folders saved in a local SQLite database: decisions, rules, data model, when an exchange is saved, verification. | Part 1 (backend) implemented |
 | [Terminal app (CLI)](./specs/feature-cli.md) | `dotnextai`: chat with history and `ask`, images, input modes, chat commands, messages, exit codes, and the plan for the CLI in later steps. Permanent deliverable. | Step 10 implemented |
 | [Token metrics](./specs/feature-token-metrics.md) | Tokens per answer, per image and per conversation in the web, the CLI and the API; where they come from and how they are shown. | Step 10 implemented |
 | [Image generation](./specs/feature-images.md) | `gpt-image-2` through the proxy: rules, the `/images` page, `dotnextai image`, failures, limits. | Step 09 implemented |
@@ -20,9 +20,9 @@ One `feature-*.md` per backlog step or feature is added when it starts.
 
 | Document | Description | Status |
 | -------- | ----------- | ------ |
-| [Architecture](./design/architecture.md) | Components, ports, configuration, project layering, and the technology decisions log. | Step 10 implemented |
+| [Architecture](./design/architecture.md) | Components, ports, configuration, project layering, and the technology decisions log. | Saved chats part 1 implemented |
 | [Testing](./design/testing.md) | Test layers (.NET unit and integration, Vitest, Playwright E2E with axe), the fake LiteLLM proxy and how to run each. | Implemented |
-| [API contract](./design/api.md) | Endpoints, request and response JSON, validation, status codes and the `failure` extension, models, image input, streaming (SSE), image generation, token usage, rate limits, CORS. Source for the web app's types. | Step 10 implemented |
+| [API contract](./design/api.md) | Endpoints, request and response JSON, validation, status codes and the `failure` extension, models, image input, streaming (SSE), image generation, token usage, saved chats, rate limits, CORS. Source for the web app's types. | Saved chats part 1 implemented |
 
 ## Tasks — day-to-day work
 

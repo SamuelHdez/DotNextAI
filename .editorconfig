@@ -22,3 +22,7 @@ trim_trailing_whitespace = false
 [*.sh]
 indent_size = 2
 end_of_line = lf
+
+# EF Core migrations are generated: analyzers ignore them.
+[backend/src/DotNextAI.Persistence/Migrations/**.cs]
+generated_code = true

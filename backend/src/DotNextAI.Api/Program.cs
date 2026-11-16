@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using DotNextAI.Api.Endpoints;
 using DotNextAI.Api.RateLimiting;
 using DotNextAI.Infrastructure;
+using DotNextAI.Persistence;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 const string FrontendCorsPolicy = "Frontend";
@@ -10,6 +11,7 @@ const string FrontendCorsPolicy = "Frontend";
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddPersistence(builder.Configuration, builder.Environment.ContentRootPath);
 builder.Services.TryAddSingleton(TimeProvider.System);
 
 builder.Services.AddProblemDetails();
@@ -26,11 +28,18 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontendCorsPolicy, policy => policy
         .WithOrigins(allowedOrigins)
-        .WithMethods("GET", "POST")
+        // PATCH, PUT and DELETE: renaming, moving and deleting saved chats and folders.
+        .WithMethods("GET", "POST", "PATCH", "PUT", "DELETE")
         .AllowAnyHeader());
 });
 
 var app = builder.Build();
+
+// A local app with a SQLite file: the schema follows the code at startup (Database:MigrateOnStartup, on by default).
+if (app.Configuration.GetValue("Database:MigrateOnStartup", defaultValue: true))
+{
+    await app.Services.MigrateChatsDatabaseAsync();
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -52,5 +61,6 @@ app.MapHealthEndpoints();
 app.MapChatEndpoints();
 app.MapModelsEndpoints();
 app.MapImageEndpoints();
+app.MapConversationEndpoints();
 
 await app.RunAsync();

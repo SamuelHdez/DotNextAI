@@ -25,12 +25,16 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: nuget
-    directory: /backend
+    # / holds dotnet-tools.json (dotnet-ef); /backend the projects.
+    directories: [/, /backend]
     schedule:
       interval: weekly
     cooldown:
       default-days: 7
     groups:
+      # EF Core packages and the dotnet-ef tool move together.
+      ef-core:
+        patterns: ["Microsoft.EntityFrameworkCore*", "dotnet-ef"]
       nuget-minor-patch:
         update-types: [minor, patch]
     ignore:
@@ -39,6 +43,8 @@ updates:
       - dependency-name: "Microsoft.AspNetCore.*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
         update-types: ["version-update:semver-major"]
       # System.CommandLine 3.x is the .NET 11 line.
       - dependency-name: "System.CommandLine"

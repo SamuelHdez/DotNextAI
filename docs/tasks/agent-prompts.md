@@ -99,3 +99,11 @@ Outcome: probing with our key explained the outage. The key's team only reaches 
 Step 09 outcome: `IImageService` calls `POST images/generations` directly, because gpt-image only answers base64 and rejects `response_format`. There are no retries, `Llm:ImageModel` is the model, and the endpoint has its own 5-per-minute limit. The web has an *Images* page (shape, gallery, download) and the CLI has `dotnextai image` (saves the file and refuses to overwrite without `--force`, checked before generating). The fake LiteLLM draws a real PNG. 265 .NET tests, 264 Vitest tests and 23 Playwright scenarios.
 
 Step 10 outcome: `TokenUsage` on answers and images, taken from the provider's counters. A probe showed that the SDK already asks for `stream_options.include_usage`, so streamed answers get their usage from the final chunk. The conversation total is the sum of the calls, with a hint that input grows with the history. Web captions and total, a CLI `Tokens:` line and `/usage`, `usage` in the API. The fake LiteLLM estimates usage that grows with the history. 287 .NET tests, 274 Vitest tests and 24 Playwright scenarios. The whole course backlog is done.
+
+## 2026-11-16 — Saved chats in a database (part 1, backend)
+
+> I'd like to add a database, SQLite for example, to save chats and organise them in folders. What do you think?
+
+Answers to the follow-up questions: a single local user with no login is fine for now; one folder level; save everything, text and images; the CLI stays in memory.
+
+Outcome: a new `DotNextAI.Persistence` project (EF Core 10.0.15 on SQLite, migrations applied at startup, `dotnet-ef` as a local tool, pending model changes fail CI). `ConversationService` builds the history from the database and saves each exchange: complete answers in full, stopped ones with the text so far, failed ones not at all. Endpoints under `/api/folders` and `/api/conversations`. Found while writing the docs: CORS only allowed `GET` and `POST`, so the browser could not rename, move or delete; it now allows `PATCH`, `PUT` and `DELETE`. 330 .NET tests green. Part 2 (web sidebar) is next.

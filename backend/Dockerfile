@@ -10,11 +10,13 @@ COPY Directory.Build.props ./
 COPY src/DotNextAI.Api/DotNextAI.Api.csproj src/DotNextAI.Api/packages.lock.json src/DotNextAI.Api/
 COPY src/DotNextAI.Application/DotNextAI.Application.csproj src/DotNextAI.Application/packages.lock.json src/DotNextAI.Application/
 COPY src/DotNextAI.Infrastructure/DotNextAI.Infrastructure.csproj src/DotNextAI.Infrastructure/packages.lock.json src/DotNextAI.Infrastructure/
+COPY src/DotNextAI.Persistence/DotNextAI.Persistence.csproj src/DotNextAI.Persistence/packages.lock.json src/DotNextAI.Persistence/
 RUN dotnet restore src/DotNextAI.Api/DotNextAI.Api.csproj --locked-mode
 
 COPY src/DotNextAI.Api/ src/DotNextAI.Api/
 COPY src/DotNextAI.Application/ src/DotNextAI.Application/
 COPY src/DotNextAI.Infrastructure/ src/DotNextAI.Infrastructure/
+COPY src/DotNextAI.Persistence/ src/DotNextAI.Persistence/
 RUN dotnet publish src/DotNextAI.Api/DotNextAI.Api.csproj \
     --configuration Release \
     --no-restore \
@@ -25,10 +27,14 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:bfd912c83295ce66d4b706ebb8541b9
 WORKDIR /app
 
 # The LiteLLM settings (Llm__Endpoint, Llm__ApiKey, Llm__DefaultModel) come from the environment at run time,
-# never from the image.
+# never from the image. The saved chats live in a SQLite file under /app/data: mount a volume there to keep them.
 ENV ASPNETCORE_HTTP_PORTS=8080 \
-    ASPNETCORE_ENVIRONMENT=Production
+    ASPNETCORE_ENVIRONMENT=Production \
+    ConnectionStrings__Chats="Data Source=/app/data/dotnextai.db"
 EXPOSE 8080
+
+RUN mkdir /app/data && chown "$APP_UID" /app/data
+VOLUME /app/data
 
 COPY --from=build /app/publish .
 

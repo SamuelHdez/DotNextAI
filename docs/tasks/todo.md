@@ -46,6 +46,12 @@
 - [ ] 09 follow-up: try `gpt-image-2` against the real proxy once the key's access is sorted out.
 - [x] 2026-11-16 — 10 Token metrics: the proxy's usage for every answer (streamed too) and image; conversation total = sum of the calls; web captions and total, CLI `Tokens:` line and `/usage`, API `usage` ([token metrics](../specs/feature-token-metrics.md)).
 
+## After the course — saved chats
+
+- [x] 2026-11-16 — Saved chats part 1 (backend): `DotNextAI.Persistence` (EF Core 10 + SQLite, `InitialSavedChats` migration applied at startup), `IConversationStore` and `ConversationService`, `/api/folders` and `/api/conversations` (CRUD, images, streamed ask with the saved history), CORS for `PATCH`/`PUT`/`DELETE`, migrations checked in CI, Docker volume `/app/data` ([saved chats](../specs/feature-saved-chats.md)).
+- [ ] Saved chats part 2 (web): sidebar with folders and conversations; new, rename, move, delete; open a saved conversation; ask through `POST /api/conversations/{id}/messages/stream`; `img-src` for the API origin (stored images); Vitest and E2E with axe.
+- [ ] Saved chats follow-up: search, and an owner per row once the API has authentication.
+
 ## Open questions
 
 - [x] 2026-11-16 — UI languages: English (default) and Spanish, with a selector.

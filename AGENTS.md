@@ -8,9 +8,10 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 | Path | What | Stack |
 | ---- | ---- | ----- |
-| `backend/src/DotNextAI.Api/` | HTTP API (port 5100): `/api/health`, `/api/chat` (stateless, rate-limited); streaming, models and images in later steps. Contract in [`docs/design/api.md`](docs/design/api.md) | ASP.NET Core 10 Minimal API, OpenAPI + Swagger UI, built-in rate limiter |
+| `backend/src/DotNextAI.Api/` | HTTP API (port 5100): health, chat (stateless, rate-limited, streaming), models, images, saved chats (`/api/folders`, `/api/conversations`). Contract in [`docs/design/api.md`](docs/design/api.md) | ASP.NET Core 10 Minimal API, OpenAPI + Swagger UI, built-in rate limiter |
 | `backend/src/DotNextAI.Application/` | Contracts shared by the API and the CLI: DTOs and the interfaces Infrastructure implements | .NET 10 class library |
 | `backend/src/DotNextAI.Infrastructure/` | LLM access: `LlmOptions`, `LlmChatClientFactory` (OpenAI client of the proxy), `AgentChatService` (Agent Framework agent), `ChatFailureMapper` | Microsoft Agent Framework 1.28, Microsoft.Extensions.AI 10.11, OpenAI .NET SDK, `IHttpClientFactory` |
+| `backend/src/DotNextAI.Persistence/` | Saved chats: `ChatsDbContext`, EF Core migrations, `SqliteConversationStore` (`IConversationStore`). Spec in [`docs/specs/feature-saved-chats.md`](docs/specs/feature-saved-chats.md) | EF Core 10, SQLite |
 | `backend/src/DotNextAI.Cli/` | Terminal app `dotnextai` (**permanent**, grows with the backlog): `chat` (default, with history) and `ask` commands | .NET 10 console, Generic Host, System.CommandLine 2.0 |
 | `backend/tests/DotNextAI.UnitTests/` | Unit tests | xUnit v3, Microsoft.Testing.Platform |
 | `backend/tests/DotNextAI.IntegrationTests/` | HTTP tests against the in-memory API | xUnit v3, `WebApplicationFactory` |
@@ -21,7 +22,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 | `scripts/dev.sh` | Local orchestrator | bash (Git Bash, WSL, macOS, Linux) |
 | `docs/` | Specs, design and tasks (see below) | Markdown |
 
-There is no database: the backend keeps no state yet.
+The only state is the saved chats database (SQLite, `backend/src/DotNextAI.Api/App_Data/dotnextai.db`, git-ignored), used by the API for the web app. The CLI keeps its conversations in memory.
 
 ## Running and checking
 
@@ -73,7 +74,7 @@ Backend:
 
 - Agent Framework and `Microsoft.Extensions.AI` must stay on the 10.x line of `Microsoft.Extensions.AI`. Before updating Agent Framework, check its `.nuspec` dependencies; a version that needs `Microsoft.Extensions.AI` 11.x waits for the move to .NET 11.
 
-- Layering: Api → Application ← Infrastructure, and Cli → Application + Infrastructure. Application references no other project and no SDKs. Agent Framework, OpenAI and HTTP details stay in Infrastructure.
+- Layering: Api → Application ← Infrastructure, Api → Persistence → Application, and Cli → Application + Infrastructure. Application references no other project and no SDKs. Agent Framework, OpenAI and HTTP details stay in Infrastructure; EF Core and SQLite in Persistence.
 - Endpoints are Minimal APIs grouped in `DotNextAI.Api/Endpoints/*Endpoints.cs`. They return `TypedResults` and errors as `ProblemDetails`. HTTP DTOs live in `DotNextAI.Api/Contracts`.
 - Model failures become problems through `ChatProblems`: status per `ChatFailure` and a `failure` extension that the web app translates. Never forward the proxy's 401/403 as 401/403 (the key is the server's). Keep `docs/design/api.md` in sync with every endpoint, field, status code and `failure` value.
 - Streaming endpoints await the first update before returning `TypedResults.ServerSentEvents`, so failures before any text keep their ProblemDetails and status. Later failures become an `error` event with the same `failure` code (`ChatStreamEvents`). `IChatService` streams are iterated once; C# cannot `yield` inside a `try` with a `catch`, so only `MoveNextAsync` is guarded.
@@ -82,7 +83,8 @@ Backend:
 - Image generation goes through `IImageService` and `LiteLlmHttp` (no SDK image client, no retries, its own rate limit). Never log prompts or image bytes.
 - Models: callers pick a model only from `IModelCatalog` (the proxy's `mode = chat` list); the API answers 400 `errors.model` and the service throws `ModelNotFound` for anything else. Never pass a client's model name to the proxy unchecked. New calls go through `ChatRequest`.
 - Images (`ChatImage`): the format comes from the bytes (`ImageFormats.Detect`), never from a name or a declared type. Rules live in `ChatRules.TryValidateImages` and are mirrored in `frontend/src/lib/chat/images.ts`. Images go only with their question; the history stays text. Never log image bytes.
-- `IChatService` is stateless: the front end keeps the conversation and passes its history with each question (`ChatConversation`). Do not add server-side sessions or conversation storage without recording the decision in the specs first.
+- `IChatService` is stateless: callers pass the history with each question. The CLI keeps it in memory (`ChatConversation`); for saved chats `ConversationService` reads it from `IConversationStore`. Do not store anything else on the server without recording the decision in the specs first.
+- Saved chats (`DotNextAI.Persistence`): the layering is `Api → Persistence → Application`; endpoints and `ConversationService` use `IConversationStore`, never the `DbContext`. Every model change needs a migration (`dotnet tool run dotnet-ef migrations add <Name> --project backend/src/DotNextAI.Persistence --output-dir Migrations`); CI fails on pending model changes. Lists never load image bytes. Never log saved content. An exchange is saved only when the answer completes or is stopped, never when it fails.
 - Configuration goes through options classes in `DotNextAI.Infrastructure/Options` with `ValidateDataAnnotations` and `ValidateOnStart`. A missing LLM configuration must not stop the API from starting. It reports `LlmConfigured = false`.
 - Analyzers (`latest-recommended`, security rules `All`) run on every build, and CI treats warnings as errors. Fix warnings rather than suppressing them. When a suppression is justified, scope it and explain it in a comment.
 
@@ -107,7 +109,7 @@ Web app (`frontend/`):
 Tests and CI:
 
 - Test names: `Method_Scenario_ExpectedResult`. Use `TestContext.Current.CancellationToken` in async calls.
-- The integration tests run the API in the `Testing` environment (`DotNextAIApiFactory`), so the developer's user-secrets never reach them.
+- The integration tests run the API in the `Testing` environment (`DotNextAIApiFactory`), so the developer's user-secrets never reach them. Each client gets its own temporary SQLite file; unit tests of the store use in-memory SQLite with the real migrations (`SqliteTestDatabase`), not the EF in-memory provider.
 - Semgrep (`p/secrets`) will block CI on literal keys or tokens. Generate them at runtime in tests (`$"sk-{Guid.NewGuid():N}"`).
 - Workflows (`.github/workflows/`) mirror the ValidatorHub and ctf-janus pipelines: actions pinned by commit SHA, tool binaries pinned by version and checksum (Gitleaks, Trivy), `permissions: contents: read`, `persist-credentials: false`, no secrets, and zizmor checks them (`security.yml`). Before pushing a workflow change, run `uvx --from zizmor zizmor .github/`.
 - The API image (`backend/Dockerfile`, build context `backend/`) copies each project's `.csproj` and `packages.lock.json` before the restore: add new `src/` projects there too. Base images are pinned by digest.

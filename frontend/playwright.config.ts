@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 // Own ports, so the suite runs next to ./scripts/dev.sh (5100/3030) without clashing.
@@ -52,6 +54,8 @@ export default defineConfig({
         Llm__MaxRetries: "0",
         Cors__AllowedOrigins__0: WEB_URL,
         RateLimiting__ChatPermitsPerMinute: "1000",
+        // A fresh saved-chats database per run, outside the repository.
+        ConnectionStrings__Chats: `Data Source=${join(tmpdir(), `dotnextai-e2e-${randomBytes(8).toString("hex")}.db`)}`,
       },
     },
     {

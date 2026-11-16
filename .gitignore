@@ -38,3 +38,9 @@ Thumbs.db
 
 ## Local dev state (scripts/dev.sh)
 .dev/
+
+## Saved chats (SQLite, backend/src/DotNextAI.Api/App_Data by default)
+**/App_Data/
+*.db
+*.db-shm
+*.db-wal

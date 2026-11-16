@@ -1,6 +1,6 @@
 # API contract
 
-> **Status:** Step 10 (token metrics) implemented on 2026-11-16, on top of steps 04 and 06-09 (chat endpoint, image input, streaming, models, image generation). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
+> **Status:** Saved chats (folders and conversations, part 1) implemented on 2026-11-16, on top of steps 04 and 06-10 (chat endpoint, image input, streaming, models, image generation, token metrics). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
 
 `DotNextAI.Api` is an ASP.NET Core 10 Minimal API on `http://localhost:5100`. It exposes the same chat service as the CLI ([chat service](../specs/feature-llm-chat.md)) and is meant for local use by the web app. In Development the OpenAPI document is at `/openapi/v1.json` and Swagger UI at `/swagger`; `backend/src/DotNextAI.Api/DotNextAI.Api.http` has ready-made requests.
 
@@ -8,7 +8,7 @@
 
 | Topic | Decision | Date |
 | ----- | -------- | ---- |
-| State | Stateless. The client keeps the conversation and sends its history with every question, as the CLI does. No sessions, no storage. | 2026-11-16 |
+| State | `/api/chat` and `/api/chat/stream` stay stateless: the client keeps the conversation and sends its history with every question, as the CLI does. **Since 2026-11-16 (saved chats)** the `/api/conversations` endpoints keep conversations in a SQLite database and build the history on the server; they replace the old rule "no sessions, no storage" for the web app ([saved chats](../specs/feature-saved-chats.md)). | 2026-11-16 |
 | Errors | `ProblemDetails` (`application/problem+json`). Validation errors are a 400 `ValidationProblem` with `errors` per field. Model failures carry a `failure` extension with the `ChatFailure` name, so the multi-language web app maps it to its own text; `detail` is English and only for logs and developers. | 2026-11-16 |
 | Status codes | Problems on the server side or in the proxy are 5xx: 502 when the proxy rejects or fails, 503 when the model is unavailable or not configured, 504 on timeout. 429 for rate limits, either the proxy's or the API's own. 422 when the proxy refuses the content, e.g. context window exceeded. 401/403 from the proxy are **not** forwarded: the key belongs to the server, not the caller. | 2026-11-16 |
 | Rate limit | `POST /api/chat` has a fixed window per client IP: `RateLimiting:ChatPermitsPerMinute`, default 20, range 1-10,000. The API has no authentication and every call spends the LiteLLM key, so this caps a runaway script or an exposed port. | 2026-11-16 |
@@ -130,12 +130,75 @@ Generates one image with the server's image model (step 09, [image generation](.
 
 `data` is the file in base64 (no `data:` prefix); `revisedPrompt` is null when the model reports none. Rate limit: `RateLimiting:ImagePermitsPerMinute` (default 5) per IP, separate from the chat's. Failures use the same `failure` codes and statuses as the chat; a refused prompt is 422 `BadRequest`, an answer without an image 502 `EmptyAnswer`.
 
+## Saved chats
+
+Folders and saved conversations of the single local user ([saved chats](../specs/feature-saved-chats.md)). No rate limit except on asking, which spends the key. Problems carry a `failure` extension with a `StoreFailure` name: `NotFound`, `FolderNotFound`, `DuplicateFolderName`, `ConversationFull`.
+
+| Method | Path | Body | Success | Problems |
+| ------ | ---- | ---- | ------- | -------- |
+| `GET` | `/api/folders` | — | `200` `Folder[]` by name | — |
+| `POST` | `/api/folders` | `{ name }` | `201` `Folder` | 400 `errors.name`; 409 `DuplicateFolderName` |
+| `PATCH` | `/api/folders/{id}` | `{ name }` | `200` `Folder` | 400 `errors.name`; 404 `NotFound`; 409 `DuplicateFolderName` |
+| `DELETE` | `/api/folders/{id}` | — | `204`; its conversations stay, with `folderId: null` | 404 `NotFound` |
+| `GET` | `/api/conversations` | — | `200` `ConversationSummary[]`, last updated first | — |
+| `POST` | `/api/conversations` | `{ title?, folderId? }` (both optional) | `201` `ConversationSummary`, title *New conversation* by default | 400 `errors.title`; 400 `FolderNotFound` |
+| `GET` | `/api/conversations/{id}` | — | `200` `{ conversation, messages }` | 404 `NotFound` |
+| `PATCH` | `/api/conversations/{id}` | `{ title }` | `200` `ConversationSummary` | 400 `errors.title`; 404 `NotFound` |
+| `PUT` | `/api/conversations/{id}/folder` | `{ folderId }` (null: no folder) | `200` `ConversationSummary` | 400 `errors.folderId`; 404 `NotFound` |
+| `DELETE` | `/api/conversations/{id}` | — | `204`, messages and images included | 404 `NotFound` |
+| `GET` | `/api/conversations/{id}/images/{imageId}` | — | `200` the image bytes with their `Content-Type`, `Cache-Control: private, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff` | 404 `NotFound` (also for an image of another conversation) |
+| `POST` | `/api/conversations/{id}/messages/stream` | `{ question, images?, model? }` | `200` `text/event-stream` (below) | As `/api/chat/stream`, plus 404 `NotFound` and 409 `ConversationFull` |
+
+Shapes:
+
+```jsonc
+// Folder
+{ "id": "5f0c…", "name": "Work", "conversationCount": 3, "createdAt": "2026-11-16T21:40:00+00:00" }
+
+// ConversationSummary
+{
+  "id": "9b1e…", "title": "Plan the team offsite", "folderId": "5f0c…", "model": "gpt-5.6-luna", "questionCount": 2,
+  "usage": { "inputTokens": 30, "outputTokens": 4, "totalTokens": 34 },
+  "createdAt": "2026-11-16T21:41:00+00:00", "updatedAt": "2026-11-16T21:45:00+00:00"
+}
+
+// GET /api/conversations/{id}
+{
+  "conversation": { /* ConversationSummary */ },
+  "messages": [
+    { "id": "…", "role": "user", "text": "What is this?", "images": [{ "id": "…", "mediaType": "image/png", "size": 70, "url": "/api/conversations/9b1e…/images/…" }],
+      "model": null, "usage": null, "truncated": false, "stopped": false, "createdAt": "…" },
+    { "id": "…", "role": "assistant", "text": "A diagram.", "images": [], "model": "gpt-5.6-luna",
+      "usage": { "inputTokens": 120, "outputTokens": 3, "totalTokens": 123 }, "truncated": false, "stopped": false, "createdAt": "…" }
+  ]
+}
+```
+
+`url` is relative to the API. The conversation's `usage` is the sum of its answers'; `model` is the model of the last answer.
+
+### `POST /api/conversations/{id}/messages/stream`
+
+The body is a chat request without `history`: the server reads the history from the database. Validation, the model check, the rate limit (`RateLimiting:ChatPermitsPerMinute`, shared with the chat) and the first-piece rule are those of [`POST /api/chat/stream`](#post-apichatstream), with the same events. `done` also carries the saved conversation:
+
+```text
+event: done
+data: {"answer":"Hello Ana!","model":"gpt-5.6-luna","truncated":false,"usage":{…},"conversation":{ /* ConversationSummary */ }}
+```
+
+Saving:
+
+- **Complete answer:** question (with its images) and answer are saved before `done` is sent. The first question names an untitled conversation.
+- **Stopped** (the client closed the request): the text received so far is saved as the answer with `stopped: true` and no usage.
+- **Failed** (a problem before the stream or an `error` event): nothing is saved.
+
 ## Errors
 
 | Status | `failure` | When |
 | ------ | --------- | ---- |
 | 400 | — (`errors.question` / `errors.history` / `errors.images` / `errors.model`) | Invalid question, history or images (count, base64, size, format, declared type different from the content), unknown role, malformed JSON |
+| 404 | `NotFound` | Saved chats: the folder, conversation or image does not exist |
 | 405 | — | Any method other than `POST` on `/api/chat` |
+| 409 | `DuplicateFolderName`, `ConversationFull` | Saved chats: a folder with that name exists; the conversation has 50 questions |
 | 422 | `BadRequest` | The proxy refused the request, e.g. context window exceeded |
 | 429 | `RateLimited` | The API's own limit (with a `Retry-After` header in seconds), or the proxy's rate limit or budget |
 | 502 | `Unauthorized` | The proxy rejected the server's key |
@@ -163,13 +226,15 @@ Example:
 
 ## CORS
 
-Only the origins in `Cors:AllowedOrigins` (`http://localhost:3030` in Development), methods `GET` and `POST`, any header.
+Only the origins in `Cors:AllowedOrigins` (`http://localhost:3030` in Development), methods `GET`, `POST`, `PATCH`, `PUT` and `DELETE` (the last three for saved chats), any header.
 
 ## Security notes
 
 - No authentication: the API is for local use (`launchSettings.json` binds to `localhost`). The rate limit reduces the damage of misuse; an exposed deployment needs authentication first (see [todo.md](../tasks/todo.md)).
 - The proxy key and endpoint never appear in answers or problems.
-- Prompts and answers are not logged.
+- Prompts and answers are not logged, nor is saved content.
+- Saved chats have no owner: anyone who reaches the API reads them. Fine on localhost; authentication comes first otherwise.
+- Saved images are served with their detected type and `nosniff`, so a browser never runs one as a page.
 
 ## Verification
 
@@ -188,5 +253,6 @@ Only the origins in `Cors:AllowedOrigins` (`http://localhost:3030` in Developmen
   - Events: `delta`s then `done`, `text/event-stream`, the same input as `/api/chat`.
   - Errors: 400 and 503 as ProblemDetails, not a stream; failures before the first piece with their status and `failure`; a failure mid-answer as an `error` event.
   - The shared rate limit.
+- `ConversationEndpointTests` (integration, a temporary SQLite file per client): see [saved chats](../specs/feature-saved-chats.md#verification).
 - `HealthEndpointTests`: health answer, no secrets, CORS.
 - Manual: `DotNextAI.Api.http`, or `curl` against `./scripts/dev.sh`.

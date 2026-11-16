@@ -4,6 +4,7 @@
     <Project Path="src/DotNextAI.Application/DotNextAI.Application.csproj" />
     <Project Path="src/DotNextAI.Cli/DotNextAI.Cli.csproj" />
     <Project Path="src/DotNextAI.Infrastructure/DotNextAI.Infrastructure.csproj" />
+    <Project Path="src/DotNextAI.Persistence/DotNextAI.Persistence.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DotNextAI.IntegrationTests/DotNextAI.IntegrationTests.csproj" />

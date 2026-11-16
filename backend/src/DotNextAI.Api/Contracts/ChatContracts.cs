@@ -45,3 +45,46 @@ public sealed record ImageRequestDto(string? Prompt, DotNextAI.Application.Image
 /// <summary>A generated image: the file in base64 (no <c>data:</c> prefix) with its media type.</summary>
 public sealed record ImageResponseDto(string MediaType, string Data, string Model, string? RevisedPrompt, TokenUsageDto? Usage = null);
 
+// Saved chats (docs/design/api.md#saved-chats).
+
+public sealed record FolderDto(Guid Id, string Name, int ConversationCount, DateTimeOffset CreatedAt);
+
+public sealed record FolderRequestDto(string? Name);
+
+public sealed record ConversationSummaryDto(
+    Guid Id,
+    string Title,
+    Guid? FolderId,
+    string? Model,
+    int QuestionCount,
+    TokenUsageDto Usage,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+/// <summary>Body of <c>POST /api/conversations</c>: both optional (default title, no folder).</summary>
+public sealed record CreateConversationDto(string? Title, Guid? FolderId);
+
+public sealed record RenameConversationDto(string? Title);
+
+/// <summary>Body of <c>PUT /api/conversations/{id}/folder</c>: the folder, or null for no folder.</summary>
+public sealed record MoveConversationDto(Guid? FolderId);
+
+/// <summary>An image of a saved message; <c>url</c> serves its bytes.</summary>
+public sealed record StoredImageDto(Guid Id, string MediaType, long Size, string Url);
+
+public sealed record StoredMessageDto(
+    Guid Id,
+    DotNextAI.Application.Chat.ChatTurnRole Role,
+    string Text,
+    IReadOnlyList<StoredImageDto> Images,
+    string? Model,
+    TokenUsageDto? Usage,
+    bool Truncated,
+    bool Stopped,
+    DateTimeOffset CreatedAt);
+
+public sealed record ConversationDetailDto(ConversationSummaryDto Conversation, IReadOnlyList<StoredMessageDto> Messages);
+
+/// <summary>Body of <c>POST /api/conversations/{id}/messages/stream</c>: like a chat request, without history.</summary>
+public sealed record ConversationMessageDto(string? Question, IReadOnlyList<ChatImageDto?>? Images = null, string? Model = null);
+

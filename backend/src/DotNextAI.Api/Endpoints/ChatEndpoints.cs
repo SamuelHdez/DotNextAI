@@ -141,7 +141,7 @@ internal static class ChatEndpoints
     /// The default model needs no lookup.
     /// </summary>
     /// <exception cref="ChatServiceException">The model list could not be read.</exception>
-    private static async Task<ValidationProblem?> UnknownModelAsync(string? model, IModelCatalog catalog, CancellationToken cancellationToken)
+    internal static async Task<ValidationProblem?> UnknownModelAsync(string? model, IModelCatalog catalog, CancellationToken cancellationToken)
     {
         if (model is null || string.Equals(model, catalog.DefaultModel, StringComparison.Ordinal))
         {
@@ -212,7 +212,7 @@ internal static class ChatEndpoints
     }
 
     // Base64 is decoded here; ChatRules then checks count, size and that the bytes are the declared format.
-    private static ChatImage[] DecodeImages(IReadOnlyList<ChatImageDto?>? images, out string? error)
+    internal static ChatImage[] DecodeImages(IReadOnlyList<ChatImageDto?>? images, out string? error)
     {
         error = null;
         if (images is null || images.Count == 0)

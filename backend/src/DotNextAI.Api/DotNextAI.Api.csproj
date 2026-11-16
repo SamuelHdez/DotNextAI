@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DotNextAI.Application\DotNextAI.Application.csproj" />
     <ProjectReference Include="..\DotNextAI.Infrastructure\DotNextAI.Infrastructure.csproj" />
+    <ProjectReference Include="..\DotNextAI.Persistence\DotNextAI.Persistence.csproj" />
   </ItemGroup>
 
 </Project>

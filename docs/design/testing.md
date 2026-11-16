@@ -1,6 +1,6 @@
 # Testing
 
-> **Status:** All layers implemented on 2026-11-16, Playwright E2E included. Run everything with `./scripts/dev.sh test` and `./scripts/dev.sh e2e`.
+> **Status:** All layers implemented on 2026-11-16, Playwright E2E included; saved chats tests added the same day. Run everything with `./scripts/dev.sh test` and `./scripts/dev.sh e2e`.
 
 No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on each change to the code it covers.
 
@@ -8,8 +8,8 @@ No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on e
 
 | Layer | Where | Tools | What it covers | CI |
 | ----- | ----- | ----- | -------------- | -- |
-| .NET unit | `backend/tests/DotNextAI.UnitTests` | xUnit v3, Microsoft.Testing.Platform | Chat rules, options, the agent service over a stub `HttpMessageHandler` (request shape, history, error mapping), `ChatConversation`, the CLI commands with a fake `IChatService` | `backend-ci.yml` |
-| .NET integration | `backend/tests/DotNextAI.IntegrationTests` | `WebApplicationFactory` (`Testing` environment) | HTTP endpoints: health, chat validation, status codes and `failure`, rate limit, CORS | `backend-ci.yml` |
+| .NET unit | `backend/tests/DotNextAI.UnitTests` | xUnit v3, Microsoft.Testing.Platform | Chat rules, options, the agent service over a stub `HttpMessageHandler` (request shape, history, error mapping), `ChatConversation`, the CLI commands with a fake `IChatService`, the saved chats store and `ConversationService` over in-memory SQLite with the real migrations (`SqliteTestDatabase`) | `backend-ci.yml` |
+| .NET integration | `backend/tests/DotNextAI.IntegrationTests` | `WebApplicationFactory` (`Testing` environment) | HTTP endpoints: health, chat validation, status codes and `failure`, rate limit, CORS, saved chats (each client gets its own temporary SQLite file, deleted with the factory) | `backend-ci.yml` |
 | Web unit and component | `frontend/src/**/*.test.ts(x)` | Vitest, Testing Library, jsdom, stubbed `fetch` | i18n catalogs, API client, chat rules and errors, chat page, status card, language menu, navigation, CSP, theme | `frontend-ci.yml` |
 | End to end | `frontend/e2e/*.spec.ts` | Playwright (Chromium), axe-core | The whole chain in a real browser, plus accessibility | `e2e.yml` |
 
@@ -21,6 +21,7 @@ No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on e
 | ----- | -------- | ---- |
 | What runs | The **production build** of the web app (`next build` + `next start`), the **real API** (`dotnet run`, Release) and a **fake LiteLLM proxy** (`frontend/e2e/fake-litellm.mjs`). The chain browser → Next.js → API → Agent Framework → OpenAI SDK → "proxy" is the one users get. | 2026-11-16 |
 | Why a fake proxy, not a fake service | Faking `IChatService` would need test code in the API binary and would skip the agent, the SDK and the error mapping. The fake proxy speaks the OpenAI protocol, so the API is configured exactly as for the real one (`Llm:Endpoint` = `http://127.0.0.1:4010/`, allowed because it is loopback). | 2026-11-16 |
+| Saved chats | The API uses a new SQLite file in the temp folder per run (`ConnectionStrings__Chats`), so runs never see each other's or the developer's chats. | 2026-11-16 |
 | Secrets | None. The API runs in the `E2E` environment (not Development, so the developer's user-secrets are never loaded) with a key generated per run; the fake proxy only checks that a bearer key is sent. | 2026-11-16 |
 | Ports | Fake proxy 4010, API 5199, web 3039, so the suite runs next to `./scripts/dev.sh` (5100/3030). Playwright starts all three (`webServer`) and reuses running ones locally, never in CI. | 2026-11-16 |
 | Accessibility | Every page under test passes axe with WCAG 2.2 A/AA tags and **no violation of any impact**. Tabster's focus sentinels (`[data-tabster-dummy]`) are excluded, as in the ctf-janus admin suite. | 2026-11-16 |

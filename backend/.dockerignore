@@ -8,3 +8,7 @@
 **/appsettings.Development.json
 **/appsettings.*.local.json
 tests/
+**/App_Data/
+**/*.db
+**/*.db-shm
+**/*.db-wal

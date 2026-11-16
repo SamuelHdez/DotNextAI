@@ -7,6 +7,7 @@ on:
       - "backend/**"
       - "global.json"
       - "nuget.config"
+      - "dotnet-tools.json"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     branches: [main]
@@ -14,6 +15,7 @@ on:
       - "backend/**"
       - "global.json"
       - "nuget.config"
+      - "dotnet-tools.json"
       - ".github/workflows/backend-ci.yml"
   workflow_dispatch:
 
@@ -104,6 +106,14 @@ jobs:
       # .NET security analyzers (Directory.Build.props) run as part of the build; -warnaserror makes them blocking.
       - name: Build
         run: dotnet build "$SOLUTION" --configuration Release --no-restore -warnaserror
+
+      # The saved-chats model (DotNextAI.Persistence) must match its last EF Core migration. dotnet-ef is the local
+      # tool pinned in the root dotnet-tools.json.
+      - name: Check EF Core migrations
+        run: |
+          dotnet tool restore
+          dotnet tool run dotnet-ef migrations has-pending-model-changes \
+            --project src/DotNextAI.Persistence --configuration Release --no-build
 
       # Unit tests + HTTP tests against the in-memory API (WebApplicationFactory, Testing environment). Model calls are
       # faked: no LiteLLM proxy and no repository secrets are needed. The root global.json opts into
