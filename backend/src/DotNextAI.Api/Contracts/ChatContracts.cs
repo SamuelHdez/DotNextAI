@@ -5,7 +5,11 @@ namespace DotNextAI.Api.Contracts;
 /// <summary>Body of <c>POST /api/chat</c> (docs/design/api.md).</summary>
 /// <param name="Question">The new question.</param>
 /// <param name="History">Previous turns of the conversation, oldest first; omitted or empty for a first question.</param>
-public sealed record ChatRequestDto(string? Question, IReadOnlyList<ChatTurnDto?>? History);
+/// <param name="Images">Images attached to this question (step 06); omitted or empty when there are none.</param>
+public sealed record ChatRequestDto(string? Question, IReadOnlyList<ChatTurnDto?>? History, IReadOnlyList<ChatImageDto?>? Images = null);
+
+/// <summary>An attached image: its media type and the file bytes in base64 (no <c>data:</c> prefix).</summary>
+public sealed record ChatImageDto(string? MediaType, string? Data);
 
 /// <summary>One turn of the history. <c>role</c> is <c>"user"</c> or <c>"assistant"</c>.</summary>
 public sealed record ChatTurnDto(ChatTurnRole? Role, string? Text);

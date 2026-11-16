@@ -7,6 +7,7 @@
 //   "[e2e:unavailable]"  -> LiteLLM's real 400 "no healthy deployments" answer
 //   "[e2e:slow]"         -> answers after 1.5 s (to see the thinking indicator)
 //   "what is my name"    -> finds "My name is X" in the history: "Your name is X." (proves the history arrives)
+//   image parts          -> "I see N image(s) (types): <question>" when every image is a base64 data URI
 //   anything else        -> "Echo: <question>"
 import { createServer } from "node:http";
 
@@ -35,9 +36,21 @@ function completion(text) {
   };
 }
 
+// Images arrive as OpenAI `image_url` parts with a data URI (step 06): "data:image/png;base64,...".
+function imagesOf(content) {
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter((part) => part?.type === "image_url")
+    .map((part) => /^data:(image\/[a-z]+);base64,[A-Za-z0-9+/]+=*$/.exec(part.image_url?.url ?? "")?.[1] ?? "invalid");
+}
+
 function answerFor(messages) {
   const userMessages = messages.filter((message) => message.role === "user").map((message) => textOf(message.content));
   const question = userMessages.at(-1) ?? "";
+  const images = imagesOf(messages.filter((message) => message.role === "user").at(-1)?.content);
+  if (images.length > 0) {
+    return `I see ${images.length} image${images.length === 1 ? "" : "s"} (${images.join(", ")}): ${question}`;
+  }
   if (/what is my name/i.test(question)) {
     const name = userMessages
       .slice(0, -1)

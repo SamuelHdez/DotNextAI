@@ -7,14 +7,18 @@ internal sealed class FakeChatService(Func<string, ChatAnswer>? answer = null) :
 {
     public bool IsConfigured { get; init; } = true;
 
-    public List<(string Question, ChatTurn[] History)> Calls { get; } = [];
+    public List<(string Question, ChatTurn[] History, ChatImage[] Images)> Calls { get; } = [];
 
     public List<string> Questions => Calls.Select(call => call.Question).ToList();
 
-    public Task<ChatAnswer> AskAsync(string question, IReadOnlyList<ChatTurn> history, CancellationToken cancellationToken)
+    public Task<ChatAnswer> AskAsync(
+        string question,
+        IReadOnlyList<ChatTurn> history,
+        IReadOnlyList<ChatImage> images,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Calls.Add((question, history.ToArray()));
+        Calls.Add((question, history.ToArray(), images.ToArray()));
         return Task.FromResult((answer ?? (q => new ChatAnswer($"answer to {q}", "gpt-5.6-luna", Truncated: false)))(question));
     }
 

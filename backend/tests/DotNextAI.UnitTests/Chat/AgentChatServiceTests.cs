@@ -149,6 +149,55 @@ public class AgentChatServiceTests
     }
 
     [Fact]
+    public async Task AskAsync_WithImages_SendsThemAsBase64DataUrisAfterTheQuestionText()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("A small square."));
+        var service = CreateService(handler);
+        ChatImage[] images = [new(ImageFormats.Png, TestImages.Png), new(ImageFormats.Jpeg, TestImages.Jpeg)];
+
+        var answer = await service.AskAsync("What is in these images?", [], images, TestContext.Current.CancellationToken);
+
+        Assert.Equal("A small square.", answer.Text);
+        using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
+        var question = body.RootElement.GetProperty("messages").EnumerateArray().Last();
+        Assert.Equal("user", question.GetProperty("role").GetString());
+        var parts = question.GetProperty("content").EnumerateArray().ToArray();
+        Assert.Equal(3, parts.Length);
+        Assert.Equal("text", parts[0].GetProperty("type").GetString());
+        Assert.Equal("What is in these images?", parts[0].GetProperty("text").GetString());
+        Assert.Equal("image_url", parts[1].GetProperty("type").GetString());
+        Assert.Equal($"data:image/png;base64,{Convert.ToBase64String(TestImages.Png)}", parts[1].GetProperty("image_url").GetProperty("url").GetString());
+        Assert.Equal($"data:image/jpeg;base64,{Convert.ToBase64String(TestImages.Jpeg)}", parts[2].GetProperty("image_url").GetProperty("url").GetString());
+    }
+
+    [Fact]
+    public async Task AskAsync_WithImages_KeepsTheHistoryAsText()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("Blue."));
+        var service = CreateService(handler);
+        ChatTurn[] history = [new(ChatTurnRole.User, "Describe it"), new(ChatTurnRole.Assistant, "A blue square.")];
+
+        await service.AskAsync("And now this one?", history, [new ChatImage(ImageFormats.Png, TestImages.Png)], TestContext.Current.CancellationToken);
+
+        using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
+        var messages = body.RootElement.GetProperty("messages").EnumerateArray().ToArray();
+        Assert.Equal("Describe it", ContentText(messages[1]));
+        Assert.Equal("A blue square.", ContentText(messages[2]));
+    }
+
+    [Fact]
+    public async Task AskAsync_InvalidImage_ThrowsArgumentExceptionWithoutCallingTheProxy()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong"));
+        var service = CreateService(handler);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.AskAsync(
+            "What is this?", [], [new ChatImage(ImageFormats.Png, TestImages.Text)], TestContext.Current.CancellationToken));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task AskAsync_ModelReportedByTheProxy_IsTheAnswerModel()
     {
         var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong", model: "gpt-5.6-luna-2026-10-01")));

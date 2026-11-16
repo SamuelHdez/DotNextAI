@@ -21,7 +21,14 @@ public sealed class ChatConversation(IChatService chat)
     /// <exception cref="InvalidOperationException">The conversation is full (<see cref="IsFull"/>).</exception>
     /// <exception cref="ArgumentException">The question breaks the rules.</exception>
     /// <exception cref="ChatServiceException">The model could not answer; the conversation is unchanged.</exception>
-    public async Task<ChatAnswer> AskAsync(string question, CancellationToken cancellationToken)
+    public Task<ChatAnswer> AskAsync(string question, CancellationToken cancellationToken) =>
+        AskAsync(question, [], cancellationToken);
+
+    /// <summary>
+    /// Asks the question with its images after the previous turns. The history keeps the text only, so later questions
+    /// see the model's earlier answer about an image, not the image itself (docs/specs/feature-llm-chat.md#images).
+    /// </summary>
+    public async Task<ChatAnswer> AskAsync(string question, IReadOnlyList<ChatImage> images, CancellationToken cancellationToken)
     {
         if (IsFull)
         {
@@ -30,7 +37,7 @@ public sealed class ChatConversation(IChatService chat)
         }
 
         var normalized = ChatRules.NormalizeQuestion(question);
-        var answer = await chat.AskAsync(normalized, _turns.ToArray(), cancellationToken).ConfigureAwait(false);
+        var answer = await chat.AskAsync(normalized, _turns.ToArray(), images, cancellationToken).ConfigureAwait(false);
 
         _turns.Add(new ChatTurn(ChatTurnRole.User, normalized));
         _turns.Add(new ChatTurn(ChatTurnRole.Assistant, answer.Text));

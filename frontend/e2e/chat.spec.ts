@@ -78,6 +78,27 @@ test.describe("chat", () => {
     await expect(conversation(page).getByText("I do not know your name yet.")).toBeVisible();
   });
 
+  test("sends an attached image to the model and shows it in the conversation", async ({ page }) => {
+    // A 1×1 PNG.
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+
+    await page.getByTestId("image-input").setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: png });
+    await expect(page.getByRole("list", { name: "Images for your next question" }).getByRole("img", { name: "Attached image pixel.png" })).toBeVisible();
+    await expectNoA11yViolations(page);
+
+    await ask(page, "What is in this image?");
+
+    await expect(conversation(page).getByText("I see 1 image (image/png): What is in this image?")).toBeVisible();
+    await expect(conversation(page).getByRole("img", { name: "Attached image pixel.png" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Images for your next question" })).toBeHidden();
+  });
+
+  test("rejects a file that is not an image before sending it", async ({ page }) => {
+    await page.getByTestId("image-input").setInputFiles({ name: "notes.png", mimeType: "image/png", buffer: Buffer.from("not an image") });
+
+    await expect(page.getByText("notes.png is not a PNG, JPEG, WebP or GIF image.")).toBeVisible();
+  });
+
   test("has no serious accessibility violations with a conversation", async ({ page }) => {
     await expectNoA11yViolations(page);
 

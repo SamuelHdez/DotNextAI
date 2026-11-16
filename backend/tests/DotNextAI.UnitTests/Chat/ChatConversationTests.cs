@@ -1,5 +1,6 @@
 using DotNextAI.Application.Chat;
 using DotNextAI.UnitTests.Cli;
+using DotNextAI.UnitTests.TestSupport;
 
 namespace DotNextAI.UnitTests.Chat;
 
@@ -53,6 +54,21 @@ public class ChatConversationTests
 
         Assert.True(conversation.IsFull);
         await Assert.ThrowsAsync<InvalidOperationException>(() => conversation.AskAsync("one more", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task AskAsync_WithImages_SendsThemOnceAndKeepsTheTextInTheHistory()
+    {
+        var chat = new FakeChatService();
+        var conversation = new ChatConversation(chat);
+        ChatImage[] images = [new(ImageFormats.Png, TestImages.Png)];
+
+        await conversation.AskAsync("What is this?", images, TestContext.Current.CancellationToken);
+        await conversation.AskAsync("And its colour?", TestContext.Current.CancellationToken);
+
+        Assert.Single(chat.Calls[0].Images);
+        Assert.Empty(chat.Calls[1].Images);
+        Assert.Equal(new ChatTurn(ChatTurnRole.User, "What is this?"), chat.Calls[1].History[0]);
     }
 
     [Fact]

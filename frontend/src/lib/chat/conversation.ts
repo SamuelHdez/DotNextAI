@@ -5,6 +5,8 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+  /** Images sent with a user message, for display (they are not resent with later questions). */
+  images?: { name: string; src: string }[];
   model?: string;
   truncated?: boolean;
 }

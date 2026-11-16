@@ -32,16 +32,39 @@ const useStyles = makeStyles({
     borderBottomLeftRadius: tokens.borderRadiusSmall,
   },
   truncated: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, color: tokens.colorPaletteMarigoldForeground2 },
+  images: { display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: tokens.spacingHorizontalS },
+  image: {
+    maxWidth: "200px",
+    maxHeight: "160px",
+    borderRadius: tokens.borderRadiusLarge,
+    border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    objectFit: "cover",
+  },
 });
+
+function Images({ images, className, imageClassName }: { images?: { name: string; src: string }[]; className: string; imageClassName: string }) {
+  const { t } = useI18n();
+  if (!images?.length) return null;
+  return (
+    <div className={className}>
+      {images.map((image, index) => (
+        // eslint-disable-next-line @next/next/no-img-element -- local data: URI of an attached image, nothing to optimise
+        <img key={index} src={image.src} alt={t("chat.image.alt", { name: image.name })} className={imageClassName} />
+      ))}
+    </div>
+  );
+}
 
 interface ChatMessageListProps {
   messages: readonly ChatMessage[];
   /** Question being answered right now, shown with a "thinking" indicator. */
   pendingQuestion?: string | null;
+  /** Images sent with the pending question. */
+  pendingImages?: { name: string; src: string }[];
 }
 
 /** The conversation, oldest first. New messages are announced by screen readers (role="log") and scrolled into view. */
-export function ChatMessageList({ messages, pendingQuestion }: ChatMessageListProps) {
+export function ChatMessageList({ messages, pendingQuestion, pendingImages }: ChatMessageListProps) {
   const styles = useStyles();
   const { t } = useI18n();
   const end = useRef<HTMLLIElement>(null);
@@ -64,6 +87,7 @@ export function ChatMessageList({ messages, pendingQuestion }: ChatMessageListPr
                 </Text>
                 {message.model && <Caption1>{message.model}</Caption1>}
               </div>
+              <Images images={message.images} className={styles.images} imageClassName={styles.image} />
               <div className={mergeClasses(styles.bubble, isUser ? styles.userBubble : styles.assistantBubble)}>{message.text}</div>
               {message.truncated && (
                 <Caption1 className={styles.truncated}>
@@ -82,6 +106,7 @@ export function ChatMessageList({ messages, pendingQuestion }: ChatMessageListPr
                   {t("chat.you")}
                 </Text>
               </div>
+              <Images images={pendingImages} className={styles.images} imageClassName={styles.image} />
               <div className={mergeClasses(styles.bubble, styles.userBubble)}>{pendingQuestion}</div>
             </li>
             <li className={mergeClasses(styles.row, styles.assistantRow)}>

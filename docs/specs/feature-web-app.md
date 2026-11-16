@@ -1,6 +1,6 @@
 # Web app
 
-> **Status:** Step 05 (web UI with chat) implemented on 2026-11-16.
+> **Status:** Step 06 (image input) implemented on 2026-11-16, on top of step 05 (web UI with chat).
 
 `frontend/` is the browser front end of DotNextAI: a Next.js app with Fluent UI v9 and the ERNI brand, laid out as a dashboard like ValidatorHub. It talks only to `DotNextAI.Api` ([API contract](../design/api.md)). The terminal app stays next to it ([CLI](feature-cli.md)).
 
@@ -18,6 +18,7 @@
 | Conversation | Kept in the chat page's React state: one tab, lost on reload or when leaving the page (the question in flight is cancelled). It follows the product rule "conversations live in the browser". | 2026-11-16 |
 | Answers | Plain text with the model's line breaks (`white-space: pre-wrap`). Markdown rendering is a follow-up, because it needs a sanitizing renderer. | 2026-11-16 |
 | Security | Strict CSP with a per-request nonce (`src/proxy.ts`). `connect-src` allows only the app and the API origin, so a model answer can never make the page call anywhere else. Static security headers come from ValidatorHub. No authentication: local use, like the API. | 2026-11-16 |
+| Images (step 06) | Attach with a button or by pasting (e.g. a screenshot). The browser checks count, size and the file signature before reading or sending, as the backend does. Previews are `data:` URIs (the CSP's `img-src` already allows them), so there are no object URLs to revoke. | 2026-11-16 |
 | Dependencies | Versions at least 7 days old (`npm install --before`), npm only, `npm ci --ignore-scripts`. | 2026-11-16 |
 
 ## Pages
@@ -37,6 +38,11 @@ A dashboard with three cards:
 - **Empty state:** "Ask anything" with three suggested questions; clicking one asks it.
 - **Messages:** user messages on the right in ERNI blue, answers on the left with the model name. A cut answer shows *"The answer was cut off…"*. The list sits inside a `role="log"` live region (the region wraps the `<ol>`, so the list semantics stay) and scrolls to the newest message.
 - **Composer:** a labelled textarea. Enter sends, Shift+Enter adds a line, and Enter while composing with an IME does nothing. The counter appears from 16,000 characters.
+- **Images:**
+  - Attaching: the paperclip button (*Attach images*) opens a file picker (PNG, JPEG, WebP, GIF, several at once), and pasting an image into the question attaches it.
+  - Before sending: attachments show as 64 px thumbnails in a list (*Images for your next question*), each with a *Remove* button.
+  - Rules: up to 4 images of 4 MB each, the format checked from the bytes. Errors under the field: *"notes.png is not a PNG, JPEG, WebP or GIF image."*, *"…is too large…"*, *"You can attach up to 4 images…"*. The button is disabled at 4.
+  - Sending: images go in base64 with that question only and show above it in the conversation. On failure they come back with the question; *New conversation* discards them.
 - **While waiting:** the question is shown with a *"DotNextAI is thinking…"* spinner. Typing goes on, sending is disabled.
 - **History:** every question is sent with the whole conversation (`POST /api/chat`, `history`).
 - **Failure:** an error bar with the localized text, which can be dismissed. The question goes back into the composer (unless something else was typed), and the conversation is unchanged.
@@ -59,6 +65,11 @@ A dashboard with three cards:
   - Problems: the failure shown in Spanish without the API's English detail, and the question given back; unreachable API; truncated answer.
   - Lifecycle: a new conversation without history; empty question.
 - `ChatViewLimit.test.tsx`: the question limit warning and the disabled composer.
+- `ChatViewImages.test.tsx`:
+  - Sending: preview and base64 payload, images not resent in the history.
+  - Attachments: remove, non-image rejected (in Spanish), the limit of 4, paste.
+  - Failure: images kept after a failed question.
+- `images.test.ts`: signature detection, base64 and preview, the content winning over the declared type, size checked before reading.
 - `ServiceStatusCard.test.tsx`: online and configured, not configured hint, unreachable hint (in Spanish).
 - `LanguageMenu.test.tsx`: switching to Spanish updates the UI and the cookie; languages named in their own language. The button's accessible name starts with its visible code (`EN · Language: English`, WCAG 2.5.3).
 - `SideNav.test.tsx`: links, current page, collapsed rail names.

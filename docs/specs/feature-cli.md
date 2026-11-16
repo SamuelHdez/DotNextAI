@@ -1,6 +1,6 @@
 # Terminal app (CLI)
 
-> **Status:** Step 03 (multi-turn chat with history) implemented on 2026-11-16, on top of step 01 (single question and answer). The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
+> **Status:** Step 06 (image input) implemented on 2026-11-16, on top of steps 01 and 03 (single question and answer, multi-turn chat). The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
 
 `dotnextai` (project `backend/src/DotNextAI.Cli`) is the terminal front end of DotNextAI. It uses the same Application and Infrastructure services as the API, so a feature is written once and offered in both front ends.
 
@@ -31,12 +31,14 @@
 | `dotnextai ask What is .NET?` | Same: unquoted words are joined with single spaces. |
 | `echo "…" \| dotnextai ask`, `dotnextai ask < question.txt` | With no question argument and redirected stdin, the whole of stdin is the question (multi-line allowed). |
 | `dotnextai ask` in a terminal | Writes `Question: ` to stderr and reads one line. |
+| `dotnextai ask --image cat.png -i dog.jpg "What is in these pictures?"` | Attaches up to 4 image files (step 06). Each one is loaded and checked before the question is read. |
 
 Rules:
 
 - The question is trimmed. Empty questions and questions longer than 20,000 characters are rejected before any model call ([chat rules](feature-llm-chat.md#rules)).
 - Configuration is checked **before** the question is read, so nobody types a question that cannot be sent.
 - No history: each `ask` run is independent. For a conversation, use the chat.
+- Images (`--image`, `-i`, repeatable): PNG, JPEG, WebP or GIF, recognised by their bytes whatever the extension, at most 4 MB each (the size is checked before reading the file).
 - Ctrl+C cancels the call in progress.
 
 ### `dotnextai` or `dotnextai chat` — multi-turn chat (step 03)
@@ -66,11 +68,14 @@ Rules:
 - Empty lines are ignored.
 - A question that fails (model error, too long) is reported and **not** added to the history. The chat goes on, and the question can be asked again.
 - At 50 questions, further questions are refused with the limit message until `/new`.
+- Attached images go with the next question only. After an answer they are used up; when the question fails they stay attached for the retry. The history keeps the text.
 - Configuration is checked before the banner; when it is missing the chat exits with 3.
 
 | Chat command | Effect |
 | ------------ | ------ |
-| `/new` | Forgets the conversation and writes `Started a new conversation.` |
+| `/image <path>` | Loads an image and attaches it to the **next** question: `Attached cat.png (image/png, 120 KB). It goes with your next question.` Up to 4 per question. |
+| `/images` | Lists the images waiting for the next question, or `No images attached.` |
+| `/new` | Forgets the conversation and the attached images, and writes `Started a new conversation.` |
 | `/help` | Lists the chat commands. |
 | `/exit`, `/quit` | Ends the chat (exit code 0). |
 | any other `/…` | `Unknown command '/…'. Type /help for the list.` |
@@ -95,6 +100,11 @@ All on stderr.
 | Chat: conversation at the limit | `The conversation reached the limit of 50 questions. Type /new to start a new one.` (the chat goes on) | — |
 | Chat: unknown chat command | `Unknown command '/x'. Type /help for the list.` (the chat goes on) | — |
 | Chat: model error, empty or too long question | Same texts as above; the chat goes on | — |
+| Image not found | `Image not found: <path>` | 2 (`ask`), — (chat) |
+| Not an image | `<name> is not a PNG, JPEG, WebP or GIF image.` | 2 (`ask`), — (chat) |
+| Image too large | `<name> is too large (N MB; the maximum is 4 MB).` | 2 (`ask`), — (chat) |
+| Too many images | `ask`: `Too many images (N; the maximum is 4 per question).` Chat: `You can attach up to 4 images to one question.` | 2 (`ask`), — (chat) |
+| `/image` without a path | `Usage: /image <path to a PNG, JPEG, WebP or GIF file>` | — |
 
 Hints after `Error:`:
 
@@ -131,7 +141,7 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 | ---- | ---------- |
 | 02 Agent Framework | **Done 2026-11-16.** `ask` keeps its behavior; the call goes through an Agent Framework agent behind `IChatService`. |
 | 03 Chat history | **Done 2026-11-16.** `dotnextai` / `dotnextai chat`: multi-turn chat with in-memory history, `/new`, `/help`, `/exit`. |
-| 06 Image input | Attach image files by path. |
+| 06 Image input | **Done 2026-11-16.** `ask --image <path>` and `/image <path>` in the chat. |
 | 07 Streaming | Print the answer as it is generated. |
 | 08 Model selector | `--model` option and a command that lists the proxy's chat models. |
 | 09 Image generation | Command that generates an image and saves it to a file. |
@@ -141,5 +151,8 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 
 - `ChatCommandTests` (unit, fake `IChatService`): history sent with each question, stdout with only the answers, banner and prompts, `/exit` `/quit` `/new` `/help`, unknown commands, empty lines, failed question not recorded, too-long question, 50-question limit, not configured (3), Ctrl+C (130).
 - `CliApplicationTests` (unit, fake `IChatService`): `ask` with quoted and unquoted questions, stdin, interactive prompt, no history, empty and too-long questions, not configured (checked before reading), failures with their hints and exit codes, truncation warning, Ctrl+C (130), `--help`, unknown command or option (2).
+- `ImageCommandTests`:
+  - `ask --image`: images detected by content, missing file, non-image, too large, too many.
+  - Chat: `/image` for the next question only, `/images`, `/new` discards, kept after a failure, usage without a path, limit, non-image.
 - `ChatRulesTests`: trimming and the length limit.
 - Manual: `./scripts/dev.sh cli ask "…"` against the proxy (see [todo.md](../tasks/todo.md)).

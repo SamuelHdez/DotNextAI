@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Step 05 implemented on 2026-11-16 (web app), on top of steps 00-04 (backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API). Components marked *planned* arrive with later backlog steps.
+> **Status:** Step 06 implemented on 2026-11-16 (image input in the web, the CLI and the API), on top of steps 00-05 (backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API, web app). Components marked *planned* arrive with later backlog steps.
 
 ## Components
 
@@ -84,3 +84,4 @@ Full contract, status codes and the `failure` extension: [API contract](api.md).
 | 2026-11-16 | Web app (step 05) | Next.js 16 + Fluent UI v9 in `frontend/`, the ValidatorHub shell and ERNI theme files reused. Own typed i18n (English default, Spanish) with a cookie, browser → API directly, per-request CSP nonce. | The same look and the same hardening as the other ERNI apps. The i18n is small enough not to need a library. Direct calls keep the API the only holder of the key and make step 07's streaming straightforward. |
 | 2026-11-16 | npm versions | `npm install --before=<7 days ago>` for the whole tree (direct and transitive). The dev-only ESLint chain keeps 9 moderate `minimatch` advisories whose fixes are younger than that; CI blocks production on high+ and everything on critical, as in the reference repos. | The 7-day cooldown is the supply-chain rule of every ERNI repo here; a moderate dev-tool advisory is the lesser risk. |
 | 2026-11-16 | E2E | Playwright starts a fake OpenAI-compatible LiteLLM (`frontend/e2e/fake-litellm.mjs`), the real API in the `E2E` environment and the production web build on their own ports. axe on every page with no violation allowed (Tabster sentinels excluded). | It tests the whole chain without test code in the API, without secrets and next to a running `dev.sh`. The axe rule set matches the ctf-janus admin suite. |
+| 2026-11-16 | Image input (step 06) | `ChatImage` and `ImageFormats` (signature detection) in Application, the same rules mirrored in the web app. Base64 in the API (`images`), `DataContent` in the agent. Images go only with the question they were attached to. | One rule set in every front end. The bytes decide the format, not names or declared types. Not resending images keeps requests small and image tokens bounded. |

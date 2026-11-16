@@ -15,9 +15,17 @@ export interface ChatTurn {
   text: string;
 }
 
+/** An image attached to the question: its media type and the file bytes in base64 (no `data:` prefix). */
+export interface ChatImage {
+  mediaType: string;
+  data: string;
+}
+
 export interface ChatRequest {
   question: string;
   history: ChatTurn[];
+  /** Images for this question only (step 06); the history stays text. */
+  images?: ChatImage[];
 }
 
 export interface ChatResponse {

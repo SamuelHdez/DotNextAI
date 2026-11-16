@@ -27,7 +27,7 @@ The course backlog, with how this repository maps each step. The spec of each st
 | 03 | Backend basics | Chat history | Add chat history to the conversation. | **Done 2026-11-16.** `dotnextai chat`: multi-turn conversation; the front end keeps the history and sends it with every question ([CLI](feature-cli.md), [chat service](feature-llm-chat.md#conversation-history)). |
 | 04 | Backend basics | API | Encapsulate the LLM logic into an API. | **Done 2026-11-16.** `POST /api/chat` (question + history → answer) over the same `IChatService` as the CLI ([API contract](../design/api.md)). |
 | 05 | Web app | Web UI | Streamlit or React, run locally. | **Done 2026-11-16.** `frontend/`: Next.js + Fluent UI dashboard (ValidatorHub layout, ERNI brand, English/Spanish) with a chat over `POST /api/chat` ([web app](feature-web-app.md)). |
-| 06 | Web app | Image input | Add images in the input, converted to base64. | Image attachments sent as base64 data URIs (`DataContent`). |
+| 06 | Web app | Image input | Add images in the input, converted to base64. | **Done 2026-11-16.** Up to 4 images per question in the web (button or paste) and the CLI (`--image`, `/image`), base64 over the API, `DataContent` to the agent; images go with their question only ([chat service](feature-llm-chat.md#images)). |
 | 07 | Web app | Streaming | Stream the response so the user sees it being generated. | Server-Sent Events from the API, rendered incrementally. |
 | 08 | Extra features | Model selector | Let the user change the model. | Model list from the proxy (`/v1/models`), selected per request. |
 | 09 | Extra features | Image generation | Generate images with a gpt-image model. | OpenAI .NET SDK `ImageClient` through the proxy. |
@@ -45,7 +45,7 @@ Model list reported by the ERNI LiteLLM proxy on 2026-11-16. Each entry has a `m
 | `gpt-realtime-1.5` | realtime | 32,000 / 4,096 | Not used. |
 | `text-embedding-3-small` | embedding | 8,192 / — | Not used. |
 
-Image input (step 06) needs a chat model that accepts images. Check this with `gpt-5.6-luna` when step 06 starts.
+Image input (step 06) assumes that `gpt-5.6-luna` accepts images (decided 2026-11-16, to be confirmed against the real proxy).
 
 ## Global rules
 

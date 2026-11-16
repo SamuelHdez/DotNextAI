@@ -16,6 +16,7 @@ namespace DotNextAI.Infrastructure.Chat;
 /// Backlog step 02: the question goes through a Microsoft Agent Framework agent (<see cref="ChatClientAgent"/>) built on
 /// the OpenAI SDK client of the LiteLLM proxy. Step 01's direct call lives on in git history (commit 2fcbc2a).
 /// Step 03: the caller's history is sent before the question; the agent keeps no state between calls.
+/// Step 06: images go with the question as <see cref="DataContent"/>; the SDK sends them as base64 data URIs.
 /// </summary>
 internal sealed partial class AgentChatService : IChatService
 {
@@ -50,10 +51,12 @@ internal sealed partial class AgentChatService : IChatService
     public async Task<ChatAnswer> AskAsync(
         string question,
         IReadOnlyList<ChatTurn> history,
+        IReadOnlyList<ChatImage> images,
         CancellationToken cancellationToken)
     {
         var prompt = ChatRules.NormalizeQuestion(question);
         ChatRules.ValidateHistory(history);
+        ChatRules.ValidateImages(images);
         if (_agent is null)
         {
             throw ChatFailureMapper.NotConfigured();
@@ -65,7 +68,7 @@ internal sealed partial class AgentChatService : IChatService
         try
         {
             // No AgentSession: the front end owns the history (CLI process, browser), so the API can stay stateless.
-            response = await _agent.RunAsync(ToMessages(history, prompt), cancellationToken: cancellationToken);
+            response = await _agent.RunAsync(ToMessages(history, prompt, images), cancellationToken: cancellationToken);
         }
         catch (ClientResultException ex)
         {
@@ -107,13 +110,16 @@ internal sealed partial class AgentChatService : IChatService
         return new ChatAnswer(text, model, Truncated: response.FinishReason == Microsoft.Extensions.AI.ChatFinishReason.Length);
     }
 
-    private static List<ChatMessage> ToMessages(IReadOnlyList<ChatTurn> history, string question)
+    private static List<ChatMessage> ToMessages(IReadOnlyList<ChatTurn> history, string question, IReadOnlyList<ChatImage> images)
     {
         var messages = new List<ChatMessage>(history.Count + 1);
         messages.AddRange(history.Select(turn => new ChatMessage(
             turn.Role == ChatTurnRole.User ? ChatRole.User : ChatRole.Assistant,
             turn.Text)));
-        messages.Add(new ChatMessage(ChatRole.User, question));
+
+        List<AIContent> contents = [new TextContent(question)];
+        contents.AddRange(images.Select(image => new DataContent(image.Data, image.MediaType)));
+        messages.Add(new ChatMessage(ChatRole.User, contents));
         return messages;
     }
 

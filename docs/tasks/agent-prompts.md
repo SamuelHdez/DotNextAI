@@ -67,3 +67,9 @@ Outcome: `frontend/` with Next.js 16 and Fluent UI v9. The ValidatorHub shell, E
 > OK (go with the E2E suite).
 
 Outcome: Playwright suite in `frontend/e2e` with 15 scenarios and axe on every page. It runs against a fake OpenAI-compatible LiteLLM proxy instead of a fake service inside the API, so the whole chain is tested with no test code in production and no secrets. The run found and fixed two accessibility bugs: label-in-name on the language button, and list semantics in the chat. Added `e2e.yml`, `./scripts/dev.sh e2e` and `docs/design/testing.md`.
+
+## 2026-11-16 — Step 06: image input
+
+> Assume the model accepts images; go with it.
+
+Outcome: images in every front end (web button and paste with previews, CLI `--image` and `/image`, API `images` in base64), sent to the agent as `DataContent`. Rules shared by every front end: up to 4 per question, 4 MB each, format from the file signature. Decision: images go only with the question they were attached to, and the history stays text, to keep requests small. 160 .NET tests, 209 Vitest tests, 17 Playwright scenarios (the fake LiteLLM now checks image data URIs). Also run manually through the CLI against the fake proxy.

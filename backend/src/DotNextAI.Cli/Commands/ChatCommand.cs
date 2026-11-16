@@ -16,9 +16,11 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
     public const string Help =
         """
         Commands:
-          /new         Start a new conversation (forget the previous questions and answers)
-          /help        Show this list
-          /exit, /quit Leave the chat (also Ctrl+D, or Ctrl+Z then Enter on Windows)
+          /image <path> Attach an image (PNG, JPEG, WebP or GIF) to your next question; repeat for up to 4
+          /images       List the images attached to your next question
+          /new          Start a new conversation (forget the previous questions, answers and attached images)
+          /help         Show this list
+          /exit, /quit  Leave the chat (also Ctrl+D, or Ctrl+Z then Enter on Windows)
         """;
 
     public Command Build()
@@ -39,6 +41,7 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
         // With redirected stdin (a script or a file), every line is a question and only the answers are written.
         var interactive = !console.IsInputRedirected;
         var conversation = new ChatConversation(chat);
+        var attachments = new Attachments();
         if (interactive)
         {
             await console.Error.WriteLineAsync(Banner);
@@ -72,7 +75,7 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
 
                 if (input.StartsWith('/'))
                 {
-                    if (await RunChatCommandAsync(input, conversation))
+                    if (await RunChatCommandAsync(input, conversation, attachments))
                     {
                         return ExitCodes.Success;
                     }
@@ -80,7 +83,7 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
                     continue;
                 }
 
-                await AskAsync(conversation, input, interactive, cancellationToken);
+                await AskAsync(conversation, input, attachments, interactive, cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -91,7 +94,12 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
         }
     }
 
-    private async Task AskAsync(ChatConversation conversation, string input, bool interactive, CancellationToken cancellationToken)
+    private async Task AskAsync(
+        ChatConversation conversation,
+        string input,
+        Attachments attachments,
+        bool interactive,
+        CancellationToken cancellationToken)
     {
         if (conversation.IsFull)
         {
@@ -108,7 +116,9 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
 
         try
         {
-            var answer = await conversation.AskAsync(question, cancellationToken);
+            var answer = await conversation.AskAsync(question, attachments.Images, cancellationToken);
+            // Images go with one question only (the history keeps the text); after an answer they are used up.
+            attachments.Clear();
             await console.Out.WriteLineAsync(answer.Text);
             if (answer.Truncated)
             {
@@ -117,7 +127,7 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
         }
         catch (ChatServiceException ex)
         {
-            // The turn is not recorded: the user can ask again without breaking the conversation.
+            // The turn is not recorded and the images stay attached: the user can ask again as it was.
             await CliMessages.WriteFailureAsync(console.Error, ex);
         }
 
@@ -128,14 +138,27 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
     }
 
     /// <returns>True when the chat must end.</returns>
-    private async Task<bool> RunChatCommandAsync(string input, ChatConversation conversation)
+    private async Task<bool> RunChatCommandAsync(string input, ChatConversation conversation, Attachments attachments)
     {
-        switch (input.ToUpperInvariant())
+        var separator = input.IndexOf(' ', StringComparison.Ordinal);
+        var name = (separator < 0 ? input : input[..separator]).ToUpperInvariant();
+        var argument = separator < 0 ? string.Empty : input[(separator + 1)..].Trim();
+
+        switch (name)
         {
+            case "/IMAGE":
+                await AttachAsync(argument, attachments);
+                return false;
+            case "/IMAGES":
+                await console.Error.WriteLineAsync(attachments.Count == 0
+                    ? "No images attached."
+                    : $"Attached to your next question: {string.Join(", ", attachments.Descriptions)}");
+                return false;
             case "/EXIT" or "/QUIT":
                 return true;
             case "/NEW":
                 conversation.Reset();
+                attachments.Clear();
                 await console.Error.WriteLineAsync("Started a new conversation.");
                 return false;
             case "/HELP":
@@ -144,6 +167,55 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
             default:
                 await console.Error.WriteLineAsync($"Unknown command '{input}'. Type /help for the list.");
                 return false;
+        }
+    }
+
+    private async Task AttachAsync(string path, Attachments attachments)
+    {
+        if (path.Length == 0)
+        {
+            await console.Error.WriteLineAsync("Usage: /image <path to a PNG, JPEG, WebP or GIF file>");
+            return;
+        }
+
+        if (attachments.Count >= ChatRules.MaxImagesPerQuestion)
+        {
+            await console.Error.WriteLineAsync($"You can attach up to {ChatRules.MaxImagesPerQuestion} images to one question.");
+            return;
+        }
+
+        if (!ImageFiles.TryLoad(path, out var image, out var error))
+        {
+            await console.Error.WriteLineAsync(error);
+            return;
+        }
+
+        attachments.Add(image, ImageFiles.Describe(image, path));
+        await console.Error.WriteLineAsync($"Attached {attachments.Descriptions[^1]}. It goes with your next question.");
+    }
+
+    /// <summary>Images waiting for the next question.</summary>
+    private sealed class Attachments
+    {
+        private readonly List<ChatImage> _images = [];
+        private readonly List<string> _descriptions = [];
+
+        public IReadOnlyList<ChatImage> Images => _images;
+
+        public IReadOnlyList<string> Descriptions => _descriptions;
+
+        public int Count => _images.Count;
+
+        public void Add(ChatImage image, string description)
+        {
+            _images.Add(image);
+            _descriptions.Add(description);
+        }
+
+        public void Clear()
+        {
+            _images.Clear();
+            _descriptions.Clear();
         }
     }
 }

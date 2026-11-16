@@ -19,20 +19,50 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
             Arity = ArgumentArity.ZeroOrMore,
         };
 
+        var images = new Option<string[]>("--image", "-i")
+        {
+            Description = $"Attach an image file (PNG, JPEG, WebP or GIF, up to {ChatRules.MaxImageBytes / 1024 / 1024} MB). Repeat for up to {ChatRules.MaxImagesPerQuestion} images.",
+            Arity = ArgumentArity.ZeroOrMore,
+            AllowMultipleArgumentsPerToken = false,
+        };
+
         var command = new Command(Name, "Ask one question and print the answer.");
         command.Arguments.Add(question);
+        command.Options.Add(images);
         command.SetAction((parseResult, cancellationToken) =>
-            RunAsync(parseResult.GetValue(question), cancellationToken));
+            RunAsync(parseResult.GetValue(question), parseResult.GetValue(images), cancellationToken));
         return command;
     }
 
-    public async Task<int> RunAsync(string[]? words, CancellationToken cancellationToken)
+    public Task<int> RunAsync(string[]? words, CancellationToken cancellationToken) =>
+        RunAsync(words, [], cancellationToken);
+
+    public async Task<int> RunAsync(string[]? words, string[]? imagePaths, CancellationToken cancellationToken)
     {
         // Checked before asking for the question, so nobody types a question that cannot be sent.
         if (!chat.IsConfigured)
         {
             await console.Error.WriteLineAsync(CliMessages.NotConfigured);
             return ExitCodes.NotConfigured;
+        }
+
+        // Images are loaded before the question is read: a wrong path fails at once.
+        var images = new List<ChatImage>();
+        foreach (var path in imagePaths ?? [])
+        {
+            if (!ImageFiles.TryLoad(path, out var image, out var imageError))
+            {
+                await console.Error.WriteLineAsync(imageError);
+                return ExitCodes.UsageError;
+            }
+
+            images.Add(image);
+        }
+
+        if (!ChatRules.TryValidateImages(images, out var imagesError))
+        {
+            await console.Error.WriteLineAsync(imagesError);
+            return ExitCodes.UsageError;
         }
 
         try
@@ -44,7 +74,7 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
                 return ExitCodes.UsageError;
             }
 
-            var answer = await chat.AskAsync(question, cancellationToken);
+            var answer = await chat.AskAsync(question, [], images, cancellationToken);
             await console.Out.WriteLineAsync(answer.Text);
             if (answer.Truncated)
             {

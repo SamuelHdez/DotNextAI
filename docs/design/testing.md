@@ -32,6 +32,7 @@ No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on e
 | ----------------- | ------ |
 | contains `[e2e:unavailable]` | LiteLLM's real 400 "no healthy deployments" body, so the UI shows `ModelUnavailable` |
 | contains `[e2e:slow]` | answer after 1.5 s, so the "thinking" state is visible |
+| image parts | `I see N image(s) (types): <question>`, with `invalid` for any image that is not a base64 data URI. Proves the image crosses the whole chain in the right format |
 | "what is my name" | `Your name is X.` from an earlier "My name is X" in the history, or `I do not know your name yet.` Proves that the history crosses the whole chain |
 | anything else | `Echo: <question>` |
 
@@ -46,6 +47,7 @@ It answers 401 without a bearer key and 404 on unknown routes. Model name: `e2e-
 - `chat.spec.ts`:
   - Answers: answer with model, history ("Ana"), suggestion click, thinking indicator, Shift+Enter.
   - Failures and reset: outage message with the question given back, new conversation forgets the history.
+  - Images: an image reaches the model as a base64 PNG data URI and shows in the conversation; a non-image is rejected before sending; axe with attachments.
   - axe, empty and with messages.
 - `preferences.spec.ts`:
   - Language: Spanish switch kept after a reload and rendered by the server (`<title>`, `<html lang>`); the chat survives a language change.

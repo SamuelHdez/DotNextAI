@@ -53,6 +53,17 @@ internal static class ChatEndpoints
             errors["history"] = [historyError];
         }
 
+        var images = DecodeImages(request.Images, out var imagesError);
+        if (imagesError is null && !ChatRules.TryValidateImages(images, out var rulesError))
+        {
+            imagesError = rulesError;
+        }
+
+        if (imagesError is not null)
+        {
+            errors["images"] = [imagesError];
+        }
+
         if (errors.Count > 0)
         {
             return TypedResults.ValidationProblem(errors);
@@ -65,12 +76,57 @@ internal static class ChatEndpoints
 
         try
         {
-            var answer = await chat.AskAsync(question, history!, cancellationToken);
+            var answer = await chat.AskAsync(question, history!, images, cancellationToken);
             return TypedResults.Ok(new ChatResponseDto(answer.Text, answer.Model, answer.Truncated));
         }
         catch (ChatServiceException ex)
         {
             return ChatProblems.FromException(ex);
         }
+    }
+
+    // Base64 is decoded here; ChatRules then checks count, size and that the bytes are the declared format.
+    private static ChatImage[] DecodeImages(IReadOnlyList<ChatImageDto?>? images, out string? error)
+    {
+        error = null;
+        if (images is null || images.Count == 0)
+        {
+            return [];
+        }
+
+        if (images.Count > ChatRules.MaxImagesPerQuestion)
+        {
+            error = $"Too many images ({images.Count}; the maximum is {ChatRules.MaxImagesPerQuestion} per question).";
+            return [];
+        }
+
+        var decoded = new ChatImage[images.Count];
+        for (var i = 0; i < images.Count; i++)
+        {
+            var image = images[i];
+            if (string.IsNullOrWhiteSpace(image?.MediaType) || string.IsNullOrEmpty(image.Data))
+            {
+                error = $"Image {i + 1} needs a mediaType and base64 data.";
+                return [];
+            }
+
+            // Rejected by length before decoding (base64 grows 4/3), so an oversized payload never allocates its buffer.
+            if ((long)image.Data.Length * 3 / 4 > ChatRules.MaxImageBytes + 2)
+            {
+                error = $"Image {i + 1} is too large (the maximum is {ChatRules.MaxImageBytes / 1024 / 1024} MB).";
+                return [];
+            }
+
+            var buffer = new byte[image.Data.Length * 3 / 4 + 3];
+            if (!Convert.TryFromBase64String(image.Data, buffer, out var length))
+            {
+                error = $"Image {i + 1} is not valid base64.";
+                return [];
+            }
+
+            decoded[i] = new ChatImage(image.MediaType, buffer.AsMemory(0, length));
+        }
+
+        return decoded;
     }
 }

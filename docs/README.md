@@ -8,9 +8,9 @@ Central index for the specs, design and day-to-day tasks of DotNextAI. Setup and
 | -------- | ----------- | ------ |
 | [Product rules](./specs/product-rules.md) | Course goal, the ten backlog steps, the models of the proxy, and the global rules (LLM through LiteLLM only, secrets, languages, no persistence). | Active |
 
-| [Terminal app (CLI)](./specs/feature-cli.md) | `dotnextai`: chat with history and `ask`, input modes, chat commands, messages, exit codes, and the plan for the CLI in later steps. Permanent deliverable. | Step 03 implemented |
-| [Web app](./specs/feature-web-app.md) | `frontend/`: dashboard shell, ERNI theme, English/Spanish, home and chat pages, errors, limits, security. | Step 05 implemented |
-| [LLM chat service](./specs/feature-llm-chat.md) | `IChatService` contract shared by the CLI and the API, the Agent Framework agent over the LiteLLM proxy, rules, failure mapping, configuration. | Step 03 implemented |
+| [Terminal app (CLI)](./specs/feature-cli.md) | `dotnextai`: chat with history and `ask`, images, input modes, chat commands, messages, exit codes, and the plan for the CLI in later steps. Permanent deliverable. | Step 06 implemented |
+| [Web app](./specs/feature-web-app.md) | `frontend/`: dashboard shell, ERNI theme, English/Spanish, home and chat pages, image attachments, errors, limits, security. | Step 06 implemented |
+| [LLM chat service](./specs/feature-llm-chat.md) | `IChatService` contract shared by the CLI and the API, the Agent Framework agent over the LiteLLM proxy, rules, images, failure mapping, configuration. | Step 06 implemented |
 
 One `feature-*.md` per backlog step or feature is added when it starts.
 
@@ -18,9 +18,9 @@ One `feature-*.md` per backlog step or feature is added when it starts.
 
 | Document | Description | Status |
 | -------- | ----------- | ------ |
-| [Architecture](./design/architecture.md) | Components, ports, configuration, project layering, and the technology decisions log. | Step 05 implemented |
+| [Architecture](./design/architecture.md) | Components, ports, configuration, project layering, and the technology decisions log. | Step 06 implemented |
 | [Testing](./design/testing.md) | Test layers (.NET unit and integration, Vitest, Playwright E2E with axe), the fake LiteLLM proxy and how to run each. | Implemented |
-| [API contract](./design/api.md) | Endpoints, request and response JSON, validation, status codes and the `failure` extension, rate limit, CORS. Source for the web app's types. | Step 04 implemented |
+| [API contract](./design/api.md) | Endpoints, request and response JSON, validation, status codes and the `failure` extension, images, rate limit, CORS. Source for the web app's types. | Step 06 implemented |
 
 ## Tasks — day-to-day work
 

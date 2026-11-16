@@ -136,6 +136,77 @@ public class ChatEndpointTests(DotNextAIApiFactory factory) : IClassFixture<DotN
         Assert.Empty(chat.Calls);
     }
 
+    // A 1×1 PNG.
+    private const string PngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+    [Fact]
+    public async Task Post_WithImages_PassesTheDecodedImagesToTheModel()
+    {
+        var chat = new FakeChatService();
+        using var client = factory.CreateClientWith(chat);
+
+        using var response = await client.PostAsJsonAsync(
+            Chat,
+            new { question = "What is this?", images = new[] { new { mediaType = "image/png", data = PngBase64 } } },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var image = Assert.Single(Assert.Single(chat.Calls).Images);
+        Assert.Equal("image/png", image.MediaType);
+        Assert.Equal(Convert.FromBase64String(PngBase64), image.Data.ToArray());
+    }
+
+    [Theory]
+    [InlineData("image/png", "not base64!", "not valid base64")]
+    [InlineData("image/jpeg", PngBase64, "declared as 'image/jpeg' but its content is image/png")]
+    [InlineData("image/png", "VGhpcyBpcyBub3QgYW4gaW1hZ2Uu", "is not a PNG, JPEG, WebP or GIF image")]
+    [InlineData("", PngBase64, "needs a mediaType and base64 data")]
+    [InlineData("image/png", "", "needs a mediaType and base64 data")]
+    public async Task Post_InvalidImage_Returns400WithTheReasonWithoutCallingTheModel(string mediaType, string data, string reason)
+    {
+        var chat = new FakeChatService();
+        using var client = factory.CreateClientWith(chat);
+
+        using var response = await client.PostAsJsonAsync(
+            Chat,
+            new { question = "What is this?", images = new[] { new { mediaType, data } } },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = (await ReadJsonAsync(response)).GetProperty("errors").GetProperty("images");
+        Assert.Contains(reason, errors[0].GetString(), StringComparison.Ordinal);
+        Assert.Empty(chat.Calls);
+    }
+
+    [Fact]
+    public async Task Post_TooManyImages_Returns400()
+    {
+        var chat = new FakeChatService();
+        using var client = factory.CreateClientWith(chat);
+        var images = Enumerable.Range(0, ChatRules.MaxImagesPerQuestion + 1).Select(_ => new { mediaType = "image/png", data = PngBase64 });
+
+        using var response = await client.PostAsJsonAsync(Chat, new { question = "Hi", images }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(chat.Calls);
+    }
+
+    [Fact]
+    public async Task Post_TooLargeImage_Returns400WithoutDecodingIt()
+    {
+        var chat = new FakeChatService();
+        using var client = factory.CreateClientWith(chat);
+        var data = new string('A', (ChatRules.MaxImageBytes / 3 * 4) + 16);
+
+        using var response = await client.PostAsJsonAsync(
+            Chat,
+            new { question = "Hi", images = new[] { new { mediaType = "image/png", data } } },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("too large", (await ReadJsonAsync(response)).GetProperty("errors").GetProperty("images")[0].GetString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Post_NotConfigured_Returns503WithTheFailure()
     {

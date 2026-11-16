@@ -20,6 +20,12 @@ public static class ChatRules
     /// <summary>Maximum history turns sent with a question (a question and its answer are two turns).</summary>
     public const int MaxHistoryTurns = 2 * MaxConversationQuestions;
 
+    /// <summary>Maximum images attached to one question.</summary>
+    public const int MaxImagesPerQuestion = 4;
+
+    /// <summary>Maximum size of one image file (4 MB). Four of them stay well below the API's request size limit.</summary>
+    public const int MaxImageBytes = 4 * 1024 * 1024;
+
     /// <summary>Trims the question and checks it against the rules.</summary>
     /// <param name="question">Raw question.</param>
     /// <param name="normalized">Trimmed question when valid; empty otherwise.</param>
@@ -67,6 +73,62 @@ public static class ChatRules
 
         error = null;
         return true;
+    }
+
+    /// <summary>Checks the images attached to a question: count, size, and that the bytes are the declared format.</summary>
+    /// <param name="images">Attached images (empty when there are none).</param>
+    /// <param name="error">User-facing reason when invalid.</param>
+    public static bool TryValidateImages(IReadOnlyList<ChatImage?> images, [NotNullWhen(false)] out string? error)
+    {
+        ArgumentNullException.ThrowIfNull(images);
+        if (images.Count > MaxImagesPerQuestion)
+        {
+            error = $"Too many images ({images.Count}; the maximum is {MaxImagesPerQuestion} per question).";
+            return false;
+        }
+
+        for (var i = 0; i < images.Count; i++)
+        {
+            var image = images[i];
+            var position = i + 1;
+            if (image is null || image.Data.IsEmpty)
+            {
+                error = $"Image {position} is empty.";
+                return false;
+            }
+
+            if (image.Data.Length > MaxImageBytes)
+            {
+                error = $"Image {position} is too large ({image.Data.Length / 1024 / 1024.0:F1} MB; the maximum is {MaxImageBytes / 1024 / 1024} MB).";
+                return false;
+            }
+
+            var detected = ImageFormats.Detect(image.Data.Span);
+            if (detected is null)
+            {
+                error = $"Image {position} is not a PNG, JPEG, WebP or GIF image.";
+                return false;
+            }
+
+            if (!string.Equals(detected, image.MediaType, StringComparison.OrdinalIgnoreCase))
+            {
+                error = $"Image {position} is declared as '{image.MediaType}' but its content is {detected}.";
+                return false;
+            }
+        }
+
+        error = null;
+        return true;
+    }
+
+    /// <summary>Checks the images attached to a question.</summary>
+    /// <exception cref="ArgumentException">The images break the rules of <see cref="TryValidateImages"/>.</exception>
+    public static void ValidateImages(IReadOnlyList<ChatImage> images)
+    {
+        if (!TryValidateImages(images, out var error))
+        {
+            throw new ArgumentException(error, nameof(images));
+        }
     }
 
     /// <summary>Checks the history passed with a question.</summary>

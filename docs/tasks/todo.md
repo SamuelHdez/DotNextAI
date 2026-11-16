@@ -36,7 +36,7 @@
 - [x] 2026-11-16 — 05 Web UI: `frontend/` Next.js 16 + Fluent UI v9 with the ValidatorHub shell and ERNI theme, English/Spanish selector, home (service status, backlog) and chat over `POST /api/chat` ([web app](../specs/feature-web-app.md)).
 - [ ] 05 follow-up: render answers as Markdown with a sanitizing renderer.
 - [ ] 05 follow-up: remove the 9 moderate dev-only `minimatch` advisories (ESLint chain) once the fixed versions pass the 7-day cooldown (Dependabot).
-- [ ] 06 Image input: attachments as base64.
+- [x] 2026-11-16 — 06 Image input: up to 4 images (PNG/JPEG/WebP/GIF, 4 MB) per question in the web (button, paste), the CLI (`--image`, `/image`) and the API (`images`, base64), `DataContent` to the agent; format from the bytes; images go with their question only ([chat service](../specs/feature-llm-chat.md#images)).
 - [ ] 07 Streaming: SSE from the API, incremental rendering.
 
 ## Phase 3 — Extra features
@@ -49,5 +49,5 @@
 
 - [x] 2026-11-16 — UI languages: English (default) and Spanish, with a selector.
 - [x] 2026-11-16 — Models of the ERNI LiteLLM proxy: chat `gpt-5.6-luna` (default) and `gpt-5.6-terra`, image `gpt-image-2` (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)).
-- [ ] Check that `gpt-5.6-luna` accepts image input (step 06).
+- [ ] Confirm that `gpt-5.6-luna` accepts image input (assumed for step 06) once the proxy has healthy deployments.
 - [x] 2026-11-16 — CLI language: English only (invariant culture). Multi-language is for the web UI.

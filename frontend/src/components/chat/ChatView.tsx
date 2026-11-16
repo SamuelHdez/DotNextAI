@@ -17,6 +17,7 @@ import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { PageBody, PageHeader } from "@/components/ui/PageLayout";
 import { chatErrorMessage, type LocalizedError } from "@/lib/chat/chatErrors";
 import { checkQuestion, MAX_CONVERSATION_QUESTIONS, MAX_QUESTION_LENGTH } from "@/lib/chat/chatRules";
+import { MAX_IMAGE_MEGABYTES, MAX_IMAGES_PER_QUESTION, readImageFile, type ImageAttachment } from "@/lib/chat/images";
 import { questionCount, toHistory, type ChatMessage } from "@/lib/chat/conversation";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { MessageKey } from "@/lib/i18n/messages/en";
@@ -62,6 +63,8 @@ export function ChatView() {
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const [error, setError] = useState<LocalizedError | null>(null);
   const [inputError, setInputError] = useState<LocalizedError | null>(null);
+  const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
+  const [pendingImages, setPendingImages] = useState<{ name: string; src: string }[]>([]);
   const request = useRef<AbortController | null>(null);
   const nextId = useRef(0);
 
@@ -86,27 +89,44 @@ export function ChatView() {
     setError(null);
     setDraft("");
     setPendingQuestion(check.question);
+    const sentImages = attachments;
+    setAttachments([]);
+    setPendingImages(sentImages.map(({ name, previewUrl }) => ({ name, src: previewUrl })));
     const controller = new AbortController();
     request.current = controller;
 
     try {
-      const response = await sendChat({ question: check.question, history: toHistory(messages) }, controller.signal);
+      const response = await sendChat(
+        {
+          question: check.question,
+          history: toHistory(messages),
+          ...(sentImages.length > 0 && { images: sentImages.map(({ mediaType, data }) => ({ mediaType, data })) }),
+        },
+        controller.signal,
+      );
       const id = nextId.current;
       nextId.current += 2;
       setMessages((current) => [
         ...current,
-        { id: `m${id}`, role: "user", text: check.question },
+        {
+          id: `m${id}`,
+          role: "user",
+          text: check.question,
+          images: sentImages.length > 0 ? sentImages.map(({ name, previewUrl }) => ({ name, src: previewUrl })) : undefined,
+        },
         { id: `m${id + 1}`, role: "assistant", text: response.answer, model: response.model, truncated: response.truncated },
       ]);
     } catch (failure) {
       if (controller.signal.aborted) return;
       setError(chatErrorMessage(failure));
-      // Give the question back so it can be sent again (unless the user already typed something else).
+      // Give the question and its images back so they can be sent again (unless the user already typed or attached more).
       setDraft((current) => current || text);
+      setAttachments((current) => (current.length > 0 ? current : sentImages));
     } finally {
       if (request.current === controller) {
         request.current = null;
         setPendingQuestion(null);
+        setPendingImages([]);
       }
     }
   }
@@ -115,9 +135,27 @@ export function ChatView() {
     request.current?.abort();
     request.current = null;
     setPendingQuestion(null);
+    setPendingImages([]);
     setMessages([]);
     setError(null);
     setInputError(null);
+    setAttachments([]);
+  }
+
+  async function addFiles(files: File[]) {
+    const free = MAX_IMAGES_PER_QUESTION - attachments.length;
+    let problem: LocalizedError | null = files.length > free ? { key: "image.tooMany", params: { max: MAX_IMAGES_PER_QUESTION } } : null;
+    const added: ImageAttachment[] = [];
+    for (const file of files.slice(0, Math.max(free, 0))) {
+      const result = await readImageFile(file);
+      if (result.ok) {
+        added.push({ ...result.attachment, id: `a${nextId.current++}` });
+      } else {
+        problem ??= { key: `image.${result.reason}`, params: { name: result.name, max: MAX_IMAGE_MEGABYTES } };
+      }
+    }
+    setAttachments((current) => [...current, ...added].slice(0, MAX_IMAGES_PER_QUESTION));
+    setInputError(problem);
   }
 
   const isEmpty = messages.length === 0 && !pendingQuestion;
@@ -149,7 +187,7 @@ export function ChatView() {
             </div>
           </div>
         ) : (
-          <ChatMessageList messages={messages} pendingQuestion={pendingQuestion} />
+          <ChatMessageList messages={messages} pendingQuestion={pendingQuestion} pendingImages={pendingImages} />
         )}
       </div>
 
@@ -179,6 +217,9 @@ export function ChatView() {
           busy={pendingQuestion !== null}
           disabled={full}
           validationMessage={inputError ? t(inputError.key, inputError.params) : undefined}
+          attachments={attachments}
+          onAddFiles={(files) => void addFiles(files)}
+          onRemoveAttachment={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
         />
       </div>
     </PageBody>

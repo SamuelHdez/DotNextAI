@@ -1,6 +1,6 @@
 # API contract
 
-> **Status:** Step 04 (chat endpoint) implemented on 2026-11-16. The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
+> **Status:** Step 06 (images in the chat endpoint) implemented on 2026-11-16, on top of step 04 (chat endpoint). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
 
 `DotNextAI.Api` is an ASP.NET Core 10 Minimal API on `http://localhost:5100`. It exposes the same chat service as the CLI ([chat service](../specs/feature-llm-chat.md)) and is meant for local use by the web app. In Development the OpenAPI document is at `/openapi/v1.json` and Swagger UI at `/swagger`; `backend/src/DotNextAI.Api/DotNextAI.Api.http` has ready-made requests.
 
@@ -39,6 +39,9 @@ Request:
   "history": [
     { "role": "user", "text": "My name is Ana." },
     { "role": "assistant", "text": "Nice to meet you, Ana." }
+  ],
+  "images": [
+    { "mediaType": "image/png", "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..." }
   ]
 }
 ```
@@ -47,6 +50,7 @@ Request:
 | ----- | ----- |
 | `question` | Required. Trimmed; 1-20,000 characters. |
 | `history` | Optional (omitted or `[]` for a first question). Oldest first, at most 100 turns (50 questions and their answers). Every turn needs `role` (`"user"` or `"assistant"`; `"system"` and numbers are rejected) and a non-empty `text`. |
+| `images` | Optional (step 06). Images for **this question only**; the history stays text. At most 4. `mediaType` is `image/png`, `image/jpeg`, `image/webp` or `image/gif` and must match the bytes; `data` is the file in base64 (no `data:` prefix), at most 4 MB decoded. Oversized data is rejected before it is decoded. |
 
 `200`:
 
@@ -60,7 +64,7 @@ Request:
 
 | Status | `failure` | When |
 | ------ | --------- | ---- |
-| 400 | — (`errors.question` / `errors.history`) | Invalid question or history, unknown role, malformed JSON |
+| 400 | — (`errors.question` / `errors.history` / `errors.images`) | Invalid question, history or images (count, base64, size, format, declared type different from the content), unknown role, malformed JSON |
 | 405 | — | Any method other than `POST` on `/api/chat` |
 | 422 | `BadRequest` | The proxy refused the request, e.g. context window exceeded |
 | 429 | `RateLimited` | The API's own limit (with a `Retry-After` header in seconds), or the proxy's rate limit or budget |
@@ -101,6 +105,7 @@ Only the origins in `Cors:AllowedOrigins` (`http://localhost:3030` in Developmen
 
 - `ChatEndpointTests` (integration, `WebApplicationFactory` with a fake `IChatService`):
   - Answers: answer with model and `truncated`; history passed in order; trimmed question.
+  - Images: decoded and passed to the model; 400 for invalid base64, a type mismatch, a non-image, missing fields, too many and too large (rejected before decoding).
   - Validation: 400 for an empty, missing or too-long question; empty, role-less or null turns; history over the limit; `"system"` or numeric roles; malformed JSON. None of them calls the model.
   - Failures: 503 when not configured; the status, `failure`, `title` and `detail` of every `ChatFailure`.
   - Limits and CORS: 429 with `Retry-After` over the rate limit, the CORS preflight for `POST`, 405 for `GET`.
