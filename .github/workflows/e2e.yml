@@ -1,0 +1,94 @@
+name: E2E
+
+# Browser tests need the web app and the API (and a fake LiteLLM proxy that ships with the tests), so any change to
+# either of them runs the suite.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - "global.json"
+      - "nuget.config"
+      - ".github/workflows/e2e.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - "global.json"
+      - "nuget.config"
+      - ".github/workflows/e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  NODE_VERSION: "24"
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  NEXT_TELEMETRY_DISABLED: "1"
+  # Locked-mode NuGet restore (see backend/Directory.Build.props).
+  ContinuousIntegrationBuild: "true"
+
+jobs:
+  e2e:
+    name: Playwright (production build, real API, fake LiteLLM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: backend/**/packages.lock.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Playwright starts the API with `dotnet run --no-build`.
+      - name: Build the API (Release, locked restore)
+        run: dotnet build backend/DotNextAI.slnx --configuration Release
+
+      # Lifecycle scripts are a common malware vector in compromised packages.
+      - name: Install dependencies (no install scripts)
+        working-directory: frontend
+        run: npm ci --ignore-scripts
+
+      # Browser version pinned by @playwright/test in package-lock.json; --with-deps installs its system libraries.
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # Starts the fake LiteLLM proxy, the API (E2E environment, generated key, no repository secrets) and the
+      # production build of the web app, then runs the suite with its axe accessibility checks.
+      - name: Run browser tests
+        working-directory: frontend
+        run: npm run e2e
+
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-results
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

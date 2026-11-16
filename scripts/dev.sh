@@ -8,6 +8,7 @@
 #   ./scripts/dev.sh secrets               Set the LiteLLM proxy endpoint, default model and API key (user-secrets)
 #   ./scripts/dev.sh build [backend|frontend]  Build as in CI (.NET with warnings as errors, Next.js production build)
 #   ./scripts/dev.sh test [backend|frontend]   Run the checks of CI (.NET tests; ESLint, type-check and Vitest)
+#   ./scripts/dev.sh e2e                   Playwright suite as in CI: fake LiteLLM + API + production web build
 #   ./scripts/dev.sh status                Show the tools, the LLM settings (never the key) and what is running
 #
 # Secrets live in `dotnet user-secrets` (one store shared by the API and the CLI), never in tracked files.
@@ -41,7 +42,7 @@ die() {
   exit 1
 }
 
-usage() { sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 # --- tools --------------------------------------------------------------------------------------
 
@@ -210,6 +211,17 @@ test_frontend() {
   npm_run --prefix "$FRONTEND_DIR" run test:coverage
 }
 
+cmd_e2e() {
+  ensure_dotnet
+  ensure_frontend_deps
+  step "Backend: build (Release; Playwright starts the API with --no-build)"
+  "$DOTNET" build "$SOLUTION" --configuration Release
+  step "Playwright Chromium (pinned by @playwright/test)"
+  (cd "$FRONTEND_DIR" && npm_run exec -- playwright install chromium)
+  step "Browser tests (fake LiteLLM :4010, API :5199, web :3039; the real proxy and key are never used)"
+  npm_run --prefix "$FRONTEND_DIR" run e2e
+}
+
 # `build` and `test` take an optional part; without it they run both, backend first.
 cmd_for_parts() {
   local backend="$1" frontend="$2" part="${3:-all}"
@@ -317,6 +329,7 @@ main() {
     secrets) cmd_secrets ;;
     build) cmd_for_parts build_backend build_frontend "$@" ;;
     test) cmd_for_parts test_backend test_frontend "$@" ;;
+    e2e) cmd_e2e ;;
     status) cmd_status ;;
     -h | --help | help) usage ;;
     *)

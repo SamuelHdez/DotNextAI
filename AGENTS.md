@@ -17,6 +17,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 | `frontend/` | Web app (port 3030): dashboard shell, home, chat. Spec in [`docs/specs/feature-web-app.md`](docs/specs/feature-web-app.md) | Next.js 16, React 19, TypeScript 5, Fluent UI v9, Vitest |
 | `backend/Dockerfile` | API image (non-root, digest-pinned base images); built and scanned in CI, never pushed | Docker |
 | `.github/` | CI workflows (`backend-ci.yml`, `security.yml`) and `dependabot.yml` | GitHub Actions |
+| `frontend/e2e/` | Playwright suite and the fake LiteLLM proxy it runs against | Playwright, axe-core |
 | `scripts/dev.sh` | Local orchestrator | bash (Git Bash, WSL, macOS, Linux) |
 | `docs/` | Specs, design and tasks (see below) | Markdown |
 
@@ -36,6 +37,7 @@ Before saying a change is done, run what it touches and report the real result. 
 
 - .NET: `./scripts/dev.sh test`, which runs `dotnet build backend/DotNextAI.slnx -warnaserror` and `dotnet test --solution backend/DotNextAI.slnx`. The root `global.json` selects Microsoft.Testing.Platform, so `dotnet test` needs `--solution` or `--project`. It is found by walking up from the current directory, so run .NET commands from the repository or any folder below it. CI (`backend-ci.yml`) restores in locked mode, builds with analyzer warnings as errors, runs Semgrep and scans the API image with Trivy.
 - Web: `npm --prefix frontend run lint`, `typecheck`, `test` and `build` (or `./scripts/dev.sh test frontend`). CI also runs `npm audit` and Semgrep.
+- UI or API changes: `./scripts/dev.sh e2e` (Playwright + axe against a fake LiteLLM, the real API and the production web build).
 - Manual check: `./scripts/dev.sh status` while `./scripts/dev.sh` runs.
 
 ## Documentation is part of every change
@@ -95,6 +97,7 @@ Web app (`frontend/`):
 - Keep the CSP strict: no new inline scripts without the nonce, and any new origin the browser must reach goes into `buildContentSecurityPolicy`.
 - npm only. New or updated packages must be at least 7 days old (`npm install --before=<date>`), installed with `--ignore-scripts`, and the `package-lock.json` committed.
 - Tests: Vitest + Testing Library next to the code (`*.test.ts(x)`), rendered with `renderWithProviders`, and `fetch` stubbed (never a real API).
+- E2E in `frontend/e2e` ([testing](docs/design/testing.md)). Locate by role and accessible name, like users do. New pages and states get a scenario and an `expectNoA11yViolations` check, with zero violations allowed. New model behaviours are added to `e2e/fake-litellm.mjs`, never as test code in the API.
 
 Tests and CI:
 

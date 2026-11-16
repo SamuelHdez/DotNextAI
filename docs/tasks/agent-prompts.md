@@ -61,3 +61,9 @@ Outcome: `POST /api/chat`, stateless (question + history), over the same `IChatS
 > Those languages are fine; the language is changed with a selector. Build a dashboard structure like ValidatorHub's, with Fluent UI and the ERNI colours.
 
 Outcome: `frontend/` with Next.js 16 and Fluent UI v9. The ValidatorHub shell, ERNI theme, Griffel SSR and security headers are reused. A typed English/Spanish i18n with a cookie-backed selector. Home page: service status and course backlog. Chat page over `POST /api/chat`, with errors from the `failure` code. Also `frontend-ci.yml`, the Dockerfile, Dependabot npm, and `dev.sh` starting the API and the web together. All npm versions at least 7 days old (`--before`). 184 Vitest tests, lint and type-check clean, production build OK. Manually checked in light and dark mode, and in English and Spanish rendered on the server.
+
+## 2026-11-16 — E2E with Playwright
+
+> OK (go with the E2E suite).
+
+Outcome: Playwright suite in `frontend/e2e` with 15 scenarios and axe on every page. It runs against a fake OpenAI-compatible LiteLLM proxy instead of a fake service inside the API, so the whole chain is tested with no test code in production and no secrets. The run found and fixed two accessibility bugs: label-in-name on the language button, and list semantics in the chat. Added `e2e.yml`, `./scripts/dev.sh e2e` and `docs/design/testing.md`.

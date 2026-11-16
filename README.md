@@ -13,7 +13,7 @@ Technical documentation, backlog and decisions: [docs/](docs/README.md).
 - A LiteLLM proxy URL and virtual key from ERNI, plus the name of a model it exposes.
 - Node.js 24 LTS and npm (22 or later works locally), for the web app.
 - Optional: Docker, to build the images locally (`docker build backend`, `docker build --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:5100 frontend`). CI builds both.
-- Later steps: Playwright browsers (E2E).
+- Playwright's Chromium for the E2E suite (`./scripts/dev.sh e2e` installs it).
 
 ## Running the project
 
@@ -28,6 +28,7 @@ From the repository root, in Git Bash:
 ./scripts/dev.sh cli          # terminal app: chat with history
 ./scripts/dev.sh test         # as in CI: .NET build + tests, then ESLint, type-check and Vitest (`test backend|frontend`)
 ./scripts/dev.sh build        # .NET Release build + Next.js production build (`build backend|frontend`)
+./scripts/dev.sh e2e          # Playwright + axe: fake LiteLLM, real API, production web build (no secrets)
 ./scripts/dev.sh status       # SDK, LLM settings (never the key) and whether the API answers
 ./scripts/dev.sh --help
 ```
@@ -132,6 +133,7 @@ GitHub Actions, the same pipelines as ValidatorHub and ctf-janus:
 | -------- | ------- | ------------ |
 | `backend-ci.yml` | Changes to `backend/`, `global.json`, `nuget.config` | Semgrep (C#, Dockerfile, secrets) → locked restore → vulnerable-package check → Release build with `-warnaserror` → unit and integration tests with coverage → API image build, CycloneDX SBOM and Trivy scan (fails on fixable HIGH/CRITICAL) |
 | `frontend-ci.yml` | Changes to `frontend/` | Semgrep (TypeScript, React, Next.js, Dockerfile, secrets) → `npm ci --ignore-scripts` → registry signatures and `npm audit` → ESLint → type-check → Vitest with coverage → production build → web image build, SBOM and Trivy scan |
+| `e2e.yml` | Changes to `frontend/` or `backend/` | Builds the API, then Playwright starts a fake LiteLLM proxy, the API and the production web build, and runs the browser suite with axe accessibility checks ([testing](docs/design/testing.md)) |
 | `security.yml` | Every push and PR to `main`, plus weekly | Gitleaks over the whole git history, and zizmor over the workflows |
 | `dependabot.yml` | Weekly | npm, NuGet, Docker base images and GitHub Actions, each update 7 days after its release. Framework majors (.NET 11, Node, TypeScript, ESLint) are done manually |
 
@@ -141,6 +143,7 @@ All actions are pinned by commit SHA, tool binaries by version and checksum, and
 
 ```bash
 ./scripts/dev.sh test
+./scripts/dev.sh e2e
 ```
 
-Expected: .NET build with 0 warnings, ESLint and type-check clean, all tests green (frontend: Vitest suites; backend: `LlmOptionsTests`, `ChatRulesTests`, `ChatConversationTests`, `AgentChatServiceTests`, `CliApplicationTests`, `ChatCommandTests`, `HealthEndpointTests`, `ChatEndpointTests`). End to end, against the proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.
+Expected: .NET build with 0 warnings, ESLint and type-check clean, all tests green (frontend: Vitest suites; backend: `LlmOptionsTests`, `ChatRulesTests`, `ChatConversationTests`, `AgentChatServiceTests`, `CliApplicationTests`, `ChatCommandTests`, `HealthEndpointTests`, `ChatEndpointTests`). E2E: 15 Playwright scenarios with no axe violation. Against the real proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.

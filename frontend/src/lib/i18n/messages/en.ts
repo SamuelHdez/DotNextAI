@@ -15,7 +15,7 @@ export const en = {
   "nav.expand": "Expand navigation",
 
   "prefs.language": "Language",
-  "prefs.languageCurrent": "Language: {language}",
+  "prefs.languageCurrent": "{code} · Language: {language}",
   "prefs.appearance": "Appearance",
   "prefs.appearanceCurrent": "Appearance: {theme}",
   "theme.system": "System",

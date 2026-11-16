@@ -14,7 +14,7 @@ export const es: Messages = {
   "nav.expand": "Expandir navegación",
 
   "prefs.language": "Idioma",
-  "prefs.languageCurrent": "Idioma: {language}",
+  "prefs.languageCurrent": "{code} · Idioma: {language}",
   "prefs.appearance": "Apariencia",
   "prefs.appearanceCurrent": "Apariencia: {theme}",
   "theme.system": "Sistema",

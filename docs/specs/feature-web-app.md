@@ -35,7 +35,7 @@ A dashboard with three cards:
 ### Chat (`/chat`)
 
 - **Empty state:** "Ask anything" with three suggested questions; clicking one asks it.
-- **Messages:** user messages on the right in ERNI blue, answers on the left with the model name. A cut answer shows *"The answer was cut off…"*. The list is a `role="log"` live region and scrolls to the newest message.
+- **Messages:** user messages on the right in ERNI blue, answers on the left with the model name. A cut answer shows *"The answer was cut off…"*. The list sits inside a `role="log"` live region (the region wraps the `<ol>`, so the list semantics stay) and scrolls to the newest message.
 - **Composer:** a labelled textarea. Enter sends, Shift+Enter adds a line, and Enter while composing with an IME does nothing. The counter appears from 16,000 characters.
 - **While waiting:** the question is shown with a *"DotNextAI is thinking…"* spinner. Typing goes on, sending is disabled.
 - **History:** every question is sent with the whole conversation (`POST /api/chat`, `history`).
@@ -60,11 +60,11 @@ A dashboard with three cards:
   - Lifecycle: a new conversation without history; empty question.
 - `ChatViewLimit.test.tsx`: the question limit warning and the disabled composer.
 - `ServiceStatusCard.test.tsx`: online and configured, not configured hint, unreachable hint (in Spanish).
-- `LanguageMenu.test.tsx`: switching to Spanish updates the UI and the cookie; languages named in their own language.
+- `LanguageMenu.test.tsx`: switching to Spanish updates the UI and the cookie; languages named in their own language. The button's accessible name starts with its visible code (`EN · Language: English`, WCAG 2.5.3).
 - `SideNav.test.tsx`: links, current page, collapsed rail names.
 - `I18nProvider.test.tsx`, `translate.test.ts`, `messages.test.ts`: the same keys and placeholders in both languages, number formatting, cookie and `<html lang>`.
 - `chat.test.ts`, `apiClient.test.ts`: question rules, history, error mapping for every `failure`, the request shape, problem parsing, network and abort errors.
 - `contentSecurityPolicy.test.ts`: nonce-only scripts and `connect-src` limited to the API.
 - Theme and brand tests copied from ValidatorHub (`erniBrand`, `fluentThemeCss`, `themePreference`, `ErniLogo`, `streamedStyles`).
 - Manual, 2026-11-16: `./scripts/dev.sh`, then home and chat in light and dark, server-rendered English and Spanish (`<title>`, `<html lang>`), the CSP header, and CORS from `http://localhost:3030`.
-- Planned: Playwright E2E (`e2e.yml`, next step).
+- Playwright E2E with axe (`frontend/e2e`, `e2e.yml`): home, chat (history across the whole chain, outage, thinking, new conversation), language and theme kept after a reload. See [testing](../design/testing.md#end-to-end).

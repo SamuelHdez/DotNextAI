@@ -19,7 +19,7 @@
 - [x] 2026-11-16 — Backend `Dockerfile` (digest-pinned images, non-root user).
 - [ ] Confirm the first `backend-ci.yml` and `security.yml` runs on GitHub are green (the Docker job has not been run locally: no Docker on the dev machine).
 - [x] 2026-11-16 — `frontend-ci.yml` (Semgrep, npm audits, lint, type-check, Vitest, build, web image with SBOM and Trivy), `frontend/Dockerfile`, npm and `/frontend` Docker in Dependabot.
-- [ ] `e2e.yml` with Playwright against the production build and the API using a fake model client (`./scripts/dev.sh e2e`).
+- [x] 2026-11-16 — `e2e.yml` + `./scripts/dev.sh e2e`: Playwright against a fake LiteLLM proxy, the real API and the production web build; axe on every page (two real findings fixed) ([testing](../design/testing.md)).
 - [ ] Branch protection on `main` and secret scanning with push protection in the GitHub repository settings.
 
 ## Phase 1 — Backend basics

@@ -51,43 +51,46 @@ export function ChatMessageList({ messages, pendingQuestion }: ChatMessageListPr
   }, [messages.length, pendingQuestion]);
 
   return (
-    <ol className={styles.log} role="log" aria-label={t("chat.history")} aria-live="polite">
-      {messages.map((message) => {
-        const isUser = message.role === "user";
-        return (
-          <li key={message.id} className={mergeClasses(styles.row, isUser ? styles.userRow : styles.assistantRow)}>
-            <div className={styles.meta}>
-              <Text weight="semibold" size={200}>
-                {isUser ? t("chat.you") : t("chat.assistant")}
-              </Text>
-              {message.model && <Caption1>{message.model}</Caption1>}
-            </div>
-            <div className={mergeClasses(styles.bubble, isUser ? styles.userBubble : styles.assistantBubble)}>{message.text}</div>
-            {message.truncated && (
-              <Caption1 className={styles.truncated}>
-                <Warning16Regular aria-hidden />
-                {t("chat.truncated")}
-              </Caption1>
-            )}
-          </li>
-        );
-      })}
-      {pendingQuestion && (
-        <>
-          <li className={mergeClasses(styles.row, styles.userRow)}>
-            <div className={styles.meta}>
-              <Text weight="semibold" size={200}>
-                {t("chat.you")}
-              </Text>
-            </div>
-            <div className={mergeClasses(styles.bubble, styles.userBubble)}>{pendingQuestion}</div>
-          </li>
-          <li className={mergeClasses(styles.row, styles.assistantRow)}>
-            <Spinner size="tiny" label={t("chat.thinking")} />
-          </li>
-        </>
-      )}
-      <li ref={end} aria-hidden />
-    </ol>
+    // The live region wraps the list: putting role="log" on the <ol> itself would drop its list semantics.
+    <div role="log" aria-label={t("chat.history")} aria-live="polite">
+      <ol className={styles.log}>
+        {messages.map((message) => {
+          const isUser = message.role === "user";
+          return (
+            <li key={message.id} className={mergeClasses(styles.row, isUser ? styles.userRow : styles.assistantRow)}>
+              <div className={styles.meta}>
+                <Text weight="semibold" size={200}>
+                  {isUser ? t("chat.you") : t("chat.assistant")}
+                </Text>
+                {message.model && <Caption1>{message.model}</Caption1>}
+              </div>
+              <div className={mergeClasses(styles.bubble, isUser ? styles.userBubble : styles.assistantBubble)}>{message.text}</div>
+              {message.truncated && (
+                <Caption1 className={styles.truncated}>
+                  <Warning16Regular aria-hidden />
+                  {t("chat.truncated")}
+                </Caption1>
+              )}
+            </li>
+          );
+        })}
+        {pendingQuestion && (
+          <>
+            <li className={mergeClasses(styles.row, styles.userRow)}>
+              <div className={styles.meta}>
+                <Text weight="semibold" size={200}>
+                  {t("chat.you")}
+                </Text>
+              </div>
+              <div className={mergeClasses(styles.bubble, styles.userBubble)}>{pendingQuestion}</div>
+            </li>
+            <li className={mergeClasses(styles.row, styles.assistantRow)}>
+              <Spinner size="tiny" label={t("chat.thinking")} />
+            </li>
+          </>
+        )}
+        <li ref={end} aria-hidden />
+      </ol>
+    </div>
   );
 }

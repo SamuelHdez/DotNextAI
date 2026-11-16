@@ -25,11 +25,11 @@ describe("LanguageMenu", () => {
       </>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Language: English" }));
+    await user.click(screen.getByRole("button", { name: "EN · Language: English" }));
     await user.click(screen.getByRole("menuitemradio", { name: "Español" }));
 
     expect(screen.getByText("Inicio")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Idioma: Español" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ES · Idioma: Español" })).toBeInTheDocument();
     expect(document.cookie).toContain(`${LOCALE_COOKIE}=es`);
   });
 
@@ -37,7 +37,7 @@ describe("LanguageMenu", () => {
     const user = userEvent.setup();
     renderWithProviders(<LanguageMenu />, { locale: "es" });
 
-    await user.click(screen.getByRole("button", { name: "Idioma: Español" }));
+    await user.click(screen.getByRole("button", { name: "ES · Idioma: Español" }));
 
     expect(screen.getByRole("menuitemradio", { name: "English" })).toHaveAttribute("lang", "en");
     expect(screen.getByRole("menuitemradio", { name: "Español" })).toBeChecked();
