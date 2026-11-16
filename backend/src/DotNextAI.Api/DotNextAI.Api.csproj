@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Shared with DotNextAI.Cli: one `./scripts/dev.sh secrets` configures both. -->
+    <UserSecretsId>b20f238b-ae1f-4401-a675-1bb4503f8810</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNextAI.Application\DotNextAI.Application.csproj" />
+    <ProjectReference Include="..\DotNextAI.Infrastructure\DotNextAI.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

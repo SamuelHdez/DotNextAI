@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- Inherit target framework, analyzers, NuGet audit and lock-file settings from backend/Directory.Build.props. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- xUnit v3 test projects are executables run by Microsoft.Testing.Platform (see the root global.json). -->
+    <OutputType>Exe</OutputType>
+    <!-- CA1707: test names follow the Method_Scenario_ExpectedResult convention. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+
+</Project>

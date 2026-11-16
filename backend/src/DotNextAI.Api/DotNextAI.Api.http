@@ -1,0 +1,6 @@
+@DotNextAI.Api_HostAddress = http://localhost:5100
+
+GET {{DotNextAI.Api_HostAddress}}/api/health
+Accept: application/json
+
+###

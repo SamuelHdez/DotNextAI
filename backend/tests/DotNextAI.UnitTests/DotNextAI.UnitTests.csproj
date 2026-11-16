@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DotNextAI.Application\DotNextAI.Application.csproj" />
+    <ProjectReference Include="..\..\src\DotNextAI.Infrastructure\DotNextAI.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

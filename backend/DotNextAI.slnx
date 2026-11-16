@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DotNextAI.Api/DotNextAI.Api.csproj" />
+    <Project Path="src/DotNextAI.Application/DotNextAI.Application.csproj" />
+    <Project Path="src/DotNextAI.Cli/DotNextAI.Cli.csproj" />
+    <Project Path="src/DotNextAI.Infrastructure/DotNextAI.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DotNextAI.IntegrationTests/DotNextAI.IntegrationTests.csproj" />
+    <Project Path="tests/DotNextAI.UnitTests/DotNextAI.UnitTests.csproj" />
+  </Folder>
+</Solution>

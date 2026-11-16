@@ -1,0 +1,40 @@
+## .NET
+**/bin/
+**/obj/
+**/TestResults/
+**/.vs/
+*.user
+*.suo
+*.rsuser
+*.binlog
+*.DotSettings.user
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+## Node.js / Next.js (frontend, from a later step)
+**/node_modules/
+**/.next/
+**/out/
+**/coverage/
+**/playwright-report/
+**/test-results/
+**/*.tsbuildinfo
+**/next-env.d.ts
+npm-debug.log*
+
+## Environment & secrets (secrets live in dotnet user-secrets, never in tracked files)
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+appsettings.*.local.json
+
+## OS
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
+
+## Local dev state (scripts/dev.sh)
+.dev/
