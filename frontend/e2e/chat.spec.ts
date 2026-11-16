@@ -97,7 +97,7 @@ test.describe("chat", () => {
     await ask(page, "My name is Ana.");
     await expect(conversation(page).getByText("Echo: My name is Ana.")).toBeVisible();
 
-    await page.getByRole("button", { name: "New conversation" }).click();
+    await page.getByRole("button", { name: "New conversation", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Ask anything" })).toBeVisible();
     await ask(page, "What is my name?");
 

@@ -38,7 +38,6 @@ describe("ChatView images", () => {
     expect(await screen.findByText("A single pixel.")).toBeInTheDocument();
     expect(sentBodies()[0]).toEqual({
       question: "What is this?",
-      history: [],
       images: [{ mediaType: "image/png", data: PNG_BASE64 }],
     });
     // Shown in the conversation, gone from the composer.
@@ -46,7 +45,7 @@ describe("ChatView images", () => {
     expect(screen.queryByRole("list", { name: "Images for your next question" })).not.toBeInTheDocument();
   });
 
-  it("sends images with their question only; the history stays text", async () => {
+  it("sends images with their question only", async () => {
     fetchMock.mockResolvedValueOnce(answer("A pixel.")).mockResolvedValueOnce(answer("Black."));
     const user = userEvent.setup();
     renderWithProviders(<ChatView />);
@@ -57,13 +56,7 @@ describe("ChatView images", () => {
     await send(user, "What colour?");
     await screen.findByText("Black.");
 
-    expect(sentBodies()[1]).toEqual({
-      question: "What colour?",
-      history: [
-        { role: "user", text: "What is this?" },
-        { role: "assistant", text: "A pixel." },
-      ],
-    });
+    expect(sentBodies()[1]).toEqual({ question: "What colour?" });
   });
 
   it("removes an attachment", async () => {

@@ -15,7 +15,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 | `backend/src/DotNextAI.Cli/` | Terminal app `dotnextai` (**permanent**, grows with the backlog): `chat` (default, with history) and `ask` commands | .NET 10 console, Generic Host, System.CommandLine 2.0 |
 | `backend/tests/DotNextAI.UnitTests/` | Unit tests | xUnit v3, Microsoft.Testing.Platform |
 | `backend/tests/DotNextAI.IntegrationTests/` | HTTP tests against the in-memory API | xUnit v3, `WebApplicationFactory` |
-| `frontend/` | Web app (port 3030): dashboard shell, home, chat. Spec in [`docs/specs/feature-web-app.md`](docs/specs/feature-web-app.md) | Next.js 16, React 19, TypeScript 5, Fluent UI v9, Vitest |
+| `frontend/` | Web app (port 3030): dashboard shell, home, chat with saved chats in folders, images. Spec in [`docs/specs/feature-web-app.md`](docs/specs/feature-web-app.md) | Next.js 16, React 19, TypeScript 5, Fluent UI v9, Vitest |
 | `backend/Dockerfile` | API image (non-root, digest-pinned base images); built and scanned in CI, never pushed | Docker |
 | `.github/` | CI workflows (`backend-ci.yml`, `security.yml`) and `dependabot.yml` | GitHub Actions |
 | `frontend/e2e/` | Playwright suite and the fake LiteLLM proxy it runs against | Playwright, axe-core |
@@ -98,7 +98,8 @@ Terminal app (`DotNextAI.Cli`):
 Web app (`frontend/`):
 
 - **No hard-coded UI text.** Every string is a key in `src/lib/i18n/messages/en.ts` with its Spanish text in `es.ts` (same keys and `{placeholders}`, enforced by the compiler and `messages.test.ts`). Use `useI18n().t(...)` in client components and `translate(await getRequestLocale(), ...)` in server code (metadata).
-- Error texts come from the API's `failure` code (`chatErrorMessage`), never from `detail`.
+- Error texts come from the API's `failure` code (`chatErrorMessage`, chat and saved chats failures), never from `detail`.
+- Saved chats: the chat page is `ChatWorkspace` (panel + `ChatView`); calls go through `src/services/conversationsService.ts`, and `src/lib/chat/savedChats.ts` mirrors the backend's `ConversationRules`. Fluent dialogs close with `open={false}` and stay mounted until closed: unmounting an open one leaves the page `aria-hidden`.
 - Keep `src/services/types.ts` in sync with `docs/design/api.md`, `src/lib/chat/chatRules.ts` with the backend's `ChatRules`, and `src/lib/backlog.ts` with the backlog in `docs/specs/product-rules.md`.
 - Styling only with Fluent `makeStyles` and `tokens` (ERNI theme in `src/lib/theme`), no hard-coded colours. Pages use `PageBody` / `PageHeader`; new pages get a link in `SideNav` (`NAV_GROUPS`).
 - Keep the CSP strict: no new inline scripts without the nonce, and any new origin the browser must reach goes into `buildContentSecurityPolicy`.

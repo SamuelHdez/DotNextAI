@@ -33,6 +33,12 @@ describe("content security policy", () => {
     expect(policy.get("connect-src")).toEqual(["'self'", "http://localhost:5100"]);
   });
 
+  it("loads images only from itself, data/blob URIs and the API (saved chat images)", () => {
+    const policy = directives(buildContentSecurityPolicy({ nonce: "abc", isDevelopment: false, apiBaseUrl: "http://localhost:5100" }));
+
+    expect(policy.get("img-src")).toEqual(["'self'", "data:", "blob:", "http://localhost:5100"]);
+  });
+
   it("ignores an invalid API URL", () => {
     const policy = directives(buildContentSecurityPolicy({ nonce: "abc", isDevelopment: false, apiBaseUrl: "not a url" }));
 

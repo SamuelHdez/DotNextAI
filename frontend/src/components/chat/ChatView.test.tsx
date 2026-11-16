@@ -48,11 +48,11 @@ describe("ChatView", () => {
     expect(await within(log).findByText("Hello Ana!")).toBeInTheDocument();
     expect(within(log).getByText("My name is Ana.")).toBeInTheDocument();
     expect(within(log).getByText("gpt-5.6-luna")).toBeInTheDocument();
-    expect(sentBodies(fetchMock)).toEqual([{ question: "My name is Ana.", history: [] }]);
+    expect(sentBodies(fetchMock)).toEqual([{ question: "My name is Ana." }]);
     expect(screen.getByRole("textbox", { name: "Your question" })).toHaveValue("");
   });
 
-  it("sends the previous turns with the next question", async () => {
+  it("asks the next question in the same saved conversation, without resending the history", async () => {
     fetchMock.mockResolvedValueOnce(answer("Hello Ana!")).mockResolvedValueOnce(answer("Your name is Ana."));
     const user = userEvent.setup();
     renderWithProviders(<ChatView />);
@@ -62,13 +62,12 @@ describe("ChatView", () => {
     await ask(user, "What is my name?");
     await screen.findByText("Your name is Ana.");
 
-    expect(sentBodies(fetchMock)[1]).toEqual({
-      question: "What is my name?",
-      history: [
-        { role: "user", text: "My name is Ana." },
-        { role: "assistant", text: "Hello Ana!" },
-      ],
-    });
+    // The server reads the history from the saved conversation.
+    expect(sentBodies(fetchMock)[1]).toEqual({ question: "What is my name?" });
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+      "http://api.test/api/conversations/c1/messages/stream",
+      "http://api.test/api/conversations/c1/messages/stream",
+    ]);
   });
 
   it("sends with Enter and adds a line with Shift+Enter", async () => {
@@ -142,10 +141,12 @@ describe("ChatView", () => {
     await ask(user, "two");
     await screen.findByText("second");
 
-    expect(sentBodies(fetchMock)[1]).toEqual({ question: "two", history: [] });
+    expect(sentBodies(fetchMock)[1]).toEqual({ question: "two" });
+    // A new conversation is saved apart from the first one.
+    expect(String(fetchMock.mock.calls[1][0])).toBe("http://api.test/api/conversations/c2/messages/stream");
   });
 
-  it("calls the streaming endpoint", async () => {
+  it("creates the saved conversation and asks through its streaming endpoint", async () => {
     fetchMock.mockResolvedValue(answer("ok"));
     const user = userEvent.setup();
     renderWithProviders(<ChatView />);
@@ -153,7 +154,7 @@ describe("ChatView", () => {
     await ask(user, "Hi");
     await screen.findByText("ok");
 
-    expect(String(fetchMock.mock.calls[0][0])).toBe("http://api.test/api/chat/stream");
+    expect(String(fetchMock.mock.calls[0][0])).toBe("http://api.test/api/conversations/c1/messages/stream");
   });
 
   it("shows the answer while it is being written, then completes it", async () => {

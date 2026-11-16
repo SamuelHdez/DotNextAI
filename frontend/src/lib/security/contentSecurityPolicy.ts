@@ -29,7 +29,8 @@ interface ContentSecurityPolicyOptions {
  *
  * Styles keep 'unsafe-inline': Fluent UI (Griffel) inserts <style> elements at runtime and React renders `style`
  * attributes, neither of which can carry a nonce. Script execution, the main XSS vector, stays nonce-only.
- * The browser may only talk to this origin and the API: model answers can never make it load or send anything else.
+ * The browser may only talk to this origin and the API (and load images from them): model answers can never make it load
+ * or send anything else.
  */
 export function buildContentSecurityPolicy({ nonce, isDevelopment, apiBaseUrl }: ContentSecurityPolicyOptions): string {
   const apiOrigin = originOf(apiBaseUrl);
@@ -39,7 +40,8 @@ export function buildContentSecurityPolicy({ nonce, isDevelopment, apiBaseUrl }:
     // React needs eval in development only, to rebuild server error stacks in the browser.
     "script-src": ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", ...(isDevelopment ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'", "'unsafe-inline'"],
-    "img-src": ["'self'", "data:", "blob:"],
+    // The API serves the images saved with a chat (GET /api/conversations/{id}/images/{imageId}).
+    "img-src": ["'self'", "data:", "blob:", ...(apiOrigin ? [apiOrigin] : [])],
     "font-src": ["'self'"],
     "connect-src": ["'self'", ...(apiOrigin ? [apiOrigin] : [])],
     "object-src": ["'none'"],

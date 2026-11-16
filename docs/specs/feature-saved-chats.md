@@ -1,6 +1,6 @@
 # Saved chats
 
-> **Status:** Part 1 (backend: database, API, tests) implemented on 2026-11-16. Part 2 (web sidebar) is next. The CLI keeps its conversations in memory.
+> **Status:** Implemented on 2026-11-16: part 1 (backend: database, API, tests) and part 2 (web: the *Saved chats* panel of the chat page). The CLI keeps its conversations in memory.
 
 The web app's conversations are saved in a local SQLite database, so they survive a reload and can be organised in folders. This is the first feature after the ten course steps; it reverses the product rule "no persistence for now" ([product rules](product-rules.md#global-rules)).
 
@@ -19,6 +19,13 @@ The web app's conversations are saved in a local SQLite database, so they surviv
 | CLI | Unchanged: the terminal chat keeps its history in memory (`ChatConversation`). | 2026-11-16 |
 | Schema changes | EF Core migrations in `DotNextAI.Persistence/Migrations`, applied at API startup (`Database:MigrateOnStartup`, default true). CI fails when the model has changes without a migration (`dotnet-ef migrations has-pending-model-changes`). `dotnet-ef` is a local tool in the root `dotnet-tools.json`. | 2026-11-16 |
 | Logs | Saved content is never logged, like prompts and answers. | 2026-11-16 |
+| Web: where | A *Saved chats* panel on the chat page (left of the chat; above it below 900 px), not in the app's side navigation: it belongs to the chat and needs room for long titles and menus. | 2026-11-16 |
+| Web: every chat is saved | The web chat always uses the saved chats endpoints; there is no unsaved mode. A chat is created by its first question (`POST /api/conversations`), so opening the page or pressing *New conversation* creates nothing. | 2026-11-16 |
+| Web: no empty chats | If the first question of a new chat saves nothing (it fails, or is stopped before any text, or the page is left before any text), the chat is deleted again, so the list never fills with empty *New conversation* entries. | 2026-11-16 |
+| Web: address | The open chat is in the address (`/chat?c=<id>`, set with `history.replaceState`, no navigation), so a reload or a link reopens it; each chat in the panel is a real link, so it also opens in a new tab. `/chat` is a new conversation. A chat that no longer exists opens a new conversation with a notice. | 2026-11-16 |
+| Web: actions | Rename, move and delete from a menu per chat (*Options for …*), rename and delete per folder, *New folder* in the panel header. Names and moves in modal dialogs (moving uses a native select with *No folder* and the folders), deletes in alert dialogs. Dialogs stay mounted while they close: unmounting an open Fluent dialog left the page `aria-hidden`. | 2026-11-16 |
+| Web: untitled | The server's *New conversation* title is shown in the selected language. A stopped first answer titles the chat in the list at once (the same rule as the server, `titleFrom`), because a stopped stream has no `done` event. | 2026-11-16 |
+| Web: images | Saved images load from the API (`<img src>` of `GET …/images/{imageId}`), so the CSP's `img-src` allows the API origin. Their names are not stored: they are announced as *Attached image 1*, *2*… | 2026-11-16 |
 
 ## Rules
 
@@ -46,6 +53,19 @@ erDiagram
 
 The conversation keeps its totals (questions, tokens, last model), so the list never reads the messages. Lists and the conversation detail never load image bytes; only `GET …/images/{imageId}` does.
 
+## Web app
+
+The chat page (`/chat`, `ChatWorkspace`) has the *Saved chats* panel (`ConversationsPanel`, a `nav` landmark with an `h2`) next to the chat (`ChatView`):
+
+- **Header:** *Saved chats* and **New folder**.
+- **Folders:** one `region` per folder (`h3` with its name and *Options for the folder …*: *Rename…*, *Delete…*), with its chats, or *No chats in this folder.*
+- **Chats:** a link per chat with its title (the open one with `aria-current="page"`) and *Options for …*: *Rename…*, *Move to folder…*, *Delete…*. Chats without a folder come last, under *Without a folder* when there are folders.
+- **Empty and failure states:** *No saved chats yet. A chat is saved when you ask its first question.*; *Loading saved chats…*; *The saved chats could not be loaded.* with **Try again**.
+- **Dialogs:** *New folder* / *Rename folder* (*Folder name*), *Rename chat* (*Title*), *Move chat* (*Folder for “…”*: *No folder* or a folder), *Delete this chat?* (*“…” and its messages and images will be deleted. This cannot be undone.*), *Delete this folder?* (*… Its chats are kept, without a folder.*). Names are checked in the browser first (*Type a name first.*, too long, no tabs or line breaks); a taken name shows *A folder with that name already exists.* under the field.
+- **Opening a chat:** *Opening the chat…*, then its messages with models, tokens, *cut off* and *Stopped before the end.* marks and images. The next question goes on in it.
+
+Texts in English and Spanish (`saved.*`, `error.NotFound`, `error.DuplicateFolderName`, …).
+
 ## API
 
 Folders (`/api/folders`) and conversations (`/api/conversations`): list, create, rename, move, delete, read one with its messages, read an image, and ask with streaming. Contract, bodies and status codes: [API contract](../design/api.md#saved-chats).
@@ -56,3 +76,7 @@ Folders (`/api/folders`) and conversations (`/api/conversations`): list, create,
 - `ConversationServiceTests` (unit): the exchange saved and the conversation named after the first question; the saved history sent with the next question and the title kept; images saved with the question; a stopped answer saved with the text so far, `stopped` and no usage; a failed answer saves nothing; a full conversation and a missing one refused before calling the model; the title and name rules.
 - `ConversationEndpointTests` (integration, a temporary SQLite file per client): folder create, list, rename, delete, 404, 409 on a duplicate, 400 on an empty name; conversation defaults, rename, move into and out of a folder, delete; 400 for an unknown folder on create and move; ask streams, saves and sends the saved history; images saved and served with their type and `nosniff`; 404 for an unknown conversation and 400 for an invalid question or unknown model before the model is called; a failure before the stream keeps its status and saves nothing; a failure mid-stream sends `error` and saves nothing; CORS preflight for `PATCH`, `PUT`, `DELETE`.
 - CI: `dotnet-ef migrations has-pending-model-changes` in `backend-ci.yml`.
+- `ChatWorkspace.test.tsx` (Vitest, fetch stubbed with an in-memory saved chats backend, `savedChatsBackend`): the list by folder with the untitled chat in Spanish; the empty list; a new chat saved by its first question, current and in the address; no empty chat left when the first question fails; a saved chat opened with its messages, stopped mark and API image, going on in it; a missing chat from the address; a folder created and a duplicate refused under the field; the name checked before calling the API; move and rename; deleting the open chat; deleting a folder keeps its chats; retry after a list failure.
+- `ChatView*.test.tsx`: the questions go to `…/conversations/{id}/messages/stream` without history; a new conversation is a new saved chat.
+- `savedChats.test.ts`: `titleFrom` and the name rules as on the server, list order, grouping, saved messages mapped for display. `contentSecurityPolicy.test.ts`: `img-src` with the API origin.
+- `e2e/saved-chats.spec.ts` (Playwright, real API and database): a chat kept after a reload that answers from its saved history; opening chats from the list; folders created, moved into, renamed, kept after a reload and deleted, with axe on the dialog and the panel; a taken folder name; a stopped answer kept as stopped; an image saved and loaded from the API through the CSP; a missing chat in the address.

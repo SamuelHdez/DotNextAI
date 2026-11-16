@@ -99,3 +99,67 @@ export interface ImageResponse {
   usage?: TokenUsage | null;
 }
 
+
+/* Saved chats (docs/design/api.md#saved-chats). */
+
+/** `failure` values of the saved chats problems (StoreFailure on the backend). */
+export const STORE_FAILURES = ["NotFound", "FolderNotFound", "DuplicateFolderName", "ConversationFull"] as const;
+
+export type StoreFailure = (typeof STORE_FAILURES)[number];
+
+export interface Folder {
+  id: string;
+  name: string;
+  conversationCount: number;
+  createdAt: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  folderId: string | null;
+  /** Model of the last answer; null before the first one. */
+  model: string | null;
+  questionCount: number;
+  /** Sum of the answers' usage. */
+  usage: TokenUsage;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** An image of a saved question; `url` (relative to the API) serves its bytes. */
+export interface StoredImage {
+  id: string;
+  mediaType: string;
+  size: number;
+  url: string;
+}
+
+export interface StoredMessage {
+  id: string;
+  role: ChatRole;
+  text: string;
+  images: StoredImage[];
+  model: string | null;
+  usage: TokenUsage | null;
+  truncated: boolean;
+  stopped: boolean;
+  createdAt: string;
+}
+
+export interface ConversationDetail {
+  conversation: ConversationSummary;
+  messages: StoredMessage[];
+}
+
+/** Body of POST /api/conversations/{id}/messages/stream: a chat request without history (the server has it). */
+export interface ConversationMessageRequest {
+  question: string;
+  images?: ChatImage[];
+  model?: string;
+}
+
+/** The `done` event of a saved conversation: the answer and the conversation as saved. */
+export interface ConversationChatResponse extends ChatResponse {
+  conversation?: ConversationSummary | null;
+}

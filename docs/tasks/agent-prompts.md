@@ -107,3 +107,9 @@ Step 10 outcome: `TokenUsage` on answers and images, taken from the provider's c
 Answers to the follow-up questions: a single local user with no login is fine for now; one folder level; save everything, text and images; the CLI stays in memory.
 
 Outcome: a new `DotNextAI.Persistence` project (EF Core 10.0.15 on SQLite, migrations applied at startup, `dotnet-ef` as a local tool, pending model changes fail CI). `ConversationService` builds the history from the database and saves each exchange: complete answers in full, stopped ones with the text so far, failed ones not at all. Endpoints under `/api/folders` and `/api/conversations`. Found while writing the docs: CORS only allowed `GET` and `POST`, so the browser could not rename, move or delete; it now allows `PATCH`, `PUT` and `DELETE`. 330 .NET tests green. Part 2 (web sidebar) is next.
+
+## 2026-11-16 — Saved chats in the web app (part 2)
+
+> Go ahead (part 2: the sidebar with folders and conversations).
+
+Outcome: the chat page became `ChatWorkspace`, a *Saved chats* panel (folders, chats, menus and dialogs to rename, move and delete) next to `ChatView`, which now creates the chat with its first question and asks through the saved conversation. The open chat is in the address (`/chat?c=<id>`). Found on the way: (1) a failed first question left an empty *New conversation* in the list, so such chats are now deleted again; (2) unmounting an open Fluent dialog left the page `aria-hidden`, so dialogs close with `open={false}`; (3) a jsdom selector bug, fixed upstream only 2 days ago, needs a focus workaround in one test; (4) a model selector test raced the model list. 333 Vitest tests and 31 Playwright scenarios (7 new) green, no axe violations.

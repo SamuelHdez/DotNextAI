@@ -8,11 +8,12 @@ import {
   MessageBar,
   MessageBarActions,
   MessageBarBody,
+  Spinner,
   Subtitle1,
   tokens,
 } from "@fluentui/react-components";
 import { ArrowCounterclockwise20Regular, Dismiss20Regular, Sparkle24Regular } from "@fluentui/react-icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { ModelPicker, type ModelList } from "@/components/chat/ModelPicker";
@@ -20,12 +21,15 @@ import { PageBody, PageHeader } from "@/components/ui/PageLayout";
 import { chatErrorMessage, type LocalizedError } from "@/lib/chat/chatErrors";
 import { checkQuestion, MAX_CONVERSATION_QUESTIONS, MAX_QUESTION_LENGTH } from "@/lib/chat/chatRules";
 import { MAX_IMAGE_MEGABYTES, MAX_IMAGES_PER_QUESTION, readImageFile, type ImageAttachment } from "@/lib/chat/images";
-import { conversationUsage, questionCount, toHistory, type ChatMessage } from "@/lib/chat/conversation";
+import { conversationUsage, questionCount, type ChatMessage } from "@/lib/chat/conversation";
 import { initialModel, readModelPreference, storeModelPreference } from "@/lib/chat/modelPreference";
+import { toChatMessages } from "@/lib/chat/savedChats";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { MessageKey } from "@/lib/i18n/messages/en";
-import { streamChat } from "@/services/chatService";
+import { ApiError, apiUrl } from "@/services/apiClient";
+import { createConversation, deleteConversation, getConversation, streamConversation } from "@/services/conversationsService";
 import { getModels } from "@/services/modelsService";
+import type { ConversationSummary } from "@/services/types";
 
 const SUGGESTIONS: MessageKey[] = ["chat.suggestion.1", "chat.suggestion.2", "chat.suggestion.3"];
 
@@ -58,11 +62,28 @@ const useStyles = makeStyles({
   },
 });
 
+interface ChatViewProps {
+  /** A saved conversation to open; without one, the chat is saved when its first question is asked. Read on mount. */
+  initialConversationId?: string | null;
+  /** The conversation as saved: after it is created and after every complete answer. */
+  onSaved?: (conversation: ConversationSummary) => void;
+  /** An answer was stopped: the server saved the question with the text so far. */
+  onStopped?: (conversationId: string, question: string) => void;
+  /** The conversation to open does not exist (any more). */
+  onMissing?: () => void;
+  /** The conversation created for a first question was deleted again, because nothing was saved in it. */
+  onDiscarded?: (conversationId: string) => void;
+  /** "New conversation" was pressed; without it the view empties itself. */
+  onNewConversation?: () => void;
+}
+
 /**
- * Backlog step 05: the chat in the browser; step 07 streams the answer (POST /api/chat/stream) with a Stop button. The conversation lives in this component's state (one tab, lost on
- * reload) and is sent with every question to POST /api/chat, which keeps no state.
+ * Backlog step 05: the chat in the browser; step 07 streams the answer with a Stop button. Since the saved chats
+ * (docs/specs/feature-saved-chats.md) every conversation is saved: the first question creates it
+ * (POST /api/conversations) and every question goes to POST /api/conversations/{id}/messages/stream, where the server
+ * reads the history from the database. The messages are also kept in this component's state for display.
  */
-export function ChatView() {
+export function ChatView({ initialConversationId = null, onSaved, onStopped, onMissing, onDiscarded, onNewConversation }: ChatViewProps = {}) {
   const styles = useStyles();
   const { t } = useI18n();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -77,11 +98,48 @@ export function ChatView() {
   const answerSoFar = useRef("");
   const [modelList, setModelList] = useState<ModelList>({ state: "loading" });
   const [model, setModel] = useState<string | null>(null);
-  const request = useRef<{ controller: AbortController; question: string; text: string; images: ImageAttachment[] } | null>(null);
+  const request = useRef<{ controller: AbortController; question: string; text: string; images: ImageAttachment[]; created: boolean } | null>(null);
   const nextId = useRef(0);
+  // The saved conversation of this chat; null until its first question creates it.
+  const conversationId = useRef<string | null>(initialConversationId);
+  const [opening, setOpening] = useState(initialConversationId !== null);
+  // Not a dependency of the effect below: it runs once per conversation to open.
+  const reportMissing = useEffectEvent(() => onMissing?.());
 
-  // Leaving the page cancels the question in flight.
-  useEffect(() => () => request.current?.controller.abort(), []);
+  // Leaving the page (or opening another chat) cancels the question in flight; a chat created for it that got no text
+  // is deleted, since nothing will be saved in it.
+  useEffect(
+    () => () => {
+      const current = request.current;
+      if (!current) return;
+      current.controller.abort();
+      if (current.created && !answerSoFar.current.trim() && conversationId.current) {
+        void deleteConversation(conversationId.current).catch(() => undefined);
+      }
+    },
+    [],
+  );
+
+  // Opening a saved conversation: its messages, with the images served by the API.
+  useEffect(() => {
+    if (!initialConversationId) return;
+    const controller = new AbortController();
+    getConversation(initialConversationId, controller.signal)
+      .then((detail) => setMessages(toChatMessages(detail, apiUrl)))
+      .catch((failure) => {
+        if (controller.signal.aborted) return;
+        if (failure instanceof ApiError && failure.status === 404) {
+          conversationId.current = null;
+          reportMissing();
+        } else {
+          setError(chatErrorMessage(failure));
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOpening(false);
+      });
+    return () => controller.abort();
+  }, [initialConversationId]);
 
   // The model list (step 08). If it cannot be loaded the selector is disabled and the server's default answers.
   useEffect(() => {
@@ -108,7 +166,7 @@ export function ChatView() {
   const full = questionCount(messages) >= MAX_CONVERSATION_QUESTIONS;
 
   async function ask(text: string) {
-    if (pendingQuestion || full) return;
+    if (pendingQuestion || full || opening) return;
     const check = checkQuestion(text);
     if (!check.ok) {
       setInputError(
@@ -129,13 +187,21 @@ export function ChatView() {
     answerSoFar.current = "";
     setPendingAnswer("");
     const controller = new AbortController();
-    request.current = { controller, question: check.question, text, images: sentImages };
+    request.current = { controller, question: check.question, text, images: sentImages, created: false };
 
     try {
-      const response = await streamChat(
+      let savedId = conversationId.current;
+      if (!savedId) {
+        const created = await createConversation(null, controller.signal);
+        savedId = created.id;
+        conversationId.current = savedId;
+        if (request.current?.controller === controller) request.current.created = true;
+        onSaved?.(created);
+      }
+      const response = await streamConversation(
+        savedId,
         {
           question: check.question,
-          history: toHistory(messages),
           ...(sentImages.length > 0 && { images: sentImages.map(({ mediaType, data }) => ({ mediaType, data })) }),
           ...(requestedModel && { model: requestedModel }),
         },
@@ -145,6 +211,7 @@ export function ChatView() {
         },
         controller.signal,
       );
+      if (response.conversation) onSaved?.(response.conversation);
       const id = nextId.current;
       nextId.current += 2;
       setMessages((current) => [
@@ -166,6 +233,8 @@ export function ChatView() {
       ]);
     } catch (failure) {
       if (controller.signal.aborted) return;
+      // Nothing is saved for a failed answer: a conversation created for this question would stay empty.
+      if (request.current?.controller === controller && request.current.created) discardEmpty();
       setError(chatErrorMessage(failure));
       // Give the question and its images back so they can be sent again (unless the user already typed or attached more).
       setDraft((current) => current || text);
@@ -188,6 +257,8 @@ export function ChatView() {
     current.controller.abort();
     const partial = answerSoFar.current;
     if (partial.trim()) {
+      // The server saves the question with this text when the request closes (marked as stopped).
+      if (conversationId.current) onStopped?.(conversationId.current, current.question);
       const id = nextId.current;
       nextId.current += 2;
       setMessages((existing) => [
@@ -201,6 +272,8 @@ export function ChatView() {
         { id: `m${id + 1}`, role: "assistant", text: partial, stopped: true },
       ]);
     } else {
+      // Stopped before any text: the server saved nothing.
+      if (current.created) discardEmpty();
       setDraft((draftNow) => draftNow || current.text);
       setAttachments((attachedNow) => (attachedNow.length > 0 ? attachedNow : current.images));
     }
@@ -209,7 +282,26 @@ export function ChatView() {
     setPendingAnswer("");
   }
 
+  /** Deletes the conversation created for a question that saved nothing, so the list keeps no empty chats. */
+  function discardEmpty() {
+    const id = conversationId.current;
+    if (!id) return;
+    conversationId.current = null;
+    void deleteConversation(id).catch(() => undefined);
+    onDiscarded?.(id);
+  }
+
   function newConversation() {
+    if (onNewConversation) {
+      const current = request.current;
+      request.current = null;
+      current?.controller.abort();
+      if (current?.created && !answerSoFar.current.trim()) discardEmpty();
+      else if (current && answerSoFar.current.trim() && conversationId.current) onStopped?.(conversationId.current, current.question);
+      onNewConversation();
+      return;
+    }
+    conversationId.current = null;
     request.current?.controller.abort();
     request.current = null;
     setPendingQuestion(null);
@@ -256,7 +348,9 @@ export function ChatView() {
       />
 
       <div className={styles.conversation}>
-        {isEmpty ? (
+        {opening ? (
+          <Spinner size="small" label={t("saved.opening")} />
+        ) : isEmpty ? (
           <div className={styles.empty}>
             <Sparkle24Regular className={styles.emptyIcon} aria-hidden />
             <Subtitle1 as="h2">{t("chat.empty.title")}</Subtitle1>
@@ -306,7 +400,7 @@ export function ChatView() {
           }}
           onSubmit={() => ask(draft)}
           busy={pendingQuestion !== null}
-          disabled={full}
+          disabled={full || opening}
           validationMessage={inputError ? t(inputError.key, inputError.params) : undefined}
           attachments={attachments}
           onAddFiles={(files) => void addFiles(files)}

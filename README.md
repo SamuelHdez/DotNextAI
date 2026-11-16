@@ -4,7 +4,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 Technical documentation, backlog and decisions: [docs/](docs/README.md).
 
-> **Status:** the whole course backlog (steps 01-10) is done; step 10 added token metrics. A web app (Next.js + Fluent UI, English/Spanish) and the terminal app chat through the same API and Microsoft Agent Framework agent over the LiteLLM proxy.
+> **Status:** the whole course backlog (steps 01-10) is done, plus saved chats with folders in the web app. A web app (Next.js + Fluent UI, English/Spanish) and the terminal app chat through the same API and Microsoft Agent Framework agent over the LiteLLM proxy.
 
 ## Requirements
 
@@ -80,7 +80,7 @@ dotnet tool run dotnet-ef migrations add <Name> --project backend/src/DotNextAI.
 Open `http://localhost:3030` after `./scripts/dev.sh`. A dashboard with the ValidatorHub layout and the ERNI brand:
 
 - **Home**: service status (API, language model) and the course backlog.
-- **Chat**: the conversation stays in the browser tab and is sent with every question. Enter sends, Shift+Enter adds a line, the answer appears as it is written (**Stop** keeps what arrived), **New conversation** starts over, and the **Model** selector picks one of the proxy's chat models (remembered). Attach up to 4 images (PNG, JPEG, WebP, GIF, 4 MB each) with the paperclip or by pasting; they go with that question only.
+- **Chat**: every conversation is saved (SQLite, through the API) and listed under **Saved chats**, where folders (one level) organise them; rename, move and delete from each chat's menu, and `/chat?c=<id>` reopens one after a reload. Enter sends, Shift+Enter adds a line, the answer appears as it is written (**Stop** keeps what arrived), **New conversation** starts over, and the **Model** selector picks one of the proxy's chat models (remembered). Attach up to 4 images (PNG, JPEG, WebP, GIF, 4 MB each) with the paperclip or by pasting; they go with that question only.
 - **Images**: describe an image, pick a shape and generate it with the proxy's image model (`gpt-image-2`); download the results.
 - **Tokens**: every answer and image shows its tokens, and the chat shows the conversation's total (input grows with the history).
 - **Header**: language selector (English / Español, remembered in a cookie) and appearance (system / light / dark).
@@ -167,4 +167,4 @@ All actions are pinned by commit SHA, tool binaries by version and checksum, and
 ./scripts/dev.sh e2e
 ```
 
-Expected: .NET build with 0 warnings, ESLint and type-check clean, all tests green (frontend: Vitest suites; backend: `LlmOptionsTests`, `ChatRulesTests`, `ChatConversationTests`, `AgentChatServiceTests`, `CliApplicationTests`, `ChatCommandTests`, `HealthEndpointTests`, `ChatEndpointTests`, `SqliteConversationStoreTests`, `ConversationServiceTests`, `ConversationEndpointTests`). E2E: 15 Playwright scenarios with no axe violation. Against the real proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.
+Expected: .NET build with 0 warnings, ESLint and type-check clean, all tests green (frontend: Vitest suites; backend: `LlmOptionsTests`, `ChatRulesTests`, `ChatConversationTests`, `AgentChatServiceTests`, `CliApplicationTests`, `ChatCommandTests`, `HealthEndpointTests`, `ChatEndpointTests`, `SqliteConversationStoreTests`, `ConversationServiceTests`, `ConversationEndpointTests`). E2E: 31 Playwright scenarios with no axe violation. Against the real proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.

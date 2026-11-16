@@ -54,3 +54,13 @@ export async function apiResponse(path: string, init?: RequestInit): Promise<Res
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return (await (await apiResponse(path, init)).json()) as T;
 }
+
+/** Calls the API for an action without a body in the answer (e.g. 204 No Content). */
+export async function apiSend(path: string, init?: RequestInit): Promise<void> {
+  await apiResponse(path, init);
+}
+
+/** An absolute URL of the API for a path it returned (e.g. a saved image's `url`). */
+export function apiUrl(path: string): string {
+  return new URL(path, appConfig.apiBaseUrl).toString();
+}

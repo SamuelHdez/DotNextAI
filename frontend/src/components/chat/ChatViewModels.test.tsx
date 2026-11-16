@@ -30,7 +30,8 @@ describe("ChatView model selector", () => {
     const user = userEvent.setup();
     renderWithProviders(<ChatView />);
 
-    expect(await screen.findByRole("combobox", { name: "Model" })).toHaveTextContent("gpt-5.6-luna (default)");
+    // The selector shows "Loading models…" until the list arrives.
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent("gpt-5.6-luna (default)"));
     await send(user, "Hi");
 
     expect(sentBodies()[0]).not.toHaveProperty("model");
@@ -46,7 +47,7 @@ describe("ChatView model selector", () => {
     await user.click(screen.getByRole("option", { name: "gpt-5.6-terra" }));
     await send(user, "two");
 
-    expect(sentBodies()[1]).toMatchObject({ question: "two", model: "gpt-5.6-terra", history: [{ text: "one" }, { text: "ok" }] });
+    expect(sentBodies()[1]).toEqual({ question: "two", model: "gpt-5.6-terra" });
     expect(window.localStorage.getItem(MODEL_STORAGE_KEY)).toBe("gpt-5.6-terra");
   });
 

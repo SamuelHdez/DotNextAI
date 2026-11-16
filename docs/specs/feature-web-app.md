@@ -1,6 +1,6 @@
 # Web app
 
-> **Status:** Step 10 (token metrics) implemented on 2026-11-16, on top of steps 05-09 (web UI with chat, image input, streamed answers, model selector, images page).
+> **Status:** Saved chats implemented on 2026-11-16, on top of steps 05-10 (web UI with chat, image input, streamed answers, model selector, images page, token metrics).
 
 `frontend/` is the browser front end of DotNextAI: a Next.js app with Fluent UI v9 and the ERNI brand, laid out as a dashboard like ValidatorHub. It talks only to `DotNextAI.Api` ([API contract](../design/api.md)). The terminal app stays next to it ([CLI](feature-cli.md)).
 
@@ -15,9 +15,9 @@
 | i18n implementation | Own typed dictionaries (`src/lib/i18n/messages/en.ts`, `es.ts`) with `{name}` parameters and locale number formatting, no library. Two languages and about a hundred strings do not justify another dependency in the supply chain; a missing or extra Spanish key does not compile. | 2026-11-16 |
 | Errors | The text comes from the API's `failure` code (`error.<Failure>` keys), never from its English `detail`. An unreachable API, a validation problem or an unknown status have their own texts. | 2026-11-16 |
 | API access | The browser calls the API directly (`NEXT_PUBLIC_API_BASE_URL`, CORS on the API). The LiteLLM key stays in the API. | 2026-11-16 |
-| Conversation | Kept in the chat page's React state: one tab, lost on reload or when leaving the page (the question in flight is cancelled). It followed the product rule "conversations live in the browser", reversed on 2026-11-16: the API now saves chats ([saved chats](feature-saved-chats.md)) and the web app moves to them in the next part. | 2026-11-16 |
+| Conversation | **Saved** since 2026-11-16 ([saved chats](feature-saved-chats.md)): the first question creates the chat, every question goes to `POST /api/conversations/{id}/messages/stream` and the server reads the history from the database. The open chat is in the address (`/chat?c=<id>`). This replaced "kept in the chat page's React state, lost on reload", which followed the old product rule "conversations live in the browser". | 2026-11-16 |
 | Answers | Plain text with the model's line breaks (`white-space: pre-wrap`). Markdown rendering is a follow-up, because it needs a sanitizing renderer. | 2026-11-16 |
-| Security | Strict CSP with a per-request nonce (`src/proxy.ts`). `connect-src` allows only the app and the API origin, so a model answer can never make the page call anywhere else. Static security headers come from ValidatorHub. No authentication: local use, like the API. | 2026-11-16 |
+| Security | Strict CSP with a per-request nonce (`src/proxy.ts`). `connect-src` allows only the app and the API origin, so a model answer can never make the page call anywhere else. `img-src` adds the API origin for the saved chats' images. Static security headers come from ValidatorHub. No authentication: local use, like the API. | 2026-11-16 |
 | Images (step 06) | Attach with a button or by pasting (e.g. a screenshot). The browser checks count, size and the file signature before reading or sending, as the backend does. Previews are `data:` URIs (the CSP's `img-src` already allows them), so there are no object URLs to revoke. | 2026-11-16 |
 | Streaming (step 07) | The chat calls `POST /api/chat/stream` and reads its Server-Sent Events with a small reader of its own (`src/services/sse.ts`, about 30 lines, no library): `EventSource` cannot send a POST body. A **Stop** button replaces Send while an answer is written. | 2026-11-16 |
 | Model selector (step 08) | A Fluent `Dropdown` labelled *Model* in the chat header, filled from `GET /api/models`. The choice is remembered in `localStorage` (`dnai-model`); a remembered model the server no longer offers falls back to the default, and choosing the default forgets the choice. Only a model other than the default is sent. The control keeps the same element in every state: wrapping it in a tooltip on failure re-mounted it and lost its state, so a described hint sits next to it instead. | 2026-11-16 |
@@ -42,6 +42,9 @@ Image generation (step 09): description, shape, Generate, and a gallery of the s
 
 ### Chat (`/chat`)
 
+Next to the chat, the *Saved chats* panel: folders, chats, and their actions ([saved chats](feature-saved-chats.md#web-app)). `/chat?c=<id>` opens a saved chat.
+
+
 - **Empty state:** "Ask anything" with three suggested questions; clicking one asks it.
 - **Messages:** user messages on the right in ERNI blue, answers on the left with the model name. A cut answer shows *"The answer was cut off…"*. The list sits inside a `role="log"` live region (the region wraps the `<ol>`, so the list semantics stay) and scrolls to the newest message.
 - **Composer:** a labelled textarea. Enter sends, Shift+Enter adds a line, and Enter while composing with an IME does nothing. The counter appears from 16,000 characters.
@@ -56,10 +59,10 @@ Image generation (step 09): description, shape, Generate, and a gallery of the s
 - **Screen readers:** the conversation region is `aria-busy` while an answer streams, so the answer is announced once, complete, instead of piece by piece.
 - **Stop:** what had arrived stays in the conversation as the answer, with *"Stopped before the end."*, and is part of the history. With nothing yet, the question and its images go back to the composer.
 - **Broken answer:** an `error` event or a stream that closes early drops the partial text and shows the failure like any other, with the question given back.
-- **History:** every question is sent with the whole conversation (`POST /api/chat`, `history`).
+- **History:** the server keeps it: each question goes to the saved chat (`POST /api/conversations/{id}/messages/stream`) without `history`.
 - **Failure:** an error bar with the localized text, which can be dismissed. The question goes back into the composer (unless something else was typed), and the conversation is unchanged.
 - **Limits** (same as the backend): empty or longer than 20,000 characters is rejected before sending, with the message under the field. At 50 questions a warning asks for a new conversation and the composer is disabled.
-- **New conversation** (header button) cancels the question in flight and empties the chat.
+- **New conversation** (header button) cancels the question in flight and empties the chat; the previous one stays in *Saved chats*.
 
 ## Running it
 
@@ -72,6 +75,7 @@ Image generation (step 09): description, shape, Generate, and a gallery of the s
 
 ## Verification
 
+- `ChatWorkspace.test.tsx`: see [saved chats](feature-saved-chats.md#verification).
 - `ChatView.test.tsx`:
   - Sending: suggestions; question and answer with the model; history sent with the next question; Enter and Shift+Enter; a suggestion click.
   - Problems: the failure shown in Spanish without the API's English detail, and the question given back; unreachable API; truncated answer.
@@ -95,4 +99,4 @@ Image generation (step 09): description, shape, Generate, and a gallery of the s
 - `contentSecurityPolicy.test.ts`: nonce-only scripts and `connect-src` limited to the API.
 - Theme and brand tests copied from ValidatorHub (`erniBrand`, `fluentThemeCss`, `themePreference`, `ErniLogo`, `streamedStyles`).
 - Manual, 2026-11-16: `./scripts/dev.sh`, then home and chat in light and dark, server-rendered English and Spanish (`<title>`, `<html lang>`), the CSP header, and CORS from `http://localhost:3030`.
-- Playwright E2E with axe (`frontend/e2e`, `e2e.yml`): home, chat (history across the whole chain, outage, thinking, new conversation), language and theme kept after a reload. See [testing](../design/testing.md#end-to-end).
+- Playwright E2E with axe (`frontend/e2e`, `e2e.yml`): home, chat (history across the whole chain, outage, thinking, new conversation), saved chats (reload, folders, stopped answers, images), language and theme kept after a reload. See [testing](../design/testing.md#end-to-end).
