@@ -20,6 +20,9 @@ public sealed class LlmOptions
     /// <summary>Model name as exposed by the proxy (its <c>/v1/models</c> list).</summary>
     public string? DefaultModel { get; init; }
 
+    /// <summary>Image model of the proxy for image generation (backlog step 09), e.g. <c>gpt-image-2</c>.</summary>
+    public string? ImageModel { get; init; } = "gpt-image-2";
+
     /// <summary>Maximum time for one model call (each attempt), in seconds.</summary>
     [Range(5, 600)]
     public int TimeoutSeconds { get; init; } = 120;

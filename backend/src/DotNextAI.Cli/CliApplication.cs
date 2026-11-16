@@ -1,5 +1,6 @@
 using System.CommandLine;
 using DotNextAI.Application.Chat;
+using DotNextAI.Application.Images;
 using DotNextAI.Cli.Commands;
 
 namespace DotNextAI.Cli;
@@ -10,7 +11,7 @@ namespace DotNextAI.Cli;
 /// </summary>
 internal static class CliApplication
 {
-    public static RootCommand Build(IChatService chat, IModelCatalog catalog, CliConsole console)
+    public static RootCommand Build(IChatService chat, IModelCatalog catalog, IImageService images, CliConsole console, TimeProvider timeProvider)
     {
         var ask = new AskCommand(chat, catalog, console);
         var chatCommand = new ChatCommand(chat, catalog, console);
@@ -20,6 +21,7 @@ internal static class CliApplication
         root.Subcommands.Add(chatCommand.Build());
         root.Subcommands.Add(ask.Build());
         root.Subcommands.Add(models.Build());
+        root.Subcommands.Add(new ImageCommand(images, console, timeProvider).Build());
 
         // Without a command: the chat (step 03). Until step 03 it asked one question, as `ask` does.
         root.SetAction((_, cancellationToken) => chatCommand.RunAsync(cancellationToken));
@@ -30,10 +32,12 @@ internal static class CliApplication
         string[] args,
         IChatService chat,
         IModelCatalog catalog,
+        IImageService images,
         CliConsole console,
+        TimeProvider timeProvider,
         CancellationToken cancellationToken = default)
     {
-        var parseResult = Build(chat, catalog, console).Parse(args);
+        var parseResult = Build(chat, catalog, images, console, timeProvider).Parse(args);
 
         // Unknown commands or options: list the errors and exit with the usage error code (System.CommandLine's
         // default would print the whole help and exit with 1, the model-error code).

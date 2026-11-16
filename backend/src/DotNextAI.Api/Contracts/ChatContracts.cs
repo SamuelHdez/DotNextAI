@@ -31,3 +31,9 @@ public sealed record ModelsResponseDto(string DefaultModel, IReadOnlyList<ChatMo
 /// <summary>A chat model; the token limits are null when the proxy does not report them.</summary>
 public sealed record ChatModelDto(string Id, bool IsDefault, int? MaxInputTokens, int? MaxOutputTokens);
 
+/// <summary>Body of <c>POST /api/images</c> (step 09). <c>size</c> is "square" (default), "landscape" or "portrait".</summary>
+public sealed record ImageRequestDto(string? Prompt, DotNextAI.Application.Images.ImageSize? Size = null);
+
+/// <summary>A generated image: the file in base64 (no <c>data:</c> prefix) with its media type.</summary>
+public sealed record ImageResponseDto(string MediaType, string Data, string Model, string? RevisedPrompt);
+

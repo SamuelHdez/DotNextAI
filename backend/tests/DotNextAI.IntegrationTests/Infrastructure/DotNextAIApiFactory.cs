@@ -1,4 +1,5 @@
 using DotNextAI.Application.Chat;
+using DotNextAI.Application.Images;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -21,10 +22,16 @@ public class DotNextAIApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Cors:AllowedOrigins:0", FrontendOrigin);
         // High enough for every test; the rate-limit tests lower it.
         builder.UseSetting("RateLimiting:ChatPermitsPerMinute", "10000");
+        builder.UseSetting("RateLimiting:ImagePermitsPerMinute", "10000");
     }
 
     /// <summary>A client of an API whose chat service is <paramref name="chat"/>.</summary>
-    public HttpClient CreateClientWith(IChatService chat, int? chatPermitsPerMinute = null, IModelCatalog? catalog = null) =>
+    public HttpClient CreateClientWith(
+        IChatService chat,
+        int? chatPermitsPerMinute = null,
+        IModelCatalog? catalog = null,
+        IImageService? images = null,
+        int? imagePermitsPerMinute = null) =>
         WithWebHostBuilder(builder =>
         {
             if (chatPermitsPerMinute is { } permits)
@@ -34,9 +41,17 @@ public class DotNextAIApiFactory : WebApplicationFactory<Program>
                     permits.ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
 
+            if (imagePermitsPerMinute is { } imagePermits)
+            {
+                builder.UseSetting(
+                    "RateLimiting:ImagePermitsPerMinute",
+                    imagePermits.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+
             builder.ConfigureTestServices(services =>
             {
                 services.Replace(ServiceDescriptor.Singleton(chat));
+                services.Replace(ServiceDescriptor.Singleton(images ?? new Chat.FakeImageService()));
                 services.Replace(ServiceDescriptor.Singleton(catalog ?? new Chat.FakeModelCatalog()));
             });
         }).CreateClient();

@@ -4,7 +4,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 Technical documentation, backlog and decisions: [docs/](docs/README.md).
 
-> **Status:** backlog step 08 done (model selector). A web app (Next.js + Fluent UI, English/Spanish) and the terminal app chat through the same API and Microsoft Agent Framework agent over the LiteLLM proxy.
+> **Status:** backlog step 09 done (image generation). A web app (Next.js + Fluent UI, English/Spanish) and the terminal app chat through the same API and Microsoft Agent Framework agent over the LiteLLM proxy.
 
 ## Requirements
 
@@ -54,7 +54,9 @@ The settings live in the `Llm` section. The API and the CLI share one `dotnet us
 | `Llm:ApiKey` | Proxy virtual key (**secret**) | user-secrets |
 | `Llm:DefaultModel` | Model name as exposed by the proxy | user-secrets |
 | `Llm:TimeoutSeconds` | Timeout of each model call attempt, 5-600 (default 120) | `appsettings.json` |
+| `Llm:ImageModel` | Image model for `/api/images` and `dotnextai image` (default `gpt-image-2`) | `appsettings.json` / user-secrets |
 | `Llm:MaxRetries` | Retries on 408/429/5xx and network errors, 0-5 (default 2) | `appsettings.json` |
+| `RateLimiting:ImagePermitsPerMinute` | Requests to `/api/images` per client IP and minute, 1-10,000 (default 5) | `appsettings.json` |
 | `RateLimiting:ChatPermitsPerMinute` | Requests to `/api/chat` per client IP and minute, 1-10,000 (default 20) | `appsettings.json` |
 | `Cors:AllowedOrigins` | Browser origins allowed to call the API (`http://localhost:3030` in Development) | `appsettings*.json` |
 
@@ -68,6 +70,7 @@ Open `http://localhost:3030` after `./scripts/dev.sh`. A dashboard with the Vali
 
 - **Home**: service status (API, language model) and the course backlog.
 - **Chat**: the conversation stays in the browser tab and is sent with every question. Enter sends, Shift+Enter adds a line, the answer appears as it is written (**Stop** keeps what arrived), **New conversation** starts over, and the **Model** selector picks one of the proxy's chat models (remembered). Attach up to 4 images (PNG, JPEG, WebP, GIF, 4 MB each) with the paperclip or by pasting; they go with that question only.
+- **Images**: describe an image, pick a shape and generate it with the proxy's image model (`gpt-image-2`); download the results.
 - **Header**: language selector (English / Español, remembered in a cookie) and appearance (system / light / dark).
 
 Details in the [web app spec](docs/specs/feature-web-app.md).
@@ -81,6 +84,7 @@ dotnextai                            # chat with history (/new, /help, /exit; Ct
 dotnextai chat < questions.txt       # one question per line, answers only on stdout
 dotnextai ask "What is .NET?"        # one question, no history (quotes optional)
 dotnextai ask -i cat.png "What is in this picture?"   # with images (up to 4; /image <path> in the chat)
+dotnextai image A fox reading -s landscape -o fox.png   # generate an image (prints the file's path)
 dotnextai models                     # chat models of the proxy; use one with ask -m <name> or /model <name>
 echo "Summarize: ..." | dotnextai ask  # one multi-line question from stdin
 dotnextai --help

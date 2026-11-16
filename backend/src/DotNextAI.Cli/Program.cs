@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using DotNextAI.Application.Chat;
+using DotNextAI.Application.Images;
 using DotNextAI.Cli;
 using DotNextAI.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,4 +40,6 @@ return await CliApplication.RunAsync(
     args,
     host.Services.GetRequiredService<IChatService>(),
     host.Services.GetRequiredService<IModelCatalog>(),
-    CliConsole.System());
+    host.Services.GetRequiredService<IImageService>(),
+    CliConsole.System(),
+    TimeProvider.System);

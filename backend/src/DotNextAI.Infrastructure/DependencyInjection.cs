@@ -1,5 +1,7 @@
 using DotNextAI.Application.Chat;
+using DotNextAI.Application.Images;
 using DotNextAI.Infrastructure.Chat;
+using DotNextAI.Infrastructure.Images;
 using DotNextAI.Infrastructure.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +28,7 @@ public static class DependencyInjection
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IModelCatalog, LiteLlmModelCatalog>();
         services.AddSingleton<IChatService, AgentChatService>();
+        services.AddSingleton<IImageService, LiteLlmImageService>();
 
         return services;
     }

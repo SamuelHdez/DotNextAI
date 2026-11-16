@@ -91,3 +91,9 @@ Outcome: `IModelCatalog` reads the proxy's model list. The real ERNI proxy repor
 > There is a `/v2/model/info` endpoint that returns these models (gpt-6.1-sol, gpt-6-astra, gpt-6-luna, gpt-6.1-terra, gpt-image-2, …).
 
 Outcome: probing with our key explained the outage. The key's team only reaches `gpt-5.6-*`, which has no healthy deployments, and the live `gpt-6.x` models answer 403 `team_model_access_denied`. The catalog keeps `/models` because it is filtered by the key's access, while `/v2/model/info` lists models the key cannot use. That 403 now maps to `ModelNotFound` ("no access to the model") instead of the misleading "rejected the API key". Follow-up: ask the proxy administrator for access to `gpt-6.x`.
+
+## 2026-11-16 — Steps 09 and 10
+
+> Yes, in fact go on with both: do step 09 and commit, then go straight to step 10 and commit.
+
+Step 09 outcome: `IImageService` calls `POST images/generations` directly, because gpt-image only answers base64 and rejects `response_format`. There are no retries, `Llm:ImageModel` is the model, and the endpoint has its own 5-per-minute limit. The web has an *Images* page (shape, gallery, download) and the CLI has `dotnextai image` (saves the file and refuses to overwrite without `--force`, checked before generating). The fake LiteLLM draws a real PNG. 265 .NET tests, 264 Vitest tests and 23 Playwright scenarios.

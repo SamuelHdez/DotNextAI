@@ -48,6 +48,7 @@ export default defineConfig({
         // Generated per run: the fake proxy only checks that a key is sent.
         Llm__ApiKey: `e2e-${randomBytes(16).toString("hex")}`,
         Llm__DefaultModel: "e2e-model",
+        Llm__ImageModel: "gpt-image-2",
         Llm__MaxRetries: "0",
         Cors__AllowedOrigins__0: WEB_URL,
         RateLimiting__ChatPermitsPerMinute: "1000",

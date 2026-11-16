@@ -11,7 +11,7 @@ import {
   Tooltip,
   type NavDrawerProps,
 } from "@fluentui/react-components";
-import { bundleIcon, Chat20Filled, Chat20Regular, Home20Filled, Home20Regular } from "@fluentui/react-icons";
+import { bundleIcon, Chat20Filled, Chat20Regular, Home20Filled, Home20Regular, Image20Filled, Image20Regular } from "@fluentui/react-icons";
 import { usePathname, useRouter } from "next/navigation";
 import type { MouseEvent, ReactElement } from "react";
 import { useI18n } from "@/lib/i18n/I18nProvider";
@@ -19,6 +19,7 @@ import type { MessageKey } from "@/lib/i18n/messages/en";
 
 const HomeIcon = bundleIcon(Home20Filled, Home20Regular);
 const ChatIcon = bundleIcon(Chat20Filled, Chat20Regular);
+const ImagesIcon = bundleIcon(Image20Filled, Image20Regular);
 
 export const NAV_EXPANDED_WIDTH = "260px";
 export const NAV_COLLAPSED_WIDTH = "56px";
@@ -35,13 +36,14 @@ interface NavGroup {
   links: NavLink[];
 }
 
-/** Navigation of the app. Later backlog steps add pages here (e.g. image generation in step 09). */
+/** Navigation of the app: one entry per page. */
 export const NAV_GROUPS: NavGroup[] = [
   {
     name: "nav.section.workspace",
     links: [
       { value: "home", label: "nav.home", href: "/", icon: <HomeIcon /> },
       { value: "chat", label: "nav.chat", href: "/chat", icon: <ChatIcon /> },
+      { value: "images", label: "nav.images", href: "/images", icon: <ImagesIcon /> },
     ],
   },
 ];

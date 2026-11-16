@@ -25,6 +25,15 @@ internal static class RateLimitingExtensions
                     QueueLimit = 0,
                 }));
 
+            limiter.AddPolicy(RateLimitingOptions.ImagePolicy, context => RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = options.ImagePermitsPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+
             limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             limiter.OnRejected = async (context, cancellationToken) =>
             {

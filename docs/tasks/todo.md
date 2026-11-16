@@ -42,7 +42,8 @@
 ## Phase 3 — Extra features
 
 - [x] 2026-11-16 — 08 Model selector: `GET /api/models` (proxy chat models, 5-minute cache), optional `model` checked against the list, one agent per model; web selector (remembered), CLI `models`, `--model`, `/model` ([API](../design/api.md#get-apimodels)).
-- [ ] 09 Image generation (gpt-image).
+- [x] 2026-11-16 — 09 Image generation: `POST /api/images` (`gpt-image-2`, direct `images/generations`, no retries, 5/min per IP), the *Images* page with gallery and downloads, `dotnextai image` ([image generation](../specs/feature-images.md)).
+- [ ] 09 follow-up: try `gpt-image-2` against the real proxy once the key's access is sorted out.
 - [ ] 10 Token metrics per call and per conversation.
 
 ## Open questions

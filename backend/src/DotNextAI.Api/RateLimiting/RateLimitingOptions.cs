@@ -12,7 +12,13 @@ public sealed class RateLimitingOptions
 
     public const string ChatPolicy = "chat";
 
+    public const string ImagePolicy = "images";
+
     /// <summary>Requests to <c>/api/chat</c> allowed per client IP and minute.</summary>
     [Range(1, 10_000)]
     public int ChatPermitsPerMinute { get; init; } = 20;
+
+    /// <summary>Requests to <c>/api/images</c> allowed per client IP and minute: an image costs far more than a question.</summary>
+    [Range(1, 10_000)]
+    public int ImagePermitsPerMinute { get; init; } = 5;
 }

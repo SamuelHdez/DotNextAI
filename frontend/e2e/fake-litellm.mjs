@@ -12,6 +12,8 @@
 //   image parts          -> "I see N image(s) (types): <question>" when every image is a base64 data URI
 //   anything else        -> "Echo: <question>"
 // With "stream": true the answer is sent as OpenAI chat.completion.chunk Server-Sent Events, one word per chunk.
+// POST /images/generations answers a 1×1 PNG in base64 with revised_prompt "Drawn: <prompt>" (or the outage of
+// "[e2e:unavailable]"), and refuses response_format, which gpt-image models do not accept.
 // GET /models (and /v1/models) lists two chat models plus non-chat ones, with LiteLLM's "mode"; answers name the
 // model that was asked for, so the tests see which model answered.
 import { createServer } from "node:http";
@@ -84,6 +86,24 @@ function chunk(delta, model, finishReason = null) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const PIXEL_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+function generateImage(response, body) {
+  const prompt = typeof body.prompt === "string" ? body.prompt : "";
+  if (body.response_format !== undefined) {
+    return send(response, 400, { error: { message: "Unknown parameter: 'response_format'.", type: "invalid_request_error" } });
+  }
+  if (prompt.includes("[e2e:unavailable]")) {
+    return send(response, 400, {
+      error: { message: `litellm.BadRequestError: You passed in model=${body.model}. There are no healthy deployments for this model` },
+    });
+  }
+  return send(response, 200, {
+    created: Math.floor(Date.now() / 1000),
+    data: [{ b64_json: PIXEL_PNG, revised_prompt: `Drawn: ${prompt} (${body.size})` }],
+  });
+}
+
 async function stream(response, text, model, { slow, drop }) {
   response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
   if (slow) await wait(1500);
@@ -113,7 +133,8 @@ const server = createServer((request, response) => {
     return send(response, 200, { data: MODELS, object: "list" });
   }
 
-  if (request.method !== "POST" || !/^\/(v1\/)?chat\/completions$/.test(path)) {
+  const isImages = request.method === "POST" && /^\/(v1\/)?images\/generations$/.test(path);
+  if (!isImages && (request.method !== "POST" || !/^\/(v1\/)?chat\/completions$/.test(path))) {
     return send(response, 404, { error: { message: `No route for ${request.method} ${path}` } });
   }
 
@@ -130,6 +151,8 @@ const server = createServer((request, response) => {
     } catch {
       return send(response, 400, { error: { message: "Invalid JSON body." } });
     }
+
+    if (isImages) return generateImage(response, body);
 
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const question = textOf(messages.filter((message) => message.role === "user").at(-1)?.content);

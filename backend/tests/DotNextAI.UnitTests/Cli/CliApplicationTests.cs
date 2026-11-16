@@ -13,7 +13,8 @@ public class CliApplicationTests
         string stdin = "",
         bool inputRedirected = false,
         CancellationToken? cancellationToken = null,
-        FakeModelCatalog? catalog = null)
+        FakeModelCatalog? catalog = null,
+        FakeImageService? images = null)
     {
         using var input = new StringReader(stdin);
         using var output = new StringWriter();
@@ -24,7 +25,9 @@ public class CliApplicationTests
             args,
             chat,
             catalog ?? new FakeModelCatalog(),
+            images ?? new FakeImageService(),
             console,
+            TimeProvider.System,
             cancellationToken ?? TestContext.Current.CancellationToken);
         return new Run(exitCode, output.ToString(), error.ToString());
     }

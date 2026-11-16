@@ -1,6 +1,6 @@
 # Web app
 
-> **Status:** Step 08 (model selector) implemented on 2026-11-16, on top of steps 05-07 (web UI with chat, images, streamed answers).
+> **Status:** Step 09 (image generation page) implemented on 2026-11-16, on top of steps 05-08 (web UI with chat, image input, streamed answers, model selector).
 
 `frontend/` is the browser front end of DotNextAI: a Next.js app with Fluent UI v9 and the ERNI brand, laid out as a dashboard like ValidatorHub. It talks only to `DotNextAI.Api` ([API contract](../design/api.md)). The terminal app stays next to it ([CLI](feature-cli.md)).
 
@@ -27,13 +27,18 @@
 
 ### Home (`/`)
 
-A dashboard with three cards:
+A dashboard with four cards:
 
 | Card | Content |
 | ---- | ------- |
 | Chat | Short description and an **Open chat** button. |
+| Image generation | Short description and a **Create an image** button (step 09). |
 | Service status | `GET /api/health`: API *Online* / *Unreachable*, language model *Configured* / *Not configured* / *Unknown*, with a hint (`./scripts/dev.sh`, `./scripts/dev.sh secrets`) and a refresh button. |
 | Course backlog | The ten course steps in three phases, each *Done*, *In progress* or *Planned* (`src/lib/backlog.ts`, kept in sync with [product rules](product-rules.md#backlog)). |
+
+### Images (`/images`)
+
+Image generation (step 09): description, shape, Generate, and a gallery of the session's images with downloads. Details in [image generation](feature-images.md#web-app-images).
 
 ### Chat (`/chat`)
 
@@ -72,6 +77,7 @@ A dashboard with three cards:
   - Lifecycle: a new conversation without history; empty question.
 - `ChatView.test.tsx` (streaming): the streaming endpoint is called; thinking, then partial text with `aria-busy` and Stop, then the complete answer; Stop keeps the partial answer (the request aborted); Stop before any text gives the question back; a broken stream shows the failure.
 - `sse.test.ts`: events split across chunks (also inside a line and inside a UTF-8 character), CRLF, comments, multi-line data. `apiClient.test.ts` (`streamChat`): deltas and the whole answer, an `error` event, problem details before the stream, a stream ending without `done`.
+- `ImagesView.test.tsx`: see [image generation](feature-images.md#verification).
 - `ChatViewModels.test.tsx`: the default shown and not sent; the chosen model sent with the conversation going on and remembered; a remembered model restored; the default forgetting the choice; a list failure falling back (in Spanish). `initialModel` rules.
 - `ChatViewLimit.test.tsx`: the question limit warning and the disabled composer.
 - `ChatViewImages.test.tsx`:

@@ -1,6 +1,6 @@
 # API contract
 
-> **Status:** Step 08 (model selection) implemented on 2026-11-16, on top of steps 04, 06 and 07 (chat endpoint, images, streaming). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
+> **Status:** Step 09 (image generation) implemented on 2026-11-16, on top of steps 04 and 06-08 (chat endpoint, image input, streaming, models). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
 
 `DotNextAI.Api` is an ASP.NET Core 10 Minimal API on `http://localhost:5100`. It exposes the same chat service as the CLI ([chat service](../specs/feature-llm-chat.md)) and is meant for local use by the web app. In Development the OpenAPI document is at `/openapi/v1.json` and Swagger UI at `/swagger`; `backend/src/DotNextAI.Api/DotNextAI.Api.http` has ready-made requests.
 
@@ -102,6 +102,27 @@ data: {"answer":"Your name is Ana.","model":"gpt-5.6-luna","truncated":false}
 
 A stream that ends with neither `done` nor `error` (the connection closed) is a failure for the client. Closing the request stops the model call.
 
+### `POST /api/images`
+
+Generates one image with the server's image model (step 09, [image generation](../specs/feature-images.md)).
+
+```json
+{ "prompt": "A fox reading by a lamp", "size": "landscape" }
+```
+
+| Field | Rules |
+| ----- | ----- |
+| `prompt` | Required. Trimmed; 1-4,000 characters (400 `errors.prompt`). |
+| `size` | Optional: `"square"` (default, 1024×1024), `"landscape"` (1536×1024), `"portrait"` (1024×1536). Anything else is 400. |
+
+`200`:
+
+```json
+{ "mediaType": "image/png", "data": "iVBORw0KGgo...", "model": "gpt-image-2", "revisedPrompt": "A watercolor fox…" }
+```
+
+`data` is the file in base64 (no `data:` prefix); `revisedPrompt` is null when the model reports none. Rate limit: `RateLimiting:ImagePermitsPerMinute` (default 5) per IP, separate from the chat's. Failures use the same `failure` codes and statuses as the chat; a refused prompt is 422 `BadRequest`, an answer without an image 502 `EmptyAnswer`.
+
 ## Errors
 
 | Status | `failure` | When |
@@ -151,6 +172,7 @@ Only the origins in `Cors:AllowedOrigins` (`http://localhost:3030` in Developmen
   - Validation: 400 for an empty, missing or too-long question; empty, role-less or null turns; history over the limit; `"system"` or numeric roles; malformed JSON. None of them calls the model.
   - Failures: 503 when not configured; the status, `failure`, `title` and `detail` of every `ChatFailure`.
   - Limits and CORS: 429 with `Retry-After` over the rate limit, the CORS preflight for `POST`, 405 for `GET`.
+- `ImageEndpointTests` (integration): base64 answer and size; 400 for an empty prompt or an unknown size; 503 when not configured; failures; its own rate limit.
 - `ModelsEndpointTests` (integration):
   - `GET /api/models`: the list and its limits; 503 when not configured; the proxy's failure.
   - `model` on both chat endpoints: a chat model passes; the default reads no list; a non-chat or unknown model gets 400; a failure to read the list.

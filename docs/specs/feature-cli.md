@@ -1,6 +1,6 @@
 # Terminal app (CLI)
 
-> **Status:** Step 08 (model selection) implemented on 2026-11-16, on top of steps 01, 03, 06 and 07 (single question and answer, multi-turn chat, images, streamed answers). The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
+> **Status:** Step 09 (image generation) implemented on 2026-11-16, on top of steps 01, 03 and 06-08 (single question and answer, multi-turn chat, images, streamed answers, models). The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
 
 `dotnextai` (project `backend/src/DotNextAI.Cli`) is the terminal front end of DotNextAI. It uses the same Application and Infrastructure services as the API, so a feature is written once and offered in both front ends.
 
@@ -95,6 +95,10 @@ Lists the proxy's chat models on stdout, the default marked with `*`:
 
 Exit codes: 0, 1 if the list cannot be read, 3 if not configured.
 
+### `dotnextai image <description...>` — image generation (step 09)
+
+Generates an image and saves it to a file (`--size`, `--output`, `--force`); stdout gets the file's path. Details, messages and exit codes in [image generation](feature-images.md#cli-dotnextai-image).
+
 ### `dotnextai --help`, `dotnextai <command> --help`, `dotnextai --version`
 
 Provided by System.CommandLine.
@@ -161,7 +165,7 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 | 06 Image input | **Done 2026-11-16.** `ask --image <path>` and `/image <path>` in the chat. |
 | 07 Streaming | **Done 2026-11-16.** `ask` and the chat print the answer as it is generated. |
 | 08 Model selector | **Done 2026-11-16.** `dotnextai models`, `ask --model`, `/model` in the chat. |
-| 09 Image generation | Command that generates an image and saves it to a file. |
+| 09 Image generation | **Done 2026-11-16.** `dotnextai image` saves the image to a file ([image generation](feature-images.md)). |
 | 10 Token metrics | Tokens per call and per conversation. |
 
 ## Verification
@@ -169,6 +173,7 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 - `ChatCommandTests` (unit, fake `IChatService`): history sent with each question, stdout with only the answers, banner and prompts, `/exit` `/quit` `/new` `/help`, unknown commands, empty lines, failed question not recorded, too-long question, 50-question limit, not configured (3), Ctrl+C (130).
 - `CliApplicationTests` (unit, fake `IChatService`): `ask` with quoted and unquoted questions, stdin, interactive prompt, no history, empty and too-long questions, not configured (checked before reading), failures with their hints and exit codes, truncation warning, Ctrl+C (130), `--help`, unknown command or option (2).
 - `CliApplicationTests` and `ChatCommandTests` (streaming): the answer written piece by piece as one line; an answer broken midway ends its line, reports the error (exit 1) and is not recorded in the chat.
+- `ImageGenerationCommandTests`: see [image generation](feature-images.md#verification).
 - `ModelCommandTests`:
   - `models`: the list with the default marked, a failure, not configured.
   - `ask`: `--model`/`-m` sent; the default reads no list; an unknown model exits with 2 before reading the question.

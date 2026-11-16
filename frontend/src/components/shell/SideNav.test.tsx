@@ -13,6 +13,7 @@ describe("selectedValueFor", () => {
     ["/", "home"],
     ["/chat", "chat"],
     ["/chat/anything", "chat"],
+    ["/images", "images"],
     ["/unknown", ""],
   ])("%s selects %j", (pathname, expected) => {
     expect(selectedValueFor(pathname)).toBe(expected);

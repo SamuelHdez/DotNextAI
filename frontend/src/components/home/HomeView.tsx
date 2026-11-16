@@ -1,7 +1,7 @@
 "use client";
 
 import { Body1, Button, Card, CardFooter, CardHeader, makeStyles, Subtitle1, tokens } from "@fluentui/react-components";
-import { ArrowRight20Regular, Chat24Regular } from "@fluentui/react-icons";
+import { ArrowRight20Regular, Chat24Regular, ImageSparkle24Regular } from "@fluentui/react-icons";
 import { useRouter } from "next/navigation";
 import { BacklogCard } from "@/components/home/BacklogCard";
 import { ServiceStatusCard } from "@/components/home/ServiceStatusCard";
@@ -41,6 +41,28 @@ export function HomeView() {
               }}
             >
               {t("home.chat.action")}
+            </Button>
+          </CardFooter>
+        </Card>
+        <Card>
+          <CardHeader
+            image={<ImageSparkle24Regular className={styles.chatIcon} />}
+            header={<Subtitle1 as="h2">{t("home.images.title")}</Subtitle1>}
+          />
+          <Body1 className={styles.description}>{t("home.images.description")}</Body1>
+          <CardFooter>
+            <Button
+              as="a"
+              href="/images"
+              icon={<ArrowRight20Regular />}
+              iconPosition="after"
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                event.preventDefault();
+                router.push("/images");
+              }}
+            >
+              {t("home.images.action")}
             </Button>
           </CardFooter>
         </Card>

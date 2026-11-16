@@ -72,3 +72,20 @@ export interface ProblemDetails {
   errors?: Record<string, string[]>;
   failure?: string;
 }
+
+/** Shape of a generated image (step 09): 1024×1024, 1536×1024 or 1024×1536. */
+export type ImageSize = "square" | "landscape" | "portrait";
+
+export interface ImageRequest {
+  prompt: string;
+  size: ImageSize;
+}
+
+/** A generated image: the file in base64 (no `data:` prefix) and its media type. */
+export interface ImageResponse {
+  mediaType: string;
+  data: string;
+  model: string;
+  revisedPrompt: string | null;
+}
+

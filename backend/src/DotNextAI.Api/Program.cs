@@ -51,5 +51,6 @@ app.UseRateLimiter();
 app.MapHealthEndpoints();
 app.MapChatEndpoints();
 app.MapModelsEndpoints();
+app.MapImageEndpoints();
 
 await app.RunAsync();
