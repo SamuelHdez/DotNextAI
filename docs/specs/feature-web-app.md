@@ -1,6 +1,6 @@
 # Web app
 
-> **Status:** Step 06 (image input) implemented on 2026-11-16, on top of step 05 (web UI with chat).
+> **Status:** Step 07 (streamed answers) implemented on 2026-11-16, on top of steps 05 and 06 (web UI with chat, images).
 
 `frontend/` is the browser front end of DotNextAI: a Next.js app with Fluent UI v9 and the ERNI brand, laid out as a dashboard like ValidatorHub. It talks only to `DotNextAI.Api` ([API contract](../design/api.md)). The terminal app stays next to it ([CLI](feature-cli.md)).
 
@@ -19,6 +19,7 @@
 | Answers | Plain text with the model's line breaks (`white-space: pre-wrap`). Markdown rendering is a follow-up, because it needs a sanitizing renderer. | 2026-11-16 |
 | Security | Strict CSP with a per-request nonce (`src/proxy.ts`). `connect-src` allows only the app and the API origin, so a model answer can never make the page call anywhere else. Static security headers come from ValidatorHub. No authentication: local use, like the API. | 2026-11-16 |
 | Images (step 06) | Attach with a button or by pasting (e.g. a screenshot). The browser checks count, size and the file signature before reading or sending, as the backend does. Previews are `data:` URIs (the CSP's `img-src` already allows them), so there are no object URLs to revoke. | 2026-11-16 |
+| Streaming (step 07) | The chat calls `POST /api/chat/stream` and reads its Server-Sent Events with a small reader of its own (`src/services/sse.ts`, about 30 lines, no library): `EventSource` cannot send a POST body. A **Stop** button replaces Send while an answer is written. | 2026-11-16 |
 | Dependencies | Versions at least 7 days old (`npm install --before`), npm only, `npm ci --ignore-scripts`. | 2026-11-16 |
 
 ## Pages
@@ -43,7 +44,10 @@ A dashboard with three cards:
   - Before sending: attachments show as 64 px thumbnails in a list (*Images for your next question*), each with a *Remove* button.
   - Rules: up to 4 images of 4 MB each, the format checked from the bytes. Errors under the field: *"notes.png is not a PNG, JPEG, WebP or GIF image."*, *"…is too large…"*, *"You can attach up to 4 images…"*. The button is disabled at 4.
   - Sending: images go in base64 with that question only and show above it in the conversation. On failure they come back with the question; *New conversation* discards them.
-- **While waiting:** the question is shown with a *"DotNextAI is thinking…"* spinner. Typing goes on, sending is disabled.
+- **While waiting:** the question is shown with a *"DotNextAI is thinking…"* spinner until the first piece arrives. Then the answer grows in its bubble as it is written. Typing goes on, and **Send** becomes **Stop**.
+- **Screen readers:** the conversation region is `aria-busy` while an answer streams, so the answer is announced once, complete, instead of piece by piece.
+- **Stop:** what had arrived stays in the conversation as the answer, with *"Stopped before the end."*, and is part of the history. With nothing yet, the question and its images go back to the composer.
+- **Broken answer:** an `error` event or a stream that closes early drops the partial text and shows the failure like any other, with the question given back.
 - **History:** every question is sent with the whole conversation (`POST /api/chat`, `history`).
 - **Failure:** an error bar with the localized text, which can be dismissed. The question goes back into the composer (unless something else was typed), and the conversation is unchanged.
 - **Limits** (same as the backend): empty or longer than 20,000 characters is rejected before sending, with the message under the field. At 50 questions a warning asks for a new conversation and the composer is disabled.
@@ -64,6 +68,8 @@ A dashboard with three cards:
   - Sending: suggestions; question and answer with the model; history sent with the next question; Enter and Shift+Enter; a suggestion click.
   - Problems: the failure shown in Spanish without the API's English detail, and the question given back; unreachable API; truncated answer.
   - Lifecycle: a new conversation without history; empty question.
+- `ChatView.test.tsx` (streaming): the streaming endpoint is called; thinking, then partial text with `aria-busy` and Stop, then the complete answer; Stop keeps the partial answer (the request aborted); Stop before any text gives the question back; a broken stream shows the failure.
+- `sse.test.ts`: events split across chunks (also inside a line and inside a UTF-8 character), CRLF, comments, multi-line data. `apiClient.test.ts` (`streamChat`): deltas and the whole answer, an `error` event, problem details before the stream, a stream ending without `done`.
 - `ChatViewLimit.test.tsx`: the question limit warning and the disabled composer.
 - `ChatViewImages.test.tsx`:
   - Sending: preview and base64 payload, images not resent in the history.

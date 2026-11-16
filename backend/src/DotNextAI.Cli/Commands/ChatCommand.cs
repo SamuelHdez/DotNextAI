@@ -116,10 +116,11 @@ internal sealed class ChatCommand(IChatService chat, CliConsole console)
 
         try
         {
-            var answer = await conversation.AskAsync(question, attachments.Images, cancellationToken);
+            var answer = await AnswerWriter.WriteAsync(
+                conversation.AskStreamingAsync(question, attachments.Images, cancellationToken),
+                console.Out);
             // Images go with one question only (the history keeps the text); after an answer they are used up.
             attachments.Clear();
-            await console.Out.WriteLineAsync(answer.Text);
             if (answer.Truncated)
             {
                 await console.Error.WriteLineAsync(CliMessages.Truncated);

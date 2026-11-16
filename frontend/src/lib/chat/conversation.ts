@@ -9,6 +9,8 @@ export interface ChatMessage {
   images?: { name: string; src: string }[];
   model?: string;
   truncated?: boolean;
+  /** The user stopped the answer before the end (step 07); `text` is what had arrived. */
+  stopped?: boolean;
 }
 
 /** The history sent to the API: every message so far, oldest first. */

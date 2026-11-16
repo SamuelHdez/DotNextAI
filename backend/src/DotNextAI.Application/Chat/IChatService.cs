@@ -26,6 +26,18 @@ public interface IChatService
         IReadOnlyList<ChatTurn> history,
         IReadOnlyList<ChatImage> images,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Same as <see cref="AskAsync(string, IReadOnlyList{ChatTurn}, IReadOnlyList{ChatImage}, CancellationToken)"/>, but
+    /// the answer arrives in pieces as the model writes it (step 07). Validation and every failure happen while
+    /// iterating: the rules and the proxy's refusals on the first <c>MoveNextAsync</c>, a broken connection later.
+    /// The last update carries the whole answer (<see cref="ChatStreamUpdate.Completed"/>).
+    /// </summary>
+    IAsyncEnumerable<ChatStreamUpdate> AskStreamingAsync(
+        string question,
+        IReadOnlyList<ChatTurn> history,
+        IReadOnlyList<ChatImage> images,
+        CancellationToken cancellationToken);
 }
 
 public static class ChatServiceExtensions

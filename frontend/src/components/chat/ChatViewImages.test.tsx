@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatView } from "@/components/chat/ChatView";
 import { PNG_BASE64, pngFile, textFile } from "@/test/images";
-import { jsonResponse, renderWithProviders } from "@/test/render";
+import { jsonResponse, renderWithProviders, streamedAnswer } from "@/test/render";
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -14,7 +14,7 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-const answer = (text: string) => jsonResponse({ answer: text, model: "gpt-5.6-luna", truncated: false });
+const answer = (text: string) => streamedAnswer(text);
 const sentBodies = () => fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
 const fileInput = () => screen.getByTestId("image-input") as HTMLInputElement;
 

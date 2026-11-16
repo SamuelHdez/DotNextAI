@@ -13,6 +13,59 @@ internal sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessa
 
     public static StubHttpHandler Throws(Exception exception) => new(_ => throw exception);
 
+    /// <summary>A streamed (Server-Sent Events) answer, as the OpenAI API sends with "stream": true.</summary>
+    public static StubHttpHandler Sse(string body) =>
+        new(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "text/event-stream") });
+
+    /// <summary>A stream that sends <paramref name="firstChunk"/> and then breaks, like a dropped connection.</summary>
+    public static StubHttpHandler SseThatBreaks(string firstChunk) =>
+        new(_ =>
+        {
+            var content = new StreamContent(new BrokenStream(Encoding.UTF8.GetBytes(firstChunk)));
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        });
+
+    private sealed class BrokenStream(byte[] first) : Stream
+    {
+        private bool _sent;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (_sent)
+            {
+                throw new IOException("The connection was reset.");
+            }
+
+            _sent = true;
+            Array.Copy(first, 0, buffer, offset, Math.Min(count, first.Length));
+            return Math.Min(count, first.Length);
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (_sent)
+            {
+                throw new IOException("The connection was reset.");
+            }
+
+            _sent = true;
+            first.AsMemory(0, Math.Min(buffer.Length, first.Length)).CopyTo(buffer);
+            return ValueTask.FromResult(Math.Min(buffer.Length, first.Length));
+        }
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

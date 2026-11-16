@@ -32,6 +32,7 @@ const useStyles = makeStyles({
     borderBottomLeftRadius: tokens.borderRadiusSmall,
   },
   truncated: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, color: tokens.colorPaletteMarigoldForeground2 },
+  stopped: { color: tokens.colorNeutralForeground3 },
   images: { display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: tokens.spacingHorizontalS },
   image: {
     maxWidth: "200px",
@@ -61,21 +62,24 @@ interface ChatMessageListProps {
   pendingQuestion?: string | null;
   /** Images sent with the pending question. */
   pendingImages?: { name: string; src: string }[];
+  /** The answer to the pending question so far (step 07); empty until the first piece arrives. */
+  pendingAnswer?: string;
 }
 
 /** The conversation, oldest first. New messages are announced by screen readers (role="log") and scrolled into view. */
-export function ChatMessageList({ messages, pendingQuestion, pendingImages }: ChatMessageListProps) {
+export function ChatMessageList({ messages, pendingQuestion, pendingImages, pendingAnswer = "" }: ChatMessageListProps) {
   const styles = useStyles();
   const { t } = useI18n();
   const end = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
-  }, [messages.length, pendingQuestion]);
+  }, [messages.length, pendingQuestion, pendingAnswer]);
 
   return (
     // The live region wraps the list: putting role="log" on the <ol> itself would drop its list semantics.
-    <div role="log" aria-label={t("chat.history")} aria-live="polite">
+    // aria-busy while an answer streams: screen readers announce it once, complete, instead of every piece.
+    <div role="log" aria-label={t("chat.history")} aria-live="polite" aria-busy={pendingQuestion ? true : undefined}>
       <ol className={styles.log}>
         {messages.map((message) => {
           const isUser = message.role === "user";
@@ -95,6 +99,7 @@ export function ChatMessageList({ messages, pendingQuestion, pendingImages }: Ch
                   {t("chat.truncated")}
                 </Caption1>
               )}
+              {message.stopped && <Caption1 className={styles.stopped}>{t("chat.stopped")}</Caption1>}
             </li>
           );
         })}
@@ -110,7 +115,20 @@ export function ChatMessageList({ messages, pendingQuestion, pendingImages }: Ch
               <div className={mergeClasses(styles.bubble, styles.userBubble)}>{pendingQuestion}</div>
             </li>
             <li className={mergeClasses(styles.row, styles.assistantRow)}>
-              <Spinner size="tiny" label={t("chat.thinking")} />
+              {pendingAnswer ? (
+                <>
+                  <div className={styles.meta}>
+                    <Text weight="semibold" size={200}>
+                      {t("chat.assistant")}
+                    </Text>
+                  </div>
+                  <div className={mergeClasses(styles.bubble, styles.assistantBubble)} data-streaming>
+                    {pendingAnswer}
+                  </div>
+                </>
+              ) : (
+                <Spinner size="tiny" label={t("chat.thinking")} />
+              )}
             </li>
           </>
         )}

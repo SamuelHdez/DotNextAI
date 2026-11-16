@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Caption1, Field, makeStyles, Textarea, tokens, Tooltip } from "@fluentui/react-components";
-import { Attach20Regular, Dismiss12Regular, Send20Regular } from "@fluentui/react-icons";
+import { Attach20Regular, Dismiss12Regular, Send20Regular, Stop20Regular } from "@fluentui/react-icons";
 import { useRef, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { MAX_QUESTION_LENGTH } from "@/lib/chat/chatRules";
 import { MAX_IMAGES_PER_QUESTION, SUPPORTED_IMAGE_TYPES, type ImageAttachment } from "@/lib/chat/images";
@@ -43,6 +43,8 @@ interface ChatComposerProps {
   attachments: readonly ImageAttachment[];
   onAddFiles: (files: File[]) => void;
   onRemoveAttachment: (id: string) => void;
+  /** Stops the answer being written (shown instead of Send while busy). */
+  onStop: () => void;
 }
 
 export function ChatComposer({
@@ -55,6 +57,7 @@ export function ChatComposer({
   attachments,
   onAddFiles,
   onRemoveAttachment,
+  onStop,
 }: ChatComposerProps) {
   const styles = useStyles();
   const { t } = useI18n();
@@ -139,9 +142,15 @@ export function ChatComposer({
             disabled={disabled}
           />
         </Field>
-        <Button type="submit" appearance="primary" icon={<Send20Regular />} disabled={busy || disabled || value.trim().length === 0}>
-          {t("chat.send")}
-        </Button>
+        {busy ? (
+          <Button appearance="secondary" icon={<Stop20Regular />} onClick={onStop}>
+            {t("chat.stop")}
+          </Button>
+        ) : (
+          <Button type="submit" appearance="primary" icon={<Send20Regular />} disabled={disabled || value.trim().length === 0}>
+            {t("chat.send")}
+          </Button>
+        )}
       </div>
       {value.length >= COUNTER_FROM && (
         <Caption1 className={styles.footer} aria-live="polite">

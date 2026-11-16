@@ -20,3 +20,41 @@ export function renderWithProviders(ui: ReactElement, { locale = "en", ...option
 export function jsonResponse(body: unknown, status = 200, contentType = "application/json"): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": contentType } });
 }
+
+/** A text/event-stream Response with the given events (as POST /api/chat/stream sends them). */
+export function sseResponse(...events: { event: string; data: unknown }[]): Response {
+  const body = events.map(({ event, data }) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join("");
+  return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+}
+
+/** A streamed answer: one `delta` per word, then `done`. */
+export function streamedAnswer(text: string, truncated = false, model = "gpt-5.6-luna"): Response {
+  const pieces = text.split(/(?<=\s)/).filter(Boolean);
+  return sseResponse(...pieces.map((piece) => ({ event: "delta", data: { text: piece } })), { event: "done", data: { answer: text, model, truncated } });
+}
+
+/** A streamed Response whose events the test pushes one by one, to see the UI while the answer is being written. */
+export function controlledStream() {
+  let push!: (chunk: string) => void;
+  let close!: () => void;
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      push = (chunk) => controller.enqueue(encoder.encode(chunk));
+      close = () => controller.close();
+    },
+  });
+  return {
+    response: new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } }),
+    delta: (text: string) => push(`event: delta\ndata: ${JSON.stringify({ text })}\n\n`),
+    done: (answer: string) => {
+      push(`event: done\ndata: ${JSON.stringify({ answer, model: "gpt-5.6-luna", truncated: false })}\n\n`);
+      close();
+    },
+    error: (failure: string, status: number) => {
+      push(`event: error\ndata: ${JSON.stringify({ status, failure, title: "x", detail: "English detail" })}\n\n`);
+      close();
+    },
+  };
+}
+

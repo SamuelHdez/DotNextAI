@@ -21,6 +21,10 @@ internal static class ChatFailureMapper
     public static ChatServiceException Unreachable(Exception exception) =>
         new(ChatFailure.Unavailable, "The LiteLLM proxy could not be reached.", exception);
 
+    /// <summary>A streamed answer whose connection broke after some text had arrived (step 07).</summary>
+    public static ChatServiceException Interrupted(Exception exception) =>
+        new(ChatFailure.Unavailable, "The connection to the LiteLLM proxy broke before the answer was complete.", exception);
+
     public static ChatServiceException FromStatus(ClientResultException exception, LlmOptions options, string model)
     {
         switch (exception.Status)

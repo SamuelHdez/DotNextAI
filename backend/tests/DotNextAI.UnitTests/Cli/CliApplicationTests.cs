@@ -143,6 +143,32 @@ public class CliApplicationTests
     }
 
     [Fact]
+    public async Task Ask_StreamedAnswer_IsWrittenPieceByPieceAsOneLine()
+    {
+        var chat = new FakeChatService(_ => new ChatAnswer("one two three", "gpt-5.6-luna", Truncated: false));
+
+        var run = await RunAsync(chat, ["ask", "Count"]);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal("one two three" + Environment.NewLine, run.Out);
+    }
+
+    [Fact]
+    public async Task Ask_AnswerBreaksMidStream_EndsThePartialLineAndReportsTheError()
+    {
+        var chat = new FakeChatService(_ => new ChatAnswer("one two three", "gpt-5.6-luna", Truncated: false))
+        {
+            FailMidStream = new ChatServiceException(ChatFailure.Unavailable, "The LiteLLM proxy could not be reached."),
+        };
+
+        var run = await RunAsync(chat, ["ask", "Count"]);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Equal("one " + Environment.NewLine, run.Out);
+        Assert.Contains("Error: The LiteLLM proxy could not be reached.", run.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Ask_TruncatedAnswer_PrintsTheAnswerAndAWarningOnStderr()
     {
         var chat = new FakeChatService(_ => new ChatAnswer("partial", "gpt-5.6-luna", Truncated: true));

@@ -32,7 +32,7 @@ export const BACKLOG: BacklogPhase[] = [
     steps: [
       { number: "05", title: "backlog.step05", status: "done" },
       { number: "06", title: "backlog.step06", status: "done" },
-      { number: "07", title: "backlog.step07", status: "planned" },
+      { number: "07", title: "backlog.step07", status: "done" },
     ],
   },
   {

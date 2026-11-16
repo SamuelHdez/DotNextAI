@@ -21,7 +21,7 @@ import { MAX_IMAGE_MEGABYTES, MAX_IMAGES_PER_QUESTION, readImageFile, type Image
 import { questionCount, toHistory, type ChatMessage } from "@/lib/chat/conversation";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { MessageKey } from "@/lib/i18n/messages/en";
-import { sendChat } from "@/services/chatService";
+import { streamChat } from "@/services/chatService";
 
 const SUGGESTIONS: MessageKey[] = ["chat.suggestion.1", "chat.suggestion.2", "chat.suggestion.3"];
 
@@ -52,7 +52,7 @@ const useStyles = makeStyles({
 });
 
 /**
- * Backlog step 05: the chat in the browser. The conversation lives in this component's state (one tab, lost on
+ * Backlog step 05: the chat in the browser; step 07 streams the answer (POST /api/chat/stream) with a Stop button. The conversation lives in this component's state (one tab, lost on
  * reload) and is sent with every question to POST /api/chat, which keeps no state.
  */
 export function ChatView() {
@@ -65,11 +65,14 @@ export function ChatView() {
   const [inputError, setInputError] = useState<LocalizedError | null>(null);
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [pendingImages, setPendingImages] = useState<{ name: string; src: string }[]>([]);
-  const request = useRef<AbortController | null>(null);
+  // The answer so far, in a ref for Stop (state updates are batched) and in state for rendering.
+  const [pendingAnswer, setPendingAnswer] = useState("");
+  const answerSoFar = useRef("");
+  const request = useRef<{ controller: AbortController; question: string; text: string; images: ImageAttachment[] } | null>(null);
   const nextId = useRef(0);
 
   // Leaving the page cancels the question in flight.
-  useEffect(() => () => request.current?.abort(), []);
+  useEffect(() => () => request.current?.controller.abort(), []);
 
   const full = questionCount(messages) >= MAX_CONVERSATION_QUESTIONS;
 
@@ -92,15 +95,21 @@ export function ChatView() {
     const sentImages = attachments;
     setAttachments([]);
     setPendingImages(sentImages.map(({ name, previewUrl }) => ({ name, src: previewUrl })));
+    answerSoFar.current = "";
+    setPendingAnswer("");
     const controller = new AbortController();
-    request.current = controller;
+    request.current = { controller, question: check.question, text, images: sentImages };
 
     try {
-      const response = await sendChat(
+      const response = await streamChat(
         {
           question: check.question,
           history: toHistory(messages),
           ...(sentImages.length > 0 && { images: sentImages.map(({ mediaType, data }) => ({ mediaType, data })) }),
+        },
+        (piece) => {
+          answerSoFar.current += piece;
+          setPendingAnswer(answerSoFar.current);
         },
         controller.signal,
       );
@@ -123,19 +132,50 @@ export function ChatView() {
       setDraft((current) => current || text);
       setAttachments((current) => (current.length > 0 ? current : sentImages));
     } finally {
-      if (request.current === controller) {
+      if (request.current?.controller === controller) {
         request.current = null;
         setPendingQuestion(null);
         setPendingImages([]);
+        setPendingAnswer("");
       }
     }
   }
 
+  /** Stops the answer: what arrived stays in the conversation, marked as stopped; with nothing yet, the question comes back. */
+  function stop() {
+    const current = request.current;
+    if (!current) return;
+    request.current = null;
+    current.controller.abort();
+    const partial = answerSoFar.current;
+    if (partial.trim()) {
+      const id = nextId.current;
+      nextId.current += 2;
+      setMessages((existing) => [
+        ...existing,
+        {
+          id: `m${id}`,
+          role: "user",
+          text: current.question,
+          images: current.images.length > 0 ? current.images.map(({ name, previewUrl }) => ({ name, src: previewUrl })) : undefined,
+        },
+        { id: `m${id + 1}`, role: "assistant", text: partial, stopped: true },
+      ]);
+    } else {
+      setDraft((draftNow) => draftNow || current.text);
+      setAttachments((attachedNow) => (attachedNow.length > 0 ? attachedNow : current.images));
+    }
+    setPendingQuestion(null);
+    setPendingImages([]);
+    setPendingAnswer("");
+  }
+
   function newConversation() {
-    request.current?.abort();
+    request.current?.controller.abort();
     request.current = null;
     setPendingQuestion(null);
     setPendingImages([]);
+    setPendingAnswer("");
     setMessages([]);
     setError(null);
     setInputError(null);
@@ -187,7 +227,7 @@ export function ChatView() {
             </div>
           </div>
         ) : (
-          <ChatMessageList messages={messages} pendingQuestion={pendingQuestion} pendingImages={pendingImages} />
+          <ChatMessageList messages={messages} pendingQuestion={pendingQuestion} pendingImages={pendingImages} pendingAnswer={pendingAnswer} />
         )}
       </div>
 
@@ -220,6 +260,7 @@ export function ChatView() {
           attachments={attachments}
           onAddFiles={(files) => void addFiles(files)}
           onRemoveAttachment={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
+          onStop={stop}
         />
       </div>
     </PageBody>

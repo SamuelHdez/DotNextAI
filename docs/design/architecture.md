@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Step 06 implemented on 2026-11-16 (image input in the web, the CLI and the API), on top of steps 00-05 (backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API, web app). Components marked *planned* arrive with later backlog steps.
+> **Status:** Step 07 implemented on 2026-11-16 (streamed answers in the web, the CLI and the API), on top of steps 00-06 (backend skeleton, CI, CLI with chat history, Agent Framework agent, chat API, web app, images). Components marked *planned* arrive with later backlog steps.
 
 ## Components
 
@@ -43,6 +43,7 @@ Project references: `Api → Application, Infrastructure`; `Cli → Application,
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `GET` | `/api/health` | Liveness and whether the LLM proxy is configured |
+| `POST` | `/api/chat/stream` | Same, with the answer as Server-Sent Events (`delta`, `done`, `error`) |
 | `POST` | `/api/chat` | Question + history → answer (stateless, rate-limited) |
 
 Full contract, status codes and the `failure` extension: [API contract](api.md). Errors use `ProblemDetails` (`AddProblemDetails`, `UseExceptionHandler`, `UseStatusCodePages`).
@@ -85,3 +86,4 @@ Full contract, status codes and the `failure` extension: [API contract](api.md).
 | 2026-11-16 | npm versions | `npm install --before=<7 days ago>` for the whole tree (direct and transitive). The dev-only ESLint chain keeps 9 moderate `minimatch` advisories whose fixes are younger than that; CI blocks production on high+ and everything on critical, as in the reference repos. | The 7-day cooldown is the supply-chain rule of every ERNI repo here; a moderate dev-tool advisory is the lesser risk. |
 | 2026-11-16 | E2E | Playwright starts a fake OpenAI-compatible LiteLLM (`frontend/e2e/fake-litellm.mjs`), the real API in the `E2E` environment and the production web build on their own ports. axe on every page with no violation allowed (Tabster sentinels excluded). | It tests the whole chain without test code in the API, without secrets and next to a running `dev.sh`. The axe rule set matches the ctf-janus admin suite. |
 | 2026-11-16 | Image input (step 06) | `ChatImage` and `ImageFormats` (signature detection) in Application, the same rules mirrored in the web app. Base64 in the API (`images`), `DataContent` in the agent. Images go only with the question they were attached to. | One rule set in every front end. The bytes decide the format, not names or declared types. Not resending images keeps requests small and image tokens bounded. |
+| 2026-11-16 | Streaming (step 07) | `IChatService.AskStreamingAsync` over `RunStreamingAsync`. `POST /api/chat/stream` with `TypedResults.ServerSentEvents` waits for the first piece before starting the stream. The web app uses its own SSE reader over `fetch`; the CLI writes the pieces to stdout. | Errors keep their status codes in the common case, and the mid-answer case keeps the same `failure` codes. `EventSource` cannot POST a body, and a 30-line reader avoids a dependency. |

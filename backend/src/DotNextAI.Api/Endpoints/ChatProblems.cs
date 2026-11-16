@@ -36,7 +36,7 @@ internal static class ChatProblems
             title: Title(failure),
             extensions: new Dictionary<string, object?> { [FailureExtension] = failure.ToString() });
 
-    private static string Title(ChatFailure failure) => failure switch
+    public static string Title(ChatFailure failure) => failure switch
     {
         ChatFailure.NotConfigured => "The model is not configured",
         ChatFailure.Unauthorized => "The model provider rejected the server's key",

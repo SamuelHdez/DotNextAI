@@ -73,3 +73,9 @@ Outcome: Playwright suite in `frontend/e2e` with 15 scenarios and axe on every p
 > Assume the model accepts images; go with it.
 
 Outcome: images in every front end (web button and paste with previews, CLI `--image` and `/image`, API `images` in base64), sent to the agent as `DataContent`. Rules shared by every front end: up to 4 per question, 4 MB each, format from the file signature. Decision: images go only with the question they were attached to, and the history stays text, to keep requests small. 160 .NET tests, 209 Vitest tests, 17 Playwright scenarios (the fake LiteLLM now checks image data URIs). Also run manually through the CLI against the fake proxy.
+
+## 2026-11-16 — Step 07: streaming
+
+> Yes (go with streaming).
+
+Outcome: `IChatService.AskStreamingAsync` over Agent Framework's `RunStreamingAsync`, and `POST /api/chat/stream` with Server-Sent Events. The first piece is awaited before streaming, so the common failures keep their status codes; failures mid-answer come as an `error` event. The web app has its own SSE reader, the answer grows as it is written, there is a Stop button, and `aria-busy` while streaming. The CLI prints the pieces as they arrive. The fake LiteLLM now streams real `chat.completion.chunk` events, with slow and dropped-connection modes. 182 .NET tests, 224 Vitest tests and 19 Playwright scenarios.

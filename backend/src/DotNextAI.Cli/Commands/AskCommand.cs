@@ -74,8 +74,7 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
                 return ExitCodes.UsageError;
             }
 
-            var answer = await chat.AskAsync(question, [], images, cancellationToken);
-            await console.Out.WriteLineAsync(answer.Text);
+            var answer = await AnswerWriter.WriteAsync(chat.AskStreamingAsync(question, [], images, cancellationToken), console.Out);
             if (answer.Truncated)
             {
                 await console.Error.WriteLineAsync(CliMessages.Truncated);

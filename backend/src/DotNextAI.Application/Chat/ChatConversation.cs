@@ -44,6 +44,36 @@ public sealed class ChatConversation(IChatService chat)
         return answer;
     }
 
+    /// <summary>
+    /// Streams the answer to the question (step 07) and records both turns when the answer is complete. Stopping the
+    /// iteration early (the user pressed Stop) or a failure records nothing.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The conversation is full (<see cref="IsFull"/>).</exception>
+    public async IAsyncEnumerable<ChatStreamUpdate> AskStreamingAsync(
+        string question,
+        IReadOnlyList<ChatImage> images,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        if (IsFull)
+        {
+            throw new InvalidOperationException(
+                $"The conversation reached the limit of {ChatRules.MaxConversationQuestions} questions.");
+        }
+
+        var normalized = ChatRules.NormalizeQuestion(question);
+        var history = _turns.ToArray();
+        await foreach (var update in chat.AskStreamingAsync(normalized, history, images, cancellationToken).ConfigureAwait(false))
+        {
+            if (update.Completed is { } answer)
+            {
+                _turns.Add(new ChatTurn(ChatTurnRole.User, normalized));
+                _turns.Add(new ChatTurn(ChatTurnRole.Assistant, answer.Text));
+            }
+
+            yield return update;
+        }
+    }
+
     /// <summary>Forgets every turn: the next question starts a new conversation.</summary>
     public void Reset() => _turns.Clear();
 }

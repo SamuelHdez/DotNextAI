@@ -31,12 +31,13 @@ No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on e
 | Last user message | Answer |
 | ----------------- | ------ |
 | contains `[e2e:unavailable]` | LiteLLM's real 400 "no healthy deployments" body, so the UI shows `ModelUnavailable` |
-| contains `[e2e:slow]` | answer after 1.5 s, so the "thinking" state is visible |
+| contains `[e2e:slow]` | waits 1.5 s, then streams a word every 400 ms, so the thinking state, the partial answer and Stop can be seen |
+| contains `[e2e:drop]` | streaming only: sends the first word, then drops the connection |
 | image parts | `I see N image(s) (types): <question>`, with `invalid` for any image that is not a base64 data URI. Proves the image crosses the whole chain in the right format |
 | "what is my name" | `Your name is X.` from an earlier "My name is X" in the history, or `I do not know your name yet.` Proves that the history crosses the whole chain |
 | anything else | `Echo: <question>` |
 
-It answers 401 without a bearer key and 404 on unknown routes. Model name: `e2e-model`.
+With `"stream": true` it answers in OpenAI's `chat.completion.chunk` Server-Sent Events format, one word per chunk, ending with `data: [DONE]`. It answers 401 without a bearer key and 404 on unknown routes. Model name: `e2e-model`.
 
 ### Scenarios
 
@@ -45,7 +46,8 @@ It answers 401 without a bearer key and 404 on unknown routes. Model name: `e2e-
   - Navigation: from the card and the side navigation, collapse to the icon rail.
   - axe.
 - `chat.spec.ts`:
-  - Answers: answer with model, history ("Ana"), suggestion click, thinking indicator, Shift+Enter.
+  - Answers: answer with model, history ("Ana"), suggestion click, Shift+Enter.
+  - Streaming: thinking, then a partial answer, then the complete one; Stop keeps what arrived; a connection dropped mid-answer shows the failure and gives the question back.
   - Failures and reset: outage message with the question given back, new conversation forgets the history.
   - Images: an image reaches the model as a base64 PNG data URI and shows in the conversation; a non-image is rejected before sending; axe with attachments.
   - axe, empty and with messages.

@@ -38,13 +38,39 @@ test.describe("chat", () => {
     await expect(conversation(page).getByText("Echo: Write a haiku about .NET.")).toBeVisible();
   });
 
-  test("shows that the model is thinking while it answers", async ({ page }) => {
+  test("streams the answer: thinking first, then the text as it is written", async ({ page }) => {
     await ask(page, "Take your time [e2e:slow]");
 
     await expect(page.getByText("DotNextAI is thinking…")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Send" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+
+    // A partial answer: the first words, before the rest arrives.
+    const partial = conversation(page).locator("[data-streaming]");
+    await expect(partial).toHaveText(/^Echo: Take/);
+    await expect(partial).not.toHaveText("Echo: Take your time [e2e:slow]");
+
     await expect(conversation(page).getByText("Echo: Take your time [e2e:slow]")).toBeVisible();
-    await expect(page.getByText("DotNextAI is thinking…")).toBeHidden();
+    await expect(conversation(page).getByText("e2e-model")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+  });
+
+  test("stops the answer and keeps what had arrived", async ({ page }) => {
+    await ask(page, "Tell me a long story [e2e:slow]");
+    await expect(conversation(page).locator("[data-streaming]")).toHaveText(/^Echo:/);
+
+    await page.getByRole("button", { name: "Stop" }).click();
+
+    await expect(conversation(page).getByText("Stopped before the end.")).toBeVisible();
+    await expect(conversation(page).getByText(/^Echo:/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+  });
+
+  test("reports an answer that breaks mid-stream and gives the question back", async ({ page }) => {
+    await ask(page, "Are you still there? [e2e:drop]");
+
+    await expect(page.getByText("The model provider is unavailable right now. Try again later.")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Your question" })).toHaveValue("Are you still there? [e2e:drop]");
+    await expect(page.getByRole("heading", { name: "Ask anything" })).toBeVisible();
   });
 
   test("explains a model outage and gives the question back", async ({ page }) => {

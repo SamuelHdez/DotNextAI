@@ -27,8 +27,8 @@ async function readProblem(response: Response): Promise<ProblemDetails | undefin
   }
 }
 
-/** Calls the API from the browser and returns its JSON; errors become {@link ApiError} with the problem details. */
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+/** Calls the API from the browser; network failures and error statuses become {@link ApiError} with the problem details. */
+export async function apiResponse(path: string, init?: RequestInit): Promise<Response> {
   if (!appConfig.apiBaseUrl) {
     throw new ApiError("NEXT_PUBLIC_API_BASE_URL is not configured.", 0);
   }
@@ -47,5 +47,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(`Request to ${url.pathname} failed with status ${response.status}.`, response.status, await readProblem(response));
   }
 
-  return (await response.json()) as T;
+  return response;
+}
+
+/** Calls the API from the browser and returns its JSON; errors become {@link ApiError} with the problem details. */
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await (await apiResponse(path, init)).json()) as T;
 }

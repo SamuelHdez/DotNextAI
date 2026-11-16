@@ -147,6 +147,23 @@ public class ChatCommandTests
     }
 
     [Fact]
+    public async Task Chat_AnswerBreaksMidStream_IsReportedAndNotRecorded()
+    {
+        var calls = 0;
+        var chat = new FakeChatService(q => new ChatAnswer($"answer to {q}", "gpt-5.6-luna", Truncated: false))
+        {
+            FailMidStream = new ChatServiceException(ChatFailure.Unavailable, "Dropped."),
+        };
+
+        var run = await RunAsync(chat, ["chat"], stdin: Lines("first", "second"), inputRedirected: true);
+
+        calls = chat.Calls.Count;
+        Assert.Equal(2, calls);
+        Assert.Contains("Error: Dropped.", run.Error, StringComparison.Ordinal);
+        Assert.Empty(chat.Calls[1].History);
+    }
+
+    [Fact]
     public async Task Chat_TooLongQuestion_IsRejectedAndTheChatContinues()
     {
         var chat = new FakeChatService();

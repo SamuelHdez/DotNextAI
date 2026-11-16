@@ -1,6 +1,6 @@
 # API contract
 
-> **Status:** Step 06 (images in the chat endpoint) implemented on 2026-11-16, on top of step 04 (chat endpoint). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
+> **Status:** Step 07 (streaming endpoint) implemented on 2026-11-16, on top of steps 04 and 06 (chat endpoint, images). The web app mirrors these contracts in `frontend/src/services/types.ts`; keep both in sync.
 
 `DotNextAI.Api` is an ASP.NET Core 10 Minimal API on `http://localhost:5100`. It exposes the same chat service as the CLI ([chat service](../specs/feature-llm-chat.md)) and is meant for local use by the web app. In Development the OpenAPI document is at `/openapi/v1.json` and Swagger UI at `/swagger`; `backend/src/DotNextAI.Api/DotNextAI.Api.http` has ready-made requests.
 
@@ -12,6 +12,7 @@
 | Errors | `ProblemDetails` (`application/problem+json`). Validation errors are a 400 `ValidationProblem` with `errors` per field. Model failures carry a `failure` extension with the `ChatFailure` name, so the multi-language web app maps it to its own text; `detail` is English and only for logs and developers. | 2026-11-16 |
 | Status codes | Problems on the server side or in the proxy are 5xx: 502 when the proxy rejects or fails, 503 when the model is unavailable or not configured, 504 on timeout. 429 for rate limits, either the proxy's or the API's own. 422 when the proxy refuses the content, e.g. context window exceeded. 401/403 from the proxy are **not** forwarded: the key belongs to the server, not the caller. | 2026-11-16 |
 | Rate limit | `POST /api/chat` has a fixed window per client IP: `RateLimiting:ChatPermitsPerMinute`, default 20, range 1-10,000. The API has no authentication and every call spends the LiteLLM key, so this caps a runaway script or an exposed port. | 2026-11-16 |
+| Streaming (step 07) | `POST /api/chat/stream` takes the same body and rules as `/api/chat` and answers with Server-Sent Events (`TypedResults.ServerSentEvents`). The first piece is awaited **before** the stream starts, so the usual failures keep their ProblemDetails and status code; only a failure after text was sent travels as an `error` event with the same `failure` code. | 2026-11-16 |
 | JSON | camelCase properties; enums as camelCase strings (`"user"`, `"assistant"`), integers rejected. | 2026-11-16 |
 | Contracts | HTTP DTOs live in `DotNextAI.Api/Contracts` (`ChatRequestDto`, `ChatTurnDto`, `ChatResponseDto`) and map to the Application types; `HealthStatusDto` is in Application. | 2026-11-16 |
 
@@ -59,6 +60,29 @@ Request:
 ```
 
 `truncated` is true when the answer stopped at the maximum output length. To continue the conversation, the client appends `{ role: "user", text: question }` and `{ role: "assistant", text: answer }` to its history. The question goes as sent; the server trims it.
+
+### `POST /api/chat/stream`
+
+Same request body, validation, rate limit and failures before the answer as `POST /api/chat`. On success, `200` with `Content-Type: text/event-stream`:
+
+```text
+event: delta
+data: {"text":"Your name "}
+
+event: delta
+data: {"text":"is Ana."}
+
+event: done
+data: {"answer":"Your name is Ana.","model":"gpt-5.6-luna","truncated":false}
+```
+
+| Event | Data | When |
+| ----- | ---- | ---- |
+| `delta` | `{ text }` | Each piece of the answer, in order. Their concatenation is the answer. |
+| `done` | `{ answer, model, truncated }` | Last event of a complete answer; same shape as the `POST /api/chat` response. |
+| `error` | `{ status, failure, title, detail }` | Last event when the answer breaks after it started (e.g. `Unavailable` when the connection to the proxy drops); the same `failure` codes and statuses as the problems below. |
+
+A stream that ends with neither `done` nor `error` (the connection closed) is a failure for the client. Closing the request stops the model call.
 
 ## Errors
 
@@ -109,5 +133,9 @@ Only the origins in `Cors:AllowedOrigins` (`http://localhost:3030` in Developmen
   - Validation: 400 for an empty, missing or too-long question; empty, role-less or null turns; history over the limit; `"system"` or numeric roles; malformed JSON. None of them calls the model.
   - Failures: 503 when not configured; the status, `failure`, `title` and `detail` of every `ChatFailure`.
   - Limits and CORS: 429 with `Retry-After` over the rate limit, the CORS preflight for `POST`, 405 for `GET`.
+- `ChatStreamEndpointTests` (integration):
+  - Events: `delta`s then `done`, `text/event-stream`, the same input as `/api/chat`.
+  - Errors: 400 and 503 as ProblemDetails, not a stream; failures before the first piece with their status and `failure`; a failure mid-answer as an `error` event.
+  - The shared rate limit.
 - `HealthEndpointTests`: health answer, no secrets, CORS.
 - Manual: `DotNextAI.Api.http`, or `curl` against `./scripts/dev.sh`.

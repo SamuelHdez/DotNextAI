@@ -78,6 +78,8 @@ export const en = {
   "chat.input.placeholder": "Type your question. Enter to send, Shift+Enter for a new line. Paste or attach images.",
   "chat.input.counter": "{count} / {max}",
   "chat.send": "Send",
+  "chat.stop": "Stop",
+  "chat.stopped": "Stopped before the end.",
   "chat.limit": "This conversation reached the limit of {max} questions. Start a new conversation to keep chatting.",
   "chat.error.dismiss": "Dismiss",
   "chat.attach": "Attach images",

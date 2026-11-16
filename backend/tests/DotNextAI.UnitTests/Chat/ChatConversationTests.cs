@@ -72,6 +72,54 @@ public class ChatConversationTests
     }
 
     [Fact]
+    public async Task AskStreamingAsync_RecordsTheTurnsWhenTheAnswerIsComplete()
+    {
+        var chat = new FakeChatService(_ => new ChatAnswer("Hello Ana!", "gpt-5.6-luna", Truncated: false));
+        var conversation = new ChatConversation(chat);
+        var pieces = new List<string>();
+
+        await foreach (var update in conversation.AskStreamingAsync("Hi", [], TestContext.Current.CancellationToken))
+        {
+            pieces.Add(update.Text);
+        }
+
+        Assert.Equal("Hello Ana!", string.Concat(pieces));
+        Assert.Equal([new ChatTurn(ChatTurnRole.User, "Hi"), new ChatTurn(ChatTurnRole.Assistant, "Hello Ana!")], conversation.Turns);
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_StoppedEarly_RecordsNothing()
+    {
+        var conversation = new ChatConversation(new FakeChatService(_ => new ChatAnswer("one two three", "gpt-5.6-luna", Truncated: false)));
+
+        await foreach (var _ in conversation.AskStreamingAsync("Hi", [], TestContext.Current.CancellationToken))
+        {
+            break;
+        }
+
+        Assert.Empty(conversation.Turns);
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_FailureMidAnswer_RecordsNothing()
+    {
+        var chat = new FakeChatService(_ => new ChatAnswer("one two three", "gpt-5.6-luna", Truncated: false))
+        {
+            FailMidStream = new ChatServiceException(ChatFailure.Unavailable, "Dropped."),
+        };
+        var conversation = new ChatConversation(chat);
+
+        await Assert.ThrowsAsync<ChatServiceException>(async () =>
+        {
+            await foreach (var _ in conversation.AskStreamingAsync("Hi", [], TestContext.Current.CancellationToken))
+            {
+            }
+        });
+
+        Assert.Empty(conversation.Turns);
+    }
+
+    [Fact]
     public async Task Reset_ForgetsEveryTurn()
     {
         var conversation = new ChatConversation(new FakeChatService());

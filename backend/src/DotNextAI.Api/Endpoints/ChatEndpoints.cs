@@ -25,6 +25,24 @@ internal static class ChatEndpoints
             .ProducesProblem(StatusCodes.Status504GatewayTimeout)
             .RequireRateLimiting(RateLimitingOptions.ChatPolicy);
 
+        app.MapPost("/api/chat/stream", AskStreamingAsync)
+            .WithName("ChatStream")
+            .WithTags("Chat")
+            .WithSummary("Same as POST /api/chat, with the answer streamed as Server-Sent Events.")
+            .WithDescription(
+                "Events: `delta` {text} for each piece, then `done` {answer, model, truncated}, or `error` " +
+                "{status, failure, title, detail} if the answer breaks after it started. Failures before the first piece " +
+                "are ProblemDetails with their status code, as in POST /api/chat.")
+            .Accepts<ChatRequestDto>("application/json")
+            .Produces(StatusCodes.Status200OK, contentType: "text/event-stream")
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout)
+            .RequireRateLimiting(RateLimitingOptions.ChatPolicy);
+
         return app;
     }
 
@@ -33,7 +51,74 @@ internal static class ChatEndpoints
         IChatService chat,
         CancellationToken cancellationToken)
     {
-        var errors = new Dictionary<string, string[]>();
+        if (!TryValidate(request, out var input, out var errors))
+        {
+            return TypedResults.ValidationProblem(errors);
+        }
+
+        if (!chat.IsConfigured)
+        {
+            return ChatProblems.NotConfigured();
+        }
+
+        try
+        {
+            var answer = await chat.AskAsync(input.Question, input.History, input.Images, cancellationToken);
+            return TypedResults.Ok(new ChatResponseDto(answer.Text, answer.Model, answer.Truncated));
+        }
+        catch (ChatServiceException ex)
+        {
+            return ChatProblems.FromException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Step 07. The first update is awaited before the stream starts, so the usual failures (key rejected, model
+    /// unavailable, timeout) still answer with their ProblemDetails and status code. Only a failure after the first
+    /// piece of text, when the 200 headers are already sent, arrives as an <c>error</c> event.
+    /// </summary>
+    private static async Task<IResult> AskStreamingAsync(ChatRequestDto request, IChatService chat, CancellationToken cancellationToken)
+    {
+        if (!TryValidate(request, out var input, out var errors))
+        {
+            return TypedResults.ValidationProblem(errors);
+        }
+
+        if (!chat.IsConfigured)
+        {
+            return ChatProblems.NotConfigured();
+        }
+
+        var updates = chat.AskStreamingAsync(input.Question, input.History, input.Images, cancellationToken).GetAsyncEnumerator(cancellationToken);
+        bool hasFirst;
+        try
+        {
+            hasFirst = await updates.MoveNextAsync();
+        }
+        catch (ChatServiceException ex)
+        {
+            await updates.DisposeAsync();
+            return ChatProblems.FromException(ex);
+        }
+        catch
+        {
+            await updates.DisposeAsync();
+            throw;
+        }
+
+        return TypedResults.ServerSentEvents(ChatStreamEvents.From(updates, hasFirst, cancellationToken));
+    }
+
+    private sealed record ValidInput(string Question, ChatTurn[] History, ChatImage[] Images);
+
+    /// <summary>The rules of both chat endpoints: 400 ValidationProblem with errors per field.</summary>
+    private static bool TryValidate(
+        ChatRequestDto request,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out ValidInput? input,
+        out Dictionary<string, string[]> errors)
+    {
+        input = null;
+        errors = [];
         if (!ChatRules.TryNormalizeQuestion(request.Question, out var question, out var questionError))
         {
             errors["question"] = [questionError];
@@ -66,23 +151,11 @@ internal static class ChatEndpoints
 
         if (errors.Count > 0)
         {
-            return TypedResults.ValidationProblem(errors);
+            return false;
         }
 
-        if (!chat.IsConfigured)
-        {
-            return ChatProblems.NotConfigured();
-        }
-
-        try
-        {
-            var answer = await chat.AskAsync(question, history!, images, cancellationToken);
-            return TypedResults.Ok(new ChatResponseDto(answer.Text, answer.Model, answer.Truncated));
-        }
-        catch (ChatServiceException ex)
-        {
-            return ChatProblems.FromException(ex);
-        }
+        input = new ValidInput(question, history!, images);
+        return true;
     }
 
     // Base64 is decoded here; ChatRules then checks count, size and that the bytes are the declared format.

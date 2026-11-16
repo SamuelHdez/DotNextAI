@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, apiFetch } from "@/services/apiClient";
-import { sendChat } from "@/services/chatService";
-import { jsonResponse } from "@/test/render";
+import { sendChat, streamChat } from "@/services/chatService";
+import { jsonResponse, sseResponse, streamedAnswer } from "@/test/render";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -66,3 +66,53 @@ describe("sendChat", () => {
     expect(JSON.parse(init.body as string)).toEqual({ question: "What is my name?", history: [{ role: "user", text: "My name is Ana." }] });
   });
 });
+
+describe("streamChat", () => {
+  it("passes every piece to onDelta and resolves with the whole answer", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(streamedAnswer("Hello Ana!"));
+    vi.stubGlobal("fetch", fetchMock);
+    const pieces: string[] = [];
+
+    const answer = await streamChat({ question: "Hi", history: [] }, (piece) => pieces.push(piece));
+
+    expect(pieces).toEqual(["Hello ", "Ana!"]);
+    expect(answer).toEqual({ answer: "Hello Ana!", model: "gpt-5.6-luna", truncated: false });
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(String(url)).toBe("http://api.test/api/chat/stream");
+    expect(new Headers(init.headers).get("Accept")).toBe("text/event-stream");
+  });
+
+  it("rejects with the failure of an error event", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        sseResponse(
+          { event: "delta", data: { text: "Half" } },
+          { event: "error", data: { status: 502, failure: "Unavailable", title: "x", detail: "Dropped." } },
+        ),
+      ),
+    );
+
+    const error = (await streamChat({ question: "Hi", history: [] }, () => {}).catch((e: unknown) => e)) as ApiError;
+
+    expect(error.status).toBe(502);
+    expect(error.problem?.failure).toBe("Unavailable");
+  });
+
+  it("rejects with the problem details of a failure before the stream", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ status: 503, failure: "ModelUnavailable" }, 503, "application/problem+json")));
+
+    const error = (await streamChat({ question: "Hi", history: [] }, () => {}).catch((e: unknown) => e)) as ApiError;
+
+    expect(error.problem?.failure).toBe("ModelUnavailable");
+  });
+
+  it("treats a stream that ends without done as a network failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse({ event: "delta", data: { text: "Half" } })));
+
+    const error = (await streamChat({ question: "Hi", history: [] }, () => {}).catch((e: unknown) => e)) as ApiError;
+
+    expect(error.isNetworkError).toBe(true);
+  });
+});
+

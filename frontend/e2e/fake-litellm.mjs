@@ -5,10 +5,13 @@
 //
 // Behaviour, from the last user message:
 //   "[e2e:unavailable]"  -> LiteLLM's real 400 "no healthy deployments" answer
-//   "[e2e:slow]"         -> answers after 1.5 s (to see the thinking indicator)
+//   "[e2e:slow]"         -> waits 1.5 s, then (when streaming) sends a word every 400 ms: the thinking state,
+//                           the partial answer and Stop can be seen
+//   "[e2e:drop]"         -> streaming only: sends the first word, then drops the connection
 //   "what is my name"    -> finds "My name is X" in the history: "Your name is X." (proves the history arrives)
 //   image parts          -> "I see N image(s) (types): <question>" when every image is a base64 data URI
 //   anything else        -> "Echo: <question>"
+// With "stream": true the answer is sent as OpenAI chat.completion.chunk Server-Sent Events, one word per chunk.
 import { createServer } from "node:http";
 
 const port = Number(process.argv[2] ?? process.env.FAKE_LITELLM_PORT ?? 4010);
@@ -61,6 +64,36 @@ function answerFor(messages) {
   return `Echo: ${question}`;
 }
 
+function chunk(delta, finishReason = null) {
+  return `data: ${JSON.stringify({
+    id: "chatcmpl-e2e",
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model: MODEL,
+    choices: [{ index: 0, delta, finish_reason: finishReason }],
+  })}\n\n`;
+}
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function stream(response, text, { slow, drop }) {
+  response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+  if (slow) await wait(1500);
+  const words = text.split(/(?<=\s)/);
+  for (const [index, word] of words.entries()) {
+    response.write(chunk(index === 0 ? { role: "assistant", content: word } : { content: word }));
+    if (drop) {
+      // Let the first word reach the client, then break the connection mid-answer.
+      await wait(200);
+      response.socket?.destroy();
+      return;
+    }
+    await wait(slow ? 400 : 15);
+  }
+  response.write(chunk({}, "stop"));
+  response.end("data: [DONE]\n\n");
+}
+
 const server = createServer((request, response) => {
   const path = (request.url ?? "").split("?")[0];
   if (request.method === "GET" && path === "/health") return send(response, 200, { status: "healthy" });
@@ -97,8 +130,12 @@ const server = createServer((request, response) => {
       });
     }
 
-    const delay = question.includes("[e2e:slow]") ? 1500 : 0;
-    setTimeout(() => send(response, 200, completion(answerFor(messages))), delay);
+    const slow = question.includes("[e2e:slow]");
+    if (body.stream === true) {
+      stream(response, answerFor(messages), { slow, drop: question.includes("[e2e:drop]") }).catch(() => response.destroy());
+      return;
+    }
+    setTimeout(() => send(response, 200, completion(answerFor(messages))), slow ? 1500 : 0);
   });
 });
 

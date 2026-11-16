@@ -77,6 +77,8 @@ export const es: Messages = {
   "chat.input.placeholder": "Escribe tu pregunta. Intro para enviar, Mayús+Intro para una nueva línea. Pega o adjunta imágenes.",
   "chat.input.counter": "{count} / {max}",
   "chat.send": "Enviar",
+  "chat.stop": "Parar",
+  "chat.stopped": "Detenida antes de terminar.",
   "chat.limit": "Esta conversación ha llegado al límite de {max} preguntas. Empieza una conversación nueva para seguir.",
   "chat.error.dismiss": "Cerrar",
   "chat.attach": "Adjuntar imágenes",

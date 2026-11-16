@@ -37,7 +37,7 @@
 - [ ] 05 follow-up: render answers as Markdown with a sanitizing renderer.
 - [ ] 05 follow-up: remove the 9 moderate dev-only `minimatch` advisories (ESLint chain) once the fixed versions pass the 7-day cooldown (Dependabot).
 - [x] 2026-11-16 — 06 Image input: up to 4 images (PNG/JPEG/WebP/GIF, 4 MB) per question in the web (button, paste), the CLI (`--image`, `/image`) and the API (`images`, base64), `DataContent` to the agent; format from the bytes; images go with their question only ([chat service](../specs/feature-llm-chat.md#images)).
-- [ ] 07 Streaming: SSE from the API, incremental rendering.
+- [x] 2026-11-16 — 07 Streaming: `POST /api/chat/stream` (SSE `delta`/`done`/`error`, failures before the first piece as ProblemDetails), `AskStreamingAsync` over the agent's `RunStreamingAsync`, web rendering with Stop and `aria-busy`, CLI printing the pieces ([API](../design/api.md#post-apichatstream)).
 
 ## Phase 3 — Extra features
 

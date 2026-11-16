@@ -1,6 +1,6 @@
 # LLM chat service
 
-> **Status:** Step 06 (image input) implemented on 2026-11-16, on top of steps 02-03 (Microsoft Agent Framework agent, conversation history).
+> **Status:** Step 07 (streaming) implemented on 2026-11-16, on top of steps 02, 03 and 06 (Microsoft Agent Framework agent, conversation history, images).
 
 How DotNextAI talks to the language model. The contract lives in Application (`DotNextAI.Application/Chat`) and the implementation in Infrastructure (`DotNextAI.Infrastructure/Chat`). Every front end uses it: the CLI and the API (`POST /api/chat`, [API contract](../design/api.md)).
 
@@ -23,6 +23,7 @@ How DotNextAI talks to the language model. The contract lives in Application (`D
 | Images (step 06) | `AskAsync(question, history, images)`: each image is a `ChatImage(MediaType, Data)` sent as a `DataContent` next to the question text; the SDK turns it into an OpenAI `image_url` part with a base64 data URI. The model (`gpt-5.6-luna`) is assumed to accept images; this is to be confirmed against the real proxy. | 2026-11-16 |
 | Images only with their question | An image travels with the question it was attached to; the history stays text. Later questions see the model's earlier answer about the image, not the image. Resending every image with every turn would make each request up to tens of MB and multiply the image tokens. | 2026-11-16 |
 | Format from the bytes | `ImageFormats.Detect` reads the file signature (PNG, JPEG, GIF, WebP). A declared media type that does not match the bytes is rejected; file names and extensions are never trusted. | 2026-11-16 |
+| Streaming (step 07) | `AskStreamingAsync(question, history, images)` returns `IAsyncEnumerable<ChatStreamUpdate>`: text pieces as the agent's `RunStreamingAsync` yields them, then one final update with the whole `ChatAnswer`. Same request as `AskAsync` plus `"stream": true`. The non-streaming `AskAsync` stays for callers that want the whole answer at once. | 2026-11-16 |
 | Package line | Agent Framework 1.28.0 depends on `Microsoft.Extensions.AI` 10.11.0 and `OpenAI` ≥ 2.14, so it stays on the .NET 10 line (no 11.x package in any lock file). | 2026-11-16 |
 
 ## Rules
@@ -70,6 +71,16 @@ Every question resends the whole history, so tokens and latency grow with the co
 | Request to the proxy | `[system: instructions, …history (text), user: [text: question, image_url: data:<type>;base64,…, …]]` |
 | `ChatConversation` | `AskAsync(question, images)` sends the images once and records the question text only. |
 
+## Streaming
+
+| Piece | Behavior |
+| ----- | -------- |
+| `ChatStreamUpdate(Text, Completed)` | Every update but the last has a text piece; the last has `Completed` (text, model, truncated) and empty `Text`. |
+| Validation and refusals | The question, history and image rules, a missing configuration and the proxy's refusals (401, 404, 429, 400 "no healthy deployments", timeout…) fail on the **first** `MoveNextAsync`, before any text, with the same `ChatFailure` as `AskAsync`. |
+| Broken connection | An `HttpRequestException` or `IOException` after text arrived is `Unavailable` with *"The connection to the LiteLLM proxy broke before the answer was complete."*; before any text it is the usual *"…could not be reached."* |
+| Empty answer | A stream with no text ends with `EmptyAnswer`. |
+| `ChatConversation.AskStreamingAsync` | Records the question and the answer when the final update arrives; stopping early or a failure records nothing. |
+
 ## Failures
 
 | `ChatFailure` | When | Message (shown to the user) |
@@ -98,7 +109,11 @@ Every question resends the whole history, so tokens and latency grow with the co
 
 - `AgentChatServiceTests` (unit, stub `HttpMessageHandler`), the step 01 suite kept and extended for the agent:
   - Agent: instructions sent as the system message before the question; without history, each question goes alone; with history, the turns go in order; a history over the limit is rejected without HTTP; model reported by the proxy.
-- `ChatConversationTests`: turns recorded on success only, snapshot of the history, limit, reset, images sent once with the text kept in the history.
+- `ChatConversationTests`: turns recorded on success only (also when streaming; nothing when stopped early or broken), snapshot of the history, limit, reset, images sent once with the text kept in the history.
+- `AgentChatServiceStreamingTests` (stub OpenAI `chat.completion.chunk` streams):
+  - Answers: the pieces then the whole answer, with `"stream": true`; `length` marks it truncated.
+  - Failures: a refusal before the stream; a connection broken after the first piece; no text.
+  - Input: an invalid question without HTTP; history and images as in `AskAsync`.
 - `ImageRulesTests`: signature detection of the four formats, and every image rule.
 - `AgentChatServiceTests` (images): base64 data URIs after the question text, history kept as text, an invalid image rejected without HTTP.
   - Request shape: `POST {endpoint}chat/completions`, bearer key, model, one user message, trimmed question; an endpoint with a `/v1/` path.
