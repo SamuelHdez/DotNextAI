@@ -43,3 +43,9 @@ Outcome: `dotnextai ask` through the LiteLLM proxy with the OpenAI .NET SDK, beh
 > Go with step 02.
 
 Outcome: the question now goes through a Microsoft Agent Framework `ChatClientAgent` (1.28.0, on `Microsoft.Extensions.AI` 10.11.0, so still the .NET 10 line), with fixed instructions and no session. The CLI and the `IChatService` contract are unchanged; client creation and error mapping were extracted for reuse. 70 tests green. The proxy still had no healthy chat deployments, so a real answer is still to be confirmed.
+
+## 2026-11-16 — Step 03: chat history
+
+> Go (with the defaults proposed for leaving the chat, chat commands and a limit).
+
+Outcome: `dotnextai` (and `dotnextai chat`) is a multi-turn chat with `/new`, `/help`, `/exit`, `/quit` and Ctrl+D, capped at 50 questions. The history is kept by the front end and sent with every question (`IChatService.AskAsync(question, history)`, `ChatConversation`), not in an `AgentSession`, so the step 04 API can stay stateless. 97 tests green; the proxy still had no healthy chat deployments.

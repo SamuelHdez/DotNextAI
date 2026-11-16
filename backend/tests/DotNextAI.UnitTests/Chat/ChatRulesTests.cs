@@ -37,6 +37,33 @@ public class ChatRulesTests
     }
 
     [Fact]
+    public void ValidateHistory_AtTheLimit_IsAccepted()
+    {
+        var history = Enumerable.Range(0, ChatRules.MaxHistoryTurns)
+            .Select(i => new ChatTurn(i % 2 == 0 ? ChatTurnRole.User : ChatTurnRole.Assistant, $"turn {i}"))
+            .ToArray();
+
+        ChatRules.ValidateHistory(history);
+    }
+
+    [Fact]
+    public void ValidateHistory_OverTheLimit_IsRejected()
+    {
+        var history = Enumerable.Range(0, ChatRules.MaxHistoryTurns + 1)
+            .Select(i => new ChatTurn(ChatTurnRole.User, $"turn {i}"))
+            .ToArray();
+
+        var ex = Assert.Throws<ArgumentException>(() => ChatRules.ValidateHistory(history));
+        Assert.StartsWith("The conversation is too long", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ValidateHistory_EmptyTurn_IsRejected()
+    {
+        Assert.Throws<ArgumentException>(() => ChatRules.ValidateHistory([new ChatTurn(ChatTurnRole.Assistant, " ")]));
+    }
+
+    [Fact]
     public void NormalizeQuestion_Invalid_ThrowsArgumentException()
     {
         Assert.Throws<ArgumentException>(() => ChatRules.NormalizeQuestion(" "));

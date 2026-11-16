@@ -11,7 +11,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 | `backend/src/DotNextAI.Api/` | HTTP API (port 5100): health today; chat, streaming, models and images in later steps | ASP.NET Core 10 Minimal API, OpenAPI + Swagger UI |
 | `backend/src/DotNextAI.Application/` | Contracts shared by the API and the CLI: DTOs and the interfaces Infrastructure implements | .NET 10 class library |
 | `backend/src/DotNextAI.Infrastructure/` | LLM access: `LlmOptions`, `LlmChatClientFactory` (OpenAI client of the proxy), `AgentChatService` (Agent Framework agent), `ChatFailureMapper` | Microsoft Agent Framework 1.28, Microsoft.Extensions.AI 10.11, OpenAI .NET SDK, `IHttpClientFactory` |
-| `backend/src/DotNextAI.Cli/` | Terminal app `dotnextai` (**permanent**, grows with the backlog): `ask` command, interactive mode | .NET 10 console, Generic Host, System.CommandLine 2.0 |
+| `backend/src/DotNextAI.Cli/` | Terminal app `dotnextai` (**permanent**, grows with the backlog): `chat` (default, with history) and `ask` commands | .NET 10 console, Generic Host, System.CommandLine 2.0 |
 | `backend/tests/DotNextAI.UnitTests/` | Unit tests | xUnit v3, Microsoft.Testing.Platform |
 | `backend/tests/DotNextAI.IntegrationTests/` | HTTP tests against the in-memory API | xUnit v3, `WebApplicationFactory` |
 | `frontend/` | *(Not created yet)* Web app (port 3030) | Next.js, React, Fluent UI v9, multi-language |
@@ -27,7 +27,7 @@ There is no database: the backend keeps no state yet.
 ```bash
 ./scripts/dev.sh secrets      # once: LiteLLM endpoint, default model and API key (user-secrets)
 ./scripts/dev.sh              # API on http://localhost:5100 (Swagger UI at /swagger)
-./scripts/dev.sh cli ask "…"   # terminal app (or `cli` alone for interactive mode)
+./scripts/dev.sh cli           # terminal app: chat with history (`cli ask "…"` for one question)
 ./scripts/dev.sh test         # restore + Release build with warnings as errors + unit and integration tests
 ./scripts/dev.sh --help       # everything else (api --watch, build, status)
 ```
@@ -72,6 +72,7 @@ Backend:
 
 - Layering: Api → Application ← Infrastructure, and Cli → Application + Infrastructure. Application references no other project and no SDKs. Agent Framework, OpenAI and HTTP details stay in Infrastructure.
 - Endpoints are Minimal APIs grouped in `DotNextAI.Api/Endpoints/*Endpoints.cs`. They return `TypedResults` and errors as `ProblemDetails`.
+- `IChatService` is stateless: the front end keeps the conversation and passes its history with each question (`ChatConversation`). Do not add server-side sessions or conversation storage without recording the decision in the specs first.
 - Configuration goes through options classes in `DotNextAI.Infrastructure/Options` with `ValidateDataAnnotations` and `ValidateOnStart`. A missing LLM configuration must not stop the API from starting. It reports `LlmConfigured = false`.
 - Analyzers (`latest-recommended`, security rules `All`) run on every build, and CI treats warnings as errors. Fix warnings rather than suppressing them. When a suppression is justified, scope it and explain it in a comment.
 
@@ -80,7 +81,7 @@ Terminal app (`DotNextAI.Cli`):
 - The CLI is a permanent deliverable. A backend change must keep it building, tested and documented, and new features are added to it where they make sense ([CLI spec](docs/specs/feature-cli.md#roadmap)).
 - Commands are classes in `DotNextAI.Cli/Commands` wired in `CliApplication`. They take `IChatService`-style interfaces and `CliConsole`, never `Console` directly, so `CliApplicationTests` can drive them.
 - stdout carries only answers; prompts, warnings and errors go to stderr. Keep the exit codes of `ExitCodes` (0, 1, 2, 3, 130) and document new ones in the spec.
-- The CLI's texts are English (invariant culture).
+- The CLI's texts are English (invariant culture). Chat commands start with `/` and are never sent to the model.
 
 Tests and CI:
 

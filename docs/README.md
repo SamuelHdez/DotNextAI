@@ -8,8 +8,8 @@ Central index for the specs, design and day-to-day tasks of DotNextAI. Setup and
 | -------- | ----------- | ------ |
 | [Product rules](./specs/product-rules.md) | Course goal, the ten backlog steps, the models of the proxy, and the global rules (LLM through LiteLLM only, secrets, languages, no persistence). | Active |
 
-| [Terminal app (CLI)](./specs/feature-cli.md) | `dotnextai`: commands, input modes, messages, exit codes, and the plan for the CLI in later steps. Permanent deliverable. | Step 01 implemented |
-| [LLM chat service](./specs/feature-llm-chat.md) | `IChatService` contract shared by the CLI and the API, the Agent Framework agent over the LiteLLM proxy, rules, failure mapping, configuration. | Step 02 implemented |
+| [Terminal app (CLI)](./specs/feature-cli.md) | `dotnextai`: chat with history and `ask`, input modes, chat commands, messages, exit codes, and the plan for the CLI in later steps. Permanent deliverable. | Step 03 implemented |
+| [LLM chat service](./specs/feature-llm-chat.md) | `IChatService` contract shared by the CLI and the API, the Agent Framework agent over the LiteLLM proxy, rules, failure mapping, configuration. | Step 03 implemented |
 
 One `feature-*.md` per backlog step or feature is added when it starts.
 
@@ -17,7 +17,7 @@ One `feature-*.md` per backlog step or feature is added when it starts.
 
 | Document | Description | Status |
 | -------- | ----------- | ------ |
-| [Architecture](./design/architecture.md) | Components, ports, configuration, project layering, and the technology decisions log. | Step 02 implemented |
+| [Architecture](./design/architecture.md) | Components, ports, configuration, project layering, and the technology decisions log. | Step 03 implemented |
 
 ## Tasks — day-to-day work
 

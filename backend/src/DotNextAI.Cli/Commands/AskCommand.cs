@@ -31,8 +31,7 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
         // Checked before asking for the question, so nobody types a question that cannot be sent.
         if (!chat.IsConfigured)
         {
-            await console.Error.WriteLineAsync(
-                "The LiteLLM proxy is not configured. Run ./scripts/dev.sh secrets first.");
+            await console.Error.WriteLineAsync(CliMessages.NotConfigured);
             return ExitCodes.NotConfigured;
         }
 
@@ -49,25 +48,19 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
             await console.Out.WriteLineAsync(answer.Text);
             if (answer.Truncated)
             {
-                await console.Error.WriteLineAsync("Warning: the answer was cut off because it reached the maximum length.");
+                await console.Error.WriteLineAsync(CliMessages.Truncated);
             }
 
             return ExitCodes.Success;
         }
         catch (ChatServiceException ex)
         {
-            await console.Error.WriteLineAsync($"Error: {ex.Message}");
-            var hint = Hint(ex.Failure);
-            if (hint is not null)
-            {
-                await console.Error.WriteLineAsync(hint);
-            }
-
+            await CliMessages.WriteFailureAsync(console.Error, ex);
             return ex.Failure == ChatFailure.NotConfigured ? ExitCodes.NotConfigured : ExitCodes.ModelError;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            await console.Error.WriteLineAsync("Cancelled.");
+            await console.Error.WriteLineAsync(CliMessages.Cancelled);
             return ExitCodes.Cancelled;
         }
     }
@@ -87,13 +80,4 @@ internal sealed class AskCommand(IChatService chat, CliConsole console)
         await console.Error.WriteAsync("Question: ");
         return await console.In.ReadLineAsync(cancellationToken);
     }
-
-    private static string? Hint(ChatFailure failure) => failure switch
-    {
-        ChatFailure.NotConfigured or ChatFailure.Unauthorized => "Check the settings with ./scripts/dev.sh secrets.",
-        ChatFailure.ModelNotFound => "Check Llm:DefaultModel with ./scripts/dev.sh secrets (see the proxy's model list).",
-        ChatFailure.ModelUnavailable => "Try again later, or pick another model with ./scripts/dev.sh secrets.",
-        ChatFailure.Unavailable or ChatFailure.Timeout => "Check the network (VPN) and Llm:Endpoint, then try again.",
-        _ => null,
-    };
 }

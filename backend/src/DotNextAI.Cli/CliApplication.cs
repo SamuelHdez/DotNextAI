@@ -13,12 +13,14 @@ internal static class CliApplication
     public static RootCommand Build(IChatService chat, CliConsole console)
     {
         var ask = new AskCommand(chat, console);
+        var chatCommand = new ChatCommand(chat, console);
 
         var root = new RootCommand("DotNextAI: an LLM chatbot in the terminal, through ERNI's LiteLLM proxy.");
+        root.Subcommands.Add(chatCommand.Build());
         root.Subcommands.Add(ask.Build());
 
-        // Without a command: the interactive mode. In step 01 it asks one question (as `ask` with no argument).
-        root.SetAction((_, cancellationToken) => ask.RunAsync(null, cancellationToken));
+        // Without a command: the chat (step 03). Until step 03 it asked one question, as `ask` does.
+        root.SetAction((_, cancellationToken) => chatCommand.RunAsync(cancellationToken));
         return root;
     }
 

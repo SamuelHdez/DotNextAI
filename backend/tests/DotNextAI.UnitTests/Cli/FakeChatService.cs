@@ -2,18 +2,20 @@ using DotNextAI.Application.Chat;
 
 namespace DotNextAI.UnitTests.Cli;
 
-/// <summary>Chat service double for the CLI tests: records questions and answers with a canned result.</summary>
+/// <summary>Chat service double: records each call (question and a copy of its history) and answers with a canned result.</summary>
 internal sealed class FakeChatService(Func<string, ChatAnswer>? answer = null) : IChatService
 {
     public bool IsConfigured { get; init; } = true;
 
-    public List<string> Questions { get; } = [];
+    public List<(string Question, ChatTurn[] History)> Calls { get; } = [];
 
-    public Task<ChatAnswer> AskAsync(string question, CancellationToken cancellationToken)
+    public List<string> Questions => Calls.Select(call => call.Question).ToList();
+
+    public Task<ChatAnswer> AskAsync(string question, IReadOnlyList<ChatTurn> history, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Questions.Add(question);
-        return Task.FromResult((answer ?? (_ => new ChatAnswer("pong", "gpt-5.6-luna", Truncated: false)))(question));
+        Calls.Add((question, history.ToArray()));
+        return Task.FromResult((answer ?? (q => new ChatAnswer($"answer to {q}", "gpt-5.6-luna", Truncated: false)))(question));
     }
 
     public static FakeChatService Failing(ChatFailure failure, string message) =>

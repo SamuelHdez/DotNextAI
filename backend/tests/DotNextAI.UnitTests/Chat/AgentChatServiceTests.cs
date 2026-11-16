@@ -107,6 +107,48 @@ public class AgentChatServiceTests
     }
 
     [Fact]
+    public async Task AskAsync_WithHistory_SendsInstructionsThenTheTurnsInOrderThenTheQuestion()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("Ana"));
+        var service = CreateService(handler);
+        ChatTurn[] history =
+        [
+            new(ChatTurnRole.User, "My name is Ana."),
+            new(ChatTurnRole.Assistant, "Nice to meet you, Ana."),
+        ];
+
+        await service.AskAsync("What is my name?", history, TestContext.Current.CancellationToken);
+
+        using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
+        var messages = body.RootElement.GetProperty("messages").EnumerateArray()
+            .Select(m => (Role: m.GetProperty("role").GetString(), Text: ContentText(m)))
+            .ToArray();
+        Assert.Equal(
+            [
+                ("system", AgentChatService.Instructions),
+                ("user", "My name is Ana."),
+                ("assistant", "Nice to meet you, Ana."),
+                ("user", "What is my name?"),
+            ],
+            messages);
+    }
+
+    [Fact]
+    public async Task AskAsync_HistoryOverTheLimit_ThrowsArgumentExceptionWithoutCallingTheProxy()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong"));
+        var service = CreateService(handler);
+        var history = Enumerable.Range(0, ChatRules.MaxHistoryTurns + 1)
+            .Select(i => new ChatTurn(ChatTurnRole.User, $"turn {i}"))
+            .ToArray();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.AskAsync("ping", history, TestContext.Current.CancellationToken));
+
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task AskAsync_ModelReportedByTheProxy_IsTheAnswerModel()
     {
         var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong", model: "gpt-5.6-luna-2026-10-01")));

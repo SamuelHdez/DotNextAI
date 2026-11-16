@@ -1,6 +1,6 @@
 # Terminal app (CLI)
 
-> **Status:** Step 01 (single question and answer) implemented on 2026-11-16. The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
+> **Status:** Step 03 (multi-turn chat with history) implemented on 2026-11-16, on top of step 01 (single question and answer). The terminal app is a permanent deliverable: it keeps working and grows with every backlog step, next to the web app.
 
 `dotnextai` (project `backend/src/DotNextAI.Cli`) is the terminal front end of DotNextAI. It uses the same Application and Infrastructure services as the API, so a feature is written once and offered in both front ends.
 
@@ -14,6 +14,11 @@
 | Language | English only, including System.CommandLine's own texts (help, parse errors): the process runs with the invariant culture. Multi-language applies to the web UI, not to the CLI (confirmed by the product owner). | 2026-11-16 |
 | Encoding | UTF-8 without BOM for stdin and stdout, so accents survive in Windows terminals and in redirected output. | 2026-11-16 |
 | Logs | Off by default, so they never mix with answers. When enabled (`Logging__LogLevel__Default=Information`), they go to stderr and never contain prompts or answers. | 2026-11-16 |
+| Chat history | Kept in the CLI process by `ChatConversation` (Application) and sent with every question. It is lost when the chat ends; nothing is written to disk. | 2026-11-16 |
+| Leaving the chat | `/exit`, `/quit` or end of input (Ctrl+D; Ctrl+Z then Enter on Windows) exit with 0. Ctrl+C cancels and exits with 130, as in `ask`. | 2026-11-16 |
+| Chat commands | Lines starting with `/` are commands: `/new`, `/help`, `/exit`, `/quit` (case-insensitive). They are never sent to the model. | 2026-11-16 |
+| Conversation limit | 50 questions per conversation. At the limit the chat asks for `/new` instead of dropping old turns silently. | 2026-11-16 |
+| One line, one question | In the chat every line is a question; multi-line questions go through `ask` (stdin). | 2026-11-16 |
 | Configuration | The LiteLLM settings come from the user-secrets shared with the API (`./scripts/dev.sh secrets`). The CLI runs in `Development` by default so it loads them; `DOTNET_ENVIRONMENT` overrides it. | 2026-11-16 |
 
 ## Commands
@@ -31,12 +36,44 @@ Rules:
 
 - The question is trimmed. Empty questions and questions longer than 20,000 characters are rejected before any model call ([chat rules](feature-llm-chat.md#rules)).
 - Configuration is checked **before** the question is read, so nobody types a question that cannot be sent.
-- No history: each run is independent. Conversation history arrives with step 03.
+- No history: each `ask` run is independent. For a conversation, use the chat.
 - Ctrl+C cancels the call in progress.
 
-### `dotnextai` (no command)
+### `dotnextai` or `dotnextai chat` — multi-turn chat (step 03)
 
-Interactive mode. In step 01 it behaves like `dotnextai ask` with no argument: one question from the prompt, one answer, exit. From step 03 it becomes the multi-turn chat loop.
+The default command. Until step 03 `dotnextai` alone asked one question, like `ask`.
+
+In a terminal:
+
+```text
+DotNextAI chat. Type /help for commands, /exit or Ctrl+D to quit.
+You: My name is Ana.
+Nice to meet you, Ana!
+
+You: What is my name?
+Your name is Ana.
+
+You: /exit
+```
+
+The banner, the `You: ` prompts and the blank line after each answer go to stderr; the answers go to stdout.
+
+With redirected stdin (`dotnextai chat < questions.txt`), there is no banner and no prompt. Every non-empty line is a question asked after the previous ones, and only the answers are written.
+
+Rules:
+
+- Every question is sent with the previous questions and answers of the conversation ([chat service](feature-llm-chat.md#conversation-history)).
+- Empty lines are ignored.
+- A question that fails (model error, too long) is reported and **not** added to the history. The chat goes on, and the question can be asked again.
+- At 50 questions, further questions are refused with the limit message until `/new`.
+- Configuration is checked before the banner; when it is missing the chat exits with 3.
+
+| Chat command | Effect |
+| ------------ | ------ |
+| `/new` | Forgets the conversation and writes `Started a new conversation.` |
+| `/help` | Lists the chat commands. |
+| `/exit`, `/quit` | Ends the chat (exit code 0). |
+| any other `/…` | `Unknown command '/…'. Type /help for the list.` |
 
 ### `dotnextai --help`, `dotnextai <command> --help`, `dotnextai --version`
 
@@ -55,6 +92,9 @@ All on stderr.
 | Model call failed | `Error: <reason>` (see [failures](feature-llm-chat.md#failures)), then a hint line when there is one, see below | 1 |
 | Answer cut at the maximum output length | The answer on stdout, then `Warning: the answer was cut off because it reached the maximum length.` | 0 |
 | Ctrl+C | `Cancelled.` | 130 |
+| Chat: conversation at the limit | `The conversation reached the limit of 50 questions. Type /new to start a new one.` (the chat goes on) | — |
+| Chat: unknown chat command | `Unknown command '/x'. Type /help for the list.` (the chat goes on) | — |
+| Chat: model error, empty or too long question | Same texts as above; the chat goes on | — |
 
 Hints after `Error:`:
 
@@ -69,9 +109,9 @@ Hints after `Error:`:
 
 | Code | Meaning |
 | ---- | ------- |
-| 0 | Answer printed. |
+| 0 | Answer printed (`ask`), or the chat ended with `/exit`, `/quit` or end of input. |
 | 1 | The model call failed. |
-| 2 | Usage error: unknown command or option, empty or too long question. |
+| 2 | Usage error: unknown command or option; for `ask`, an empty or too long question. |
 | 3 | The LiteLLM proxy is not configured. |
 | 130 | Cancelled with Ctrl+C. |
 
@@ -79,7 +119,7 @@ Hints after `Error:`:
 
 ```bash
 ./scripts/dev.sh cli ask "What is .NET?"     # through dotnet run
-./scripts/dev.sh cli                         # interactive
+./scripts/dev.sh cli                         # chat
 dotnet run --project backend/src/DotNextAI.Cli -- ask "What is .NET?"
 ```
 
@@ -90,7 +130,7 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 | Step | In the CLI |
 | ---- | ---------- |
 | 02 Agent Framework | **Done 2026-11-16.** `ask` keeps its behavior; the call goes through an Agent Framework agent behind `IChatService`. |
-| 03 Chat history | `dotnextai` (no command) becomes a multi-turn chat loop with in-memory history. |
+| 03 Chat history | **Done 2026-11-16.** `dotnextai` / `dotnextai chat`: multi-turn chat with in-memory history, `/new`, `/help`, `/exit`. |
 | 06 Image input | Attach image files by path. |
 | 07 Streaming | Print the answer as it is generated. |
 | 08 Model selector | `--model` option and a command that lists the proxy's chat models. |
@@ -99,6 +139,7 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 
 ## Verification
 
-- `CliApplicationTests` (unit, fake `IChatService`): quoted and unquoted questions, stdin, interactive prompt, no command, empty and too-long questions, not configured (checked before reading), failures with their hints and exit codes, truncation warning, Ctrl+C (130), `--help`, unknown command or option (2).
+- `ChatCommandTests` (unit, fake `IChatService`): history sent with each question, stdout with only the answers, banner and prompts, `/exit` `/quit` `/new` `/help`, unknown commands, empty lines, failed question not recorded, too-long question, 50-question limit, not configured (3), Ctrl+C (130).
+- `CliApplicationTests` (unit, fake `IChatService`): `ask` with quoted and unquoted questions, stdin, interactive prompt, no history, empty and too-long questions, not configured (checked before reading), failures with their hints and exit codes, truncation warning, Ctrl+C (130), `--help`, unknown command or option (2).
 - `ChatRulesTests`: trimming and the length limit.
 - Manual: `./scripts/dev.sh cli ask "…"` against the proxy (see [todo.md](../tasks/todo.md)).

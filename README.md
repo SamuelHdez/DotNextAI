@@ -4,7 +4,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 Technical documentation, backlog and decisions: [docs/](docs/README.md).
 
-> **Status:** backlog step 02 done. The terminal app answers one question at a time through a Microsoft Agent Framework agent and the LiteLLM proxy (`dotnextai ask`); the API answers `/api/health`.
+> **Status:** backlog step 03 done. The terminal app chats with history (`dotnextai`) or answers single questions (`dotnextai ask`) through a Microsoft Agent Framework agent and the LiteLLM proxy; the API answers `/api/health`.
 
 ## Requirements
 
@@ -23,7 +23,7 @@ From the repository root, in Git Bash:
 ./scripts/dev.sh              # API on http://localhost:5100, Swagger UI on http://localhost:5100/swagger
 ./scripts/dev.sh api --watch  # same, under dotnet watch (hot reload)
 ./scripts/dev.sh cli ask "What is .NET?"   # terminal app: one question, one answer
-./scripts/dev.sh cli          # terminal app, interactive
+./scripts/dev.sh cli          # terminal app: chat with history
 ./scripts/dev.sh test         # Release build with warnings as errors + unit and integration tests (as in CI)
 ./scripts/dev.sh status       # SDK, LLM settings (never the key) and whether the API answers
 ./scripts/dev.sh --help
@@ -59,13 +59,14 @@ To read or reset the store: `dotnet user-secrets list --project backend/src/DotN
 `dotnextai` is a permanent part of the project: it keeps working, and grows with the backlog, next to the web app. Full behavior in the [CLI spec](docs/specs/feature-cli.md).
 
 ```bash
-dotnextai ask "What is .NET?"        # question as argument (quotes optional)
-echo "Summarize: ..." | dotnextai ask  # question from stdin
-dotnextai                            # interactive: asks for one question
+dotnextai                            # chat with history (/new, /help, /exit; Ctrl+D to quit)
+dotnextai chat < questions.txt       # one question per line, answers only on stdout
+dotnextai ask "What is .NET?"        # one question, no history (quotes optional)
+echo "Summarize: ..." | dotnextai ask  # one multi-line question from stdin
 dotnextai --help
 ```
 
-Answers go to stdout and everything else to stderr, so answers can be piped. Exit codes: `0` answer, `1` model error, `2` usage error, `3` not configured, `130` Ctrl+C. Run it with `./scripts/dev.sh cli …` or `dotnet run --project backend/src/DotNextAI.Cli -- …`.
+Answers go to stdout and everything else to stderr, so answers can be piped. Exit codes: `0` answer or chat ended, `1` model error, `2` usage error, `3` not configured, `130` Ctrl+C. Run it with `./scripts/dev.sh cli …` or `dotnet run --project backend/src/DotNextAI.Cli -- …`.
 
 ## Project layout
 
@@ -110,4 +111,4 @@ All actions are pinned by commit SHA, tool binaries by version and checksum, and
 ./scripts/dev.sh test
 ```
 
-Expected: build with 0 warnings, all tests green (`LlmOptionsTests`, `ChatRulesTests`, `AgentChatServiceTests`, `CliApplicationTests`, `HealthEndpointTests`). End to end, against the proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.
+Expected: build with 0 warnings, all tests green (`LlmOptionsTests`, `ChatRulesTests`, `ChatConversationTests`, `AgentChatServiceTests`, `CliApplicationTests`, `ChatCommandTests`, `HealthEndpointTests`). End to end, against the proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.

@@ -11,6 +11,15 @@ public static class ChatRules
     /// </summary>
     public const int MaxQuestionLength = 20_000;
 
+    /// <summary>
+    /// Maximum questions in one conversation. Every question resends the whole history, so cost and latency grow with
+    /// it; at the limit the user starts a new conversation instead of losing old turns silently.
+    /// </summary>
+    public const int MaxConversationQuestions = 50;
+
+    /// <summary>Maximum history turns sent with a question (a question and its answer are two turns).</summary>
+    public const int MaxHistoryTurns = 2 * MaxConversationQuestions;
+
     /// <summary>Trims the question and checks it against the rules.</summary>
     /// <param name="question">Raw question.</param>
     /// <param name="normalized">Trimmed question when valid; empty otherwise.</param>
@@ -36,6 +45,24 @@ public static class ChatRules
 
         normalized = string.Empty;
         return false;
+    }
+
+    /// <summary>Checks the history passed with a question.</summary>
+    /// <exception cref="ArgumentException">More than <see cref="MaxHistoryTurns"/> turns, or an empty turn.</exception>
+    public static void ValidateHistory(IReadOnlyList<ChatTurn> history)
+    {
+        ArgumentNullException.ThrowIfNull(history);
+        if (history.Count > MaxHistoryTurns)
+        {
+            throw new ArgumentException(
+                $"The conversation is too long ({history.Count} turns; the maximum is {MaxHistoryTurns}).",
+                nameof(history));
+        }
+
+        if (history.Any(turn => turn is null || string.IsNullOrWhiteSpace(turn.Text)))
+        {
+            throw new ArgumentException("The conversation contains an empty turn.", nameof(history));
+        }
     }
 
     /// <summary>Trims the question and checks it against the rules.</summary>

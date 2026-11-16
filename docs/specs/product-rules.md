@@ -24,7 +24,7 @@ The course backlog, with how this repository maps each step. The spec of each st
 | -- | ----- | ---- | -------------- | ------------ |
 | 01 | Backend basics | Terminal Q&A app | Single question and answer with direct OpenAI API calls (through LiteLLM). | **Done 2026-11-16.** `dotnextai ask` calls the proxy with the OpenAI .NET SDK (`ChatClient`), with no orchestration layer ([CLI](feature-cli.md), [chat service](feature-llm-chat.md)). |
 | 02 | Backend basics | Orchestration framework | Call the LLM through LangChain. | **Done 2026-11-16.** Same call through a Microsoft Agent Framework agent (`ChatClientAgent`, with instructions) behind `IChatService` ([chat service](feature-llm-chat.md#agent)). |
-| 03 | Backend basics | Chat history | Add chat history to the conversation. | Multi-turn conversation in the CLI (agent thread / message list). |
+| 03 | Backend basics | Chat history | Add chat history to the conversation. | **Done 2026-11-16.** `dotnextai chat`: multi-turn conversation; the front end keeps the history and sends it with every question ([CLI](feature-cli.md), [chat service](feature-llm-chat.md#conversation-history)). |
 | 04 | Backend basics | API | Encapsulate the LLM logic into an API. | `DotNextAI.Api` Minimal API endpoints over the same Infrastructure services. |
 | 05 | Web app | Web UI | Streamlit or React, run locally. | `frontend/` Next.js + Fluent UI chat that calls the API. |
 | 06 | Web app | Image input | Add images in the input, converted to base64. | Image attachments sent as base64 data URIs (`DataContent`). |

@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Step 02 implemented on 2026-11-16 (terminal Q&A through a Microsoft Agent Framework agent), on top of steps 00-01 (backend skeleton, health endpoint, backend CI, CLI). Components marked *planned* arrive with later backlog steps.
+> **Status:** Step 03 implemented on 2026-11-16 (multi-turn chat in the terminal), on top of steps 00-02 (backend skeleton, health endpoint, backend CI, CLI, Agent Framework agent). Components marked *planned* arrive with later backlog steps.
 
 ## Components
 
@@ -24,9 +24,9 @@ flowchart LR
 | Component | Responsibility |
 | --------- | -------------- |
 | `DotNextAI.Api` | HTTP surface. Today: `GET /api/health`. Planned: chat, streaming (SSE), models, image generation. OpenAPI document at `/openapi/v1.json` and Swagger UI at `/swagger` in Development. |
-| `DotNextAI.Application` | Contracts with no dependencies: DTOs (`HealthStatusDto`), the chat contract (`IChatService`, `ChatAnswer`, `ChatFailure`, `ChatServiceException`, `ChatRules`) and, later, images. |
+| `DotNextAI.Application` | Contracts with no dependencies: DTOs (`HealthStatusDto`), the chat contract (`IChatService`, `ChatTurn`, `ChatAnswer`, `ChatFailure`, `ChatServiceException`, `ChatRules`), `ChatConversation` (history kept by the front end) and, later, images. |
 | `DotNextAI.Infrastructure` | Configuration (`LlmOptions`) and the model clients. `LlmChatClientFactory` builds the OpenAI .NET SDK `ChatClient` pointed at the proxy over the named `HttpClient` `Llm`. `AgentChatService` (step 02) wraps it as a Microsoft Agent Framework `ChatClientAgent`. `ChatFailureMapper` maps errors ([chat service spec](../specs/feature-llm-chat.md)). |
-| `DotNextAI.Cli` | Terminal app `dotnextai`, a permanent deliverable: System.CommandLine commands (`ask` today) over `IChatService`. It uses the same Infrastructure as the API, so the logic is written once ([CLI spec](../specs/feature-cli.md)). |
+| `DotNextAI.Cli` | Terminal app `dotnextai`, a permanent deliverable: System.CommandLine commands (`chat`, the default, and `ask`) over `IChatService`. It uses the same Infrastructure as the API, so the logic is written once ([CLI spec](../specs/feature-cli.md)). |
 | `frontend` | *Planned (step 05).* Multi-language chat UI that only talks to `DotNextAI.Api`. |
 
 Project references: `Api → Application, Infrastructure`; `Cli → Application, Infrastructure`; `Infrastructure → Application`. Application references nothing.
@@ -77,3 +77,4 @@ Errors use `ProblemDetails` (`AddProblemDetails`, `UseExceptionHandler`, `UseSta
 | 2026-11-16 | CLI | System.CommandLine 2.0.15 (.NET 10 servicing line), invariant culture, UTF-8, logs off by default, stdout for answers only. | A permanent, scriptable terminal app with consistent English texts. 3.0.0 is the .NET 11 line. |
 | 2026-11-16 | Package age | Microsoft .NET servicing packages (10.0.x, System.CommandLine 2.0.x) are taken at the latest patch. Third-party packages must be at least 7 days old (OpenAI 2.15.0: 2026-11-05). | Servicing releases carry security fixes; the 7-day cooldown targets compromised third-party releases. |
 | 2026-11-16 | Orchestration (step 02) | `AgentChatService` replaces `OpenAiChatService`: `ChatClient.AsAIAgent(instructions, name)` from `Microsoft.Agents.AI.OpenAI` 1.28.0, a stateless `RunAsync` per question. Client creation and error mapping moved to `LlmChatClientFactory` and `ChatFailureMapper`. | One code path that later steps extend (sessions, streaming, usage), and front ends are untouched. Agent Framework 1.28.0 (2026-11-06) passed the 7-day rule and depends on `Microsoft.Extensions.AI` 10.11.0, so the .NET 10 line holds. |
+| 2026-11-16 | Chat history (step 03) | Stateless `IChatService.AskAsync(question, history)`; the front end keeps the turns (`ChatConversation` in the CLI, the browser for the web app). No `AgentSession`. Limit of 50 questions per conversation. | The API stays stateless (no per-user storage or affinity) and the rule "conversations live in the CLI process or the browser" holds. The limit bounds the cost of resending the history. |

@@ -1,6 +1,6 @@
 # LLM chat service
 
-> **Status:** Step 02 (call through a Microsoft Agent Framework agent) implemented on 2026-11-16, replacing step 01's direct call behind the same contract.
+> **Status:** Step 03 (conversation history) implemented on 2026-11-16, on top of step 02 (call through a Microsoft Agent Framework agent).
 
 How DotNextAI talks to the language model. The contract lives in Application (`DotNextAI.Application/Chat`) and the implementation in Infrastructure (`DotNextAI.Infrastructure/Chat`). Every front end uses it: the CLI today, the API from step 04.
 
@@ -8,7 +8,7 @@ How DotNextAI talks to the language model. The contract lives in Application (`D
 
 | Topic | Decision | Date |
 | ----- | -------- | ---- |
-| Contract | `IChatService` with `IsConfigured` and `AskAsync(question)` returning `ChatAnswer(Text, Model, Truncated)`. Failures are `ChatServiceException` with a typed `ChatFailure`, so each front end chooses its own message or HTTP status. | 2026-11-16 |
+| Contract | `IChatService` with `IsConfigured` and `AskAsync(question, history)` returning `ChatAnswer(Text, Model, Truncated)`. The extension `AskAsync(question)` sends no history. Until step 03 there was only `AskAsync(question)`. Failures are `ChatServiceException` with a typed `ChatFailure`, so each front end chooses its own message or HTTP status. | 2026-11-16 |
 | Step 01 implementation | `OpenAiChatService`: OpenAI .NET SDK (`ChatClient`, `CompleteChatAsync`) pointed at the LiteLLM proxy, with no orchestration layer. This is the course's "direct OpenAI API calls (through LiteLLM)". **Replaced by step 02**; the code is in git history (commit `2fcbc2a`). | 2026-11-16 |
 | Step 02 implementation | `AgentChatService`: the same OpenAI SDK client turned into a Microsoft Agent Framework `ChatClientAgent` (`ChatClient.AsAIAgent`, package `Microsoft.Agents.AI.OpenAI` 1.28.0), one `RunAsync` per question. This is the course's "call the LLM through LangChain" step, with Agent Framework as the .NET orchestration framework. The direct implementation is not kept next to it: one code path, and the agent is what steps 03-10 build on. | 2026-11-16 |
 | Shared pieces | `LlmChatClientFactory` (OpenAI client: endpoint, key, timeout, retries, transport) and `ChatFailureMapper` (exceptions to `ChatFailure`) are separate from the agent, so later clients (model list, image generation) reuse them. | 2026-11-16 |
@@ -18,6 +18,8 @@ How DotNextAI talks to the language model. The contract lives in Application (`D
 | Error details | For 400, 404 and 422 the message quotes the first line of the proxy's `error.message` (max 300 characters, the API key masked). For 401/403 the body is never quoted, because LiteLLM may echo the key it rejected. | 2026-11-16 |
 | "No healthy deployments" | A LiteLLM 400 whose message says the model group has no healthy deployments is its own failure, `ModelUnavailable`, not `BadRequest`: the request is fine, the model is down. Seen with every chat model of the ERNI proxy on 2026-11-16. | 2026-11-16 |
 | Prompt | Step 01: one user message with the question. Step 02: the agent's instructions as a system message, then the question ([agent](#agent)). | 2026-11-16 |
+| History owner (step 03) | The front end keeps the history and sends it with every question; the service is stateless and uses no `AgentSession`. `ChatConversation` (Application) does the bookkeeping for the CLI, and the web app will keep its own in the browser. | 2026-11-16 |
+| Why not `AgentSession` | A server-side session would make the API (step 04) stateful: per-user storage, expiry, and affinity across instances. Sending the history matches the rule "conversations live in memory, in the CLI process or the browser" and keeps every request self-contained. | 2026-11-16 |
 | Package line | Agent Framework 1.28.0 depends on `Microsoft.Extensions.AI` 10.11.0 and `OpenAI` ≥ 2.14, so it stays on the .NET 10 line (no 11.x package in any lock file). | 2026-11-16 |
 
 ## Rules
@@ -37,10 +39,21 @@ How DotNextAI talks to the language model. The contract lives in Application (`D
 | Type | `ChatClientAgent` over the OpenAI SDK `ChatClient` of the default model |
 | Name | `DotNextAI` |
 | Instructions | `You are DotNextAI, a helpful assistant. Answer clearly and concisely, in the language of the question.` (`AgentChatService.Instructions`) |
-| Session | None: each `AskAsync` is a new run with no history. Step 03 adds sessions (`AgentSession`) for chat history. |
+| Session | None: each `AskAsync` is a new run. The history comes as messages from the caller ([conversation history](#conversation-history)). |
 | Tools | None |
 
-The HTTP request is the same as step 01 plus the system message: `POST {endpoint}chat/completions` with `[system: instructions, user: question]`. Errors still come from the OpenAI SDK (`ClientResultException`) through the agent and are mapped as below.
+The HTTP request is the same as step 01 plus the system message and the history: `POST {endpoint}chat/completions` with `[system: instructions, …history (user/assistant), user: question]`. Errors still come from the OpenAI SDK (`ClientResultException`) through the agent and are mapped as below.
+
+## Conversation history
+
+| Piece | Behavior |
+| ----- | -------- |
+| `ChatTurn(Role, Text)` | One message of the history: `User` or `Assistant`. |
+| `IChatService.AskAsync(question, history)` | Sends the history in order, oldest first, as user and assistant messages between the instructions and the new question. |
+| `ChatRules.ValidateHistory` | At most `MaxHistoryTurns` = 100 turns (50 questions and their answers), none empty; otherwise `ArgumentException` and no HTTP call. |
+| `ChatConversation` | Keeps the turns of one conversation. `AskAsync` sends a snapshot of the history and records the question and the answer **only on success**. `IsFull` at `MaxConversationQuestions` = 50; asking then throws `InvalidOperationException`. `Reset` forgets everything. |
+
+Every question resends the whole history, so tokens and latency grow with the conversation. The 50-question limit bounds that; the models' context (922,000 input tokens) is not the constraint.
 
 ## Failures
 
@@ -69,11 +82,12 @@ The HTTP request is the same as step 01 plus the system message: `POST {endpoint
 ## Verification
 
 - `AgentChatServiceTests` (unit, stub `HttpMessageHandler`), the step 01 suite kept and extended for the agent:
-  - Agent: instructions sent as the system message before the question; each question sent without previous turns; model reported by the proxy.
+  - Agent: instructions sent as the system message before the question; without history, each question goes alone; with history, the turns go in order; a history over the limit is rejected without HTTP; model reported by the proxy.
+- `ChatConversationTests`: turns recorded on success only, snapshot of the history, limit, reset.
   - Request shape: `POST {endpoint}chat/completions`, bearer key, model, one user message, trimmed question; an endpoint with a `/v1/` path.
   - Answers: answer and model; `Truncated` on `length`; refusal as answer; `EmptyAnswer`.
   - Failure mapping per status code, including the real "no healthy deployments" body.
   - Error details: first-line detail, key masking, no body quoted on 401, non-JSON bodies.
   - Network error, timeout, caller cancellation, `NotConfigured` and empty questions, the last two without HTTP calls.
-- `ChatRulesTests`: trimming and the 20,000-character limit.
+- `ChatRulesTests`: trimming, the 20,000-character limit and the history rules.
 - `LlmOptionsTests`: endpoint, key and model rules of `IsConfigured`.

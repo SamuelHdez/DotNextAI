@@ -5,9 +5,9 @@ namespace DotNextAI.UnitTests.Cli;
 
 public class CliApplicationTests
 {
-    private sealed record Run(int ExitCode, string Out, string Error);
+    internal sealed record Run(int ExitCode, string Out, string Error);
 
-    private static async Task<Run> RunAsync(
+    internal static async Task<Run> RunAsync(
         FakeChatService chat,
         string[] args,
         string stdin = "",
@@ -35,7 +35,7 @@ public class CliApplicationTests
         var run = await RunAsync(chat, ["ask", "What is .NET?"]);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Equal("pong" + Environment.NewLine, run.Out);
+        Assert.Equal("answer to What is .NET?" + Environment.NewLine, run.Out);
         Assert.Empty(run.Error);
         Assert.Equal(["What is .NET?"], chat.Questions);
     }
@@ -73,18 +73,17 @@ public class CliApplicationTests
         Assert.Equal(0, run.ExitCode);
         Assert.Equal("Question: ", run.Error);
         Assert.Equal(["What is .NET?"], chat.Questions);
-        Assert.Equal("pong" + Environment.NewLine, run.Out);
+        Assert.Equal("answer to What is .NET?" + Environment.NewLine, run.Out);
     }
 
     [Fact]
-    public async Task NoCommand_AsksOneQuestionInteractively()
+    public async Task Ask_IsStateless_SendsNoHistory()
     {
         var chat = new FakeChatService();
 
-        var run = await RunAsync(chat, [], stdin: "What is .NET?\n");
+        await RunAsync(chat, ["ask", "What is .NET?"]);
 
-        Assert.Equal(0, run.ExitCode);
-        Assert.Equal(["What is .NET?"], chat.Questions);
+        Assert.Empty(Assert.Single(chat.Calls).History);
     }
 
     [Theory]
@@ -169,11 +168,12 @@ public class CliApplicationTests
     }
 
     [Fact]
-    public async Task Help_ListsTheAskCommand()
+    public async Task Help_ListsTheChatAndAskCommands()
     {
         var run = await RunAsync(new FakeChatService(), ["--help"]);
 
         Assert.Equal(0, run.ExitCode);
+        Assert.Contains("chat", run.Out, StringComparison.Ordinal);
         Assert.Contains("ask", run.Out, StringComparison.Ordinal);
     }
 
