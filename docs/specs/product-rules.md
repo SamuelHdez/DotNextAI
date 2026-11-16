@@ -23,7 +23,7 @@ The course backlog, with how this repository maps each step. The spec of each st
 | # | Phase | Step | Course wording | In DotNextAI |
 | -- | ----- | ---- | -------------- | ------------ |
 | 01 | Backend basics | Terminal Q&A app | Single question and answer with direct OpenAI API calls (through LiteLLM). | **Done 2026-11-16.** `dotnextai ask` calls the proxy with the OpenAI .NET SDK (`ChatClient`), with no orchestration layer ([CLI](feature-cli.md), [chat service](feature-llm-chat.md)). |
-| 02 | Backend basics | Orchestration framework | Call the LLM through LangChain. | Same call through a Microsoft Agent Framework agent (`ChatClientAgent` over `IChatClient`). |
+| 02 | Backend basics | Orchestration framework | Call the LLM through LangChain. | **Done 2026-11-16.** Same call through a Microsoft Agent Framework agent (`ChatClientAgent`, with instructions) behind `IChatService` ([chat service](feature-llm-chat.md#agent)). |
 | 03 | Backend basics | Chat history | Add chat history to the conversation. | Multi-turn conversation in the CLI (agent thread / message list). |
 | 04 | Backend basics | API | Encapsulate the LLM logic into an API. | `DotNextAI.Api` Minimal API endpoints over the same Infrastructure services. |
 | 05 | Web app | Web UI | Streamlit or React, run locally. | `frontend/` Next.js + Fluent UI chat that calls the API. |
@@ -62,5 +62,5 @@ Each step's spec names its tests. Global rules covered today:
 
 - Key not exposed: `HealthEndpointTests.GetHealth_NeverExposesLlmSecrets`.
 - Endpoint must be HTTPS (HTTP only on loopback): `LlmOptionsTests`.
-- Key never in error messages: `OpenAiChatServiceTests.AskAsync_ProxyErrorEchoingTheKey_MasksIt` and `AskAsync_Unauthorized_NeverQuotesTheProxyBody`.
-- No model call for invalid or unconfigured input: `OpenAiChatServiceTests.AskAsync_NotConfigured_*`, `AskAsync_EmptyQuestion_*`.
+- Key never in error messages: `AgentChatServiceTests.AskAsync_ProxyErrorEchoingTheKey_MasksIt` and `AskAsync_Unauthorized_NeverQuotesTheProxyBody`.
+- No model call for invalid or unconfigured input: `AgentChatServiceTests.AskAsync_NotConfigured_*`, `AskAsync_EmptyQuestion_*`.

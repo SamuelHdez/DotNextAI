@@ -37,3 +37,9 @@ Outcome: initial commit `be84b7c` (the user pushes it). Added `backend-ci.yml`, 
 > CI is green. Go with step 01, the terminal. Document all the specs. Even with a web app later, the terminal project must persist.
 
 Outcome: `dotnextai ask` through the LiteLLM proxy with the OpenAI .NET SDK, behind an `IChatService` contract the API will reuse. New specs: [CLI](../specs/feature-cli.md) (permanent deliverable, with a roadmap for later steps) and [chat service](../specs/feature-llm-chat.md). The first real call showed that every chat model of the proxy had *"no healthy deployments"*, so that error got its own failure type and the proxy's error detail is now shown (key masked). 68 tests green; a real answer is still to be confirmed.
+
+## 2026-11-16 — Step 02: Agent Framework
+
+> Go with step 02.
+
+Outcome: the question now goes through a Microsoft Agent Framework `ChatClientAgent` (1.28.0, on `Microsoft.Extensions.AI` 10.11.0, so still the .NET 10 line), with fixed instructions and no session. The CLI and the `IChatService` contract are unchanged; client creation and error mapping were extracted for reuse. 70 tests green. The proxy still had no healthy chat deployments, so a real answer is still to be confirmed.

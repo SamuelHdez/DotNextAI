@@ -10,7 +10,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 | ---- | ---- | ----- |
 | `backend/src/DotNextAI.Api/` | HTTP API (port 5100): health today; chat, streaming, models and images in later steps | ASP.NET Core 10 Minimal API, OpenAPI + Swagger UI |
 | `backend/src/DotNextAI.Application/` | Contracts shared by the API and the CLI: DTOs and the interfaces Infrastructure implements | .NET 10 class library |
-| `backend/src/DotNextAI.Infrastructure/` | LLM access: `LlmOptions`, `OpenAiChatService` (step 01); Microsoft Agent Framework agents from step 02 | OpenAI .NET SDK, `IHttpClientFactory`; Microsoft Agent Framework, Microsoft.Extensions.AI |
+| `backend/src/DotNextAI.Infrastructure/` | LLM access: `LlmOptions`, `LlmChatClientFactory` (OpenAI client of the proxy), `AgentChatService` (Agent Framework agent), `ChatFailureMapper` | Microsoft Agent Framework 1.28, Microsoft.Extensions.AI 10.11, OpenAI .NET SDK, `IHttpClientFactory` |
 | `backend/src/DotNextAI.Cli/` | Terminal app `dotnextai` (**permanent**, grows with the backlog): `ask` command, interactive mode | .NET 10 console, Generic Host, System.CommandLine 2.0 |
 | `backend/tests/DotNextAI.UnitTests/` | Unit tests | xUnit v3, Microsoft.Testing.Platform |
 | `backend/tests/DotNextAI.IntegrationTests/` | HTTP tests against the in-memory API | xUnit v3, `WebApplicationFactory` |
@@ -64,9 +64,11 @@ LLM and security:
 - The API key never leaves the backend. Keep it out of API responses, the frontend bundle, logs, exceptions and test output. `GetHealth_NeverExposesLlmSecrets` guards the health endpoint; add the same check to new endpoints that echo configuration.
 - Tests never call the real proxy. Use a fake `IChatClient` (Microsoft.Extensions.AI) or a stub `HttpMessageHandler`. CI has no LLM secrets.
 - Do not log prompts, images or model answers above `Debug`. They may contain personal data.
-- Model failures surface as `ChatServiceException` with a `ChatFailure`. Map new HTTP statuses in `OpenAiChatService.MapFailure`. Only quote the proxy's error body through `ProxyErrorDetail`, which keeps the first line and masks the key, and never for 401/403.
+- Model failures surface as `ChatServiceException` with a `ChatFailure`. Map new HTTP statuses in `ChatFailureMapper.FromStatus`. Build OpenAI clients only through `LlmChatClientFactory`, so endpoint, key, timeout, retries and the test transport stay in one place. Only quote the proxy's error body through `ProxyErrorDetail`, which keeps the first line and masks the key, and never for 401/403.
 
 Backend:
+
+- Agent Framework and `Microsoft.Extensions.AI` must stay on the 10.x line of `Microsoft.Extensions.AI`. Before updating Agent Framework, check its `.nuspec` dependencies; a version that needs `Microsoft.Extensions.AI` 11.x waits for the move to .NET 11.
 
 - Layering: Api → Application ← Infrastructure, and Cli → Application + Infrastructure. Application references no other project and no SDKs. Agent Framework, OpenAI and HTTP details stay in Infrastructure.
 - Endpoints are Minimal APIs grouped in `DotNextAI.Api/Endpoints/*Endpoints.cs`. They return `TypedResults` and errors as `ProblemDetails`.

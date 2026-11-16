@@ -8,7 +8,7 @@ namespace DotNextAI.Infrastructure;
 
 public static class DependencyInjection
 {
-    /// <summary>Registers the LLM options and the chat service built on them.</summary>
+    /// <summary>Registers the LLM options and the chat service (an Agent Framework agent) built on them.</summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -21,8 +21,8 @@ public static class DependencyInjection
 
         // The SDK enforces Llm:TimeoutSeconds per attempt (NetworkTimeout); HttpClient's own 100 s limit would cut
         // longer answers first.
-        services.AddHttpClient(OpenAiChatService.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan);
-        services.AddSingleton<IChatService, OpenAiChatService>();
+        services.AddHttpClient(LlmChatClientFactory.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan);
+        services.AddSingleton<IChatService, AgentChatService>();
 
         return services;
     }

@@ -89,7 +89,7 @@ How the later backlog steps are planned to reach the CLI. Each step's spec confi
 
 | Step | In the CLI |
 | ---- | ---------- |
-| 02 Agent Framework | `ask` keeps its behavior; the call moves to an Agent Framework agent behind `IChatService`. |
+| 02 Agent Framework | **Done 2026-11-16.** `ask` keeps its behavior; the call goes through an Agent Framework agent behind `IChatService`. |
 | 03 Chat history | `dotnextai` (no command) becomes a multi-turn chat loop with in-memory history. |
 | 06 Image input | Attach image files by path. |
 | 07 Streaming | Print the answer as it is generated. |

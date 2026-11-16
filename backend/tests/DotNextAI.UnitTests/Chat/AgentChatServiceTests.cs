@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DotNextAI.UnitTests.Chat;
 
-public class OpenAiChatServiceTests
+public class AgentChatServiceTests
 {
     // Generated per run: Semgrep (p/secrets) blocks literal keys.
     private static readonly string ApiKey = $"sk-{Guid.NewGuid():N}";
@@ -37,7 +37,7 @@ public class OpenAiChatServiceTests
     private static string ProxyError(string message, string code = "400") =>
         JsonSerializer.Serialize(new { error = new { message, type = "invalid_request_error", param = (string?)null, code } });
 
-    private static OpenAiChatService CreateService(
+    private static AgentChatService CreateService(
         StubHttpHandler handler,
         string? endpoint = "https://litellm.example.com/",
         string? apiKey = null,
@@ -52,7 +52,7 @@ public class OpenAiChatServiceTests
                 MaxRetries = 0,
             }),
             new StubHttpClientFactory(handler),
-            NullLogger<OpenAiChatService>.Instance);
+            NullLoggerFactory.Instance);
 
     [Fact]
     public async Task AskAsync_SuccessfulCompletion_ReturnsAnswerAndModel()
@@ -68,7 +68,7 @@ public class OpenAiChatServiceTests
     }
 
     [Fact]
-    public async Task AskAsync_SendsOneUserMessageToTheProxyWithTheKey()
+    public async Task AskAsync_SendsTheAgentInstructionsAndTheQuestionToTheProxyWithTheKey()
     {
         var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong"));
         var service = CreateService(handler);
@@ -82,9 +82,47 @@ public class OpenAiChatServiceTests
 
         using var body = JsonDocument.Parse(request.Body!);
         Assert.Equal(Model, body.RootElement.GetProperty("model").GetString());
-        var message = Assert.Single(body.RootElement.GetProperty("messages").EnumerateArray());
-        Assert.Equal("user", message.GetProperty("role").GetString());
-        Assert.Equal("What is .NET?", message.GetProperty("content").GetString());
+        var messages = body.RootElement.GetProperty("messages").EnumerateArray().ToArray();
+        Assert.Equal(2, messages.Length);
+        Assert.Equal("system", messages[0].GetProperty("role").GetString());
+        Assert.Equal(AgentChatService.Instructions, ContentText(messages[0]));
+        Assert.Equal("user", messages[1].GetProperty("role").GetString());
+        Assert.Equal("What is .NET?", ContentText(messages[1]));
+    }
+
+    [Fact]
+    public async Task AskAsync_IsStateless_EachQuestionIsSentWithoutPreviousTurns()
+    {
+        var handler = StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong"));
+        var service = CreateService(handler);
+
+        await service.AskAsync("First question", TestContext.Current.CancellationToken);
+        await service.AskAsync("Second question", TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, handler.Requests.Count);
+        using var second = JsonDocument.Parse(handler.Requests[1].Body!);
+        var messages = second.RootElement.GetProperty("messages").EnumerateArray().ToArray();
+        Assert.Equal(2, messages.Length);
+        Assert.Equal("Second question", ContentText(messages[1]));
+    }
+
+    [Fact]
+    public async Task AskAsync_ModelReportedByTheProxy_IsTheAnswerModel()
+    {
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong", model: "gpt-5.6-luna-2026-10-01")));
+
+        var answer = await service.AskAsync("ping", TestContext.Current.CancellationToken);
+
+        Assert.Equal("gpt-5.6-luna-2026-10-01", answer.Model);
+    }
+
+    // The SDK may send content as a plain string or as an array of text parts.
+    private static string? ContentText(JsonElement message)
+    {
+        var content = message.GetProperty("content");
+        return content.ValueKind == JsonValueKind.String
+            ? content.GetString()
+            : string.Concat(content.EnumerateArray().Select(part => part.GetProperty("text").GetString()));
     }
 
     [Fact]

@@ -4,7 +4,7 @@ An LLM chatbot built step by step for the ERNI course *Project 1: Basic LLM Chat
 
 Technical documentation, backlog and decisions: [docs/](docs/README.md).
 
-> **Status:** backlog step 01 done. The terminal app answers one question at a time through the LiteLLM proxy (`dotnextai ask`); the API answers `/api/health`.
+> **Status:** backlog step 02 done. The terminal app answers one question at a time through a Microsoft Agent Framework agent and the LiteLLM proxy (`dotnextai ask`); the API answers `/api/health`.
 
 ## Requirements
 
@@ -110,4 +110,4 @@ All actions are pinned by commit SHA, tool binaries by version and checksum, and
 ./scripts/dev.sh test
 ```
 
-Expected: build with 0 warnings, all tests green (`LlmOptionsTests`, `ChatRulesTests`, `OpenAiChatServiceTests`, `CliApplicationTests`, `HealthEndpointTests`). End to end, against the proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.
+Expected: build with 0 warnings, all tests green (`LlmOptionsTests`, `ChatRulesTests`, `AgentChatServiceTests`, `CliApplicationTests`, `HealthEndpointTests`). End to end, against the proxy: `./scripts/dev.sh cli ask "Reply with exactly: pong"`.

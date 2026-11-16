@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Step 01 implemented on 2026-11-16 (terminal Q&A through the LiteLLM proxy), on top of step 00 (backend skeleton, health endpoint, backend CI). Components marked *planned* arrive with later backlog steps.
+> **Status:** Step 02 implemented on 2026-11-16 (terminal Q&A through a Microsoft Agent Framework agent), on top of steps 00-01 (backend skeleton, health endpoint, backend CI, CLI). Components marked *planned* arrive with later backlog steps.
 
 ## Components
 
@@ -25,7 +25,7 @@ flowchart LR
 | --------- | -------------- |
 | `DotNextAI.Api` | HTTP surface. Today: `GET /api/health`. Planned: chat, streaming (SSE), models, image generation. OpenAPI document at `/openapi/v1.json` and Swagger UI at `/swagger` in Development. |
 | `DotNextAI.Application` | Contracts with no dependencies: DTOs (`HealthStatusDto`), the chat contract (`IChatService`, `ChatAnswer`, `ChatFailure`, `ChatServiceException`, `ChatRules`) and, later, images. |
-| `DotNextAI.Infrastructure` | Configuration (`LlmOptions`) and the model clients. Step 01: `OpenAiChatService`, the OpenAI .NET SDK `ChatClient` pointed at the proxy over the named `HttpClient` `Llm`. From step 02: Agent Framework agents over `IChatClient` ([chat service spec](../specs/feature-llm-chat.md)). |
+| `DotNextAI.Infrastructure` | Configuration (`LlmOptions`) and the model clients. `LlmChatClientFactory` builds the OpenAI .NET SDK `ChatClient` pointed at the proxy over the named `HttpClient` `Llm`. `AgentChatService` (step 02) wraps it as a Microsoft Agent Framework `ChatClientAgent`. `ChatFailureMapper` maps errors ([chat service spec](../specs/feature-llm-chat.md)). |
 | `DotNextAI.Cli` | Terminal app `dotnextai`, a permanent deliverable: System.CommandLine commands (`ask` today) over `IChatService`. It uses the same Infrastructure as the API, so the logic is written once ([CLI spec](../specs/feature-cli.md)). |
 | `frontend` | *Planned (step 05).* Multi-language chat UI that only talks to `DotNextAI.Api`. |
 
@@ -76,3 +76,4 @@ Errors use `ProblemDetails` (`AddProblemDetails`, `UseExceptionHandler`, `UseSta
 | 2026-11-16 | Proxy errors | Quote the first line of LiteLLM's `error.message` for 400/404/422 (key masked, max 300 characters). "No healthy deployments" maps to its own `ModelUnavailable` failure. | A status-only message ("rejected the request as invalid") hid the real cause when the proxy's models were down on the first run. |
 | 2026-11-16 | CLI | System.CommandLine 2.0.15 (.NET 10 servicing line), invariant culture, UTF-8, logs off by default, stdout for answers only. | A permanent, scriptable terminal app with consistent English texts. 3.0.0 is the .NET 11 line. |
 | 2026-11-16 | Package age | Microsoft .NET servicing packages (10.0.x, System.CommandLine 2.0.x) are taken at the latest patch. Third-party packages must be at least 7 days old (OpenAI 2.15.0: 2026-11-05). | Servicing releases carry security fixes; the 7-day cooldown targets compromised third-party releases. |
+| 2026-11-16 | Orchestration (step 02) | `AgentChatService` replaces `OpenAiChatService`: `ChatClient.AsAIAgent(instructions, name)` from `Microsoft.Agents.AI.OpenAI` 1.28.0, a stateless `RunAsync` per question. Client creation and error mapping moved to `LlmChatClientFactory` and `ChatFailureMapper`. | One code path that later steps extend (sessions, streaming, usage), and front ends are untouched. Agent Framework 1.28.0 (2026-11-06) passed the 7-day rule and depends on `Microsoft.Extensions.AI` 10.11.0, so the .NET 10 line holds. |

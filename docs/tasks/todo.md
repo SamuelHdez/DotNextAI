@@ -25,8 +25,8 @@
 ## Phase 1 — Backend basics
 
 - [x] 2026-11-16 — 01 Terminal Q&A: `dotnextai ask` (argument, stdin or prompt) through the proxy with the OpenAI .NET SDK; `IChatService` contract, failure mapping, 20,000-character limit, exit codes ([CLI](../specs/feature-cli.md), [chat service](../specs/feature-llm-chat.md)).
-- [ ] 01 follow-up: confirm a real answer from the proxy. On 2026-11-16 every chat model answered *"no healthy deployments"* (proxy side); the CLI shows it as `ModelUnavailable`.
-- [ ] 02 Agent Framework: the same call through a `ChatClientAgent`.
+- [ ] 01/02 follow-up: confirm a real answer from the proxy. On 2026-11-16 every chat model answered *"no healthy deployments"* (proxy side); the CLI shows it as `ModelUnavailable`.
+- [x] 2026-11-16 — 02 Agent Framework: `AgentChatService` (`ChatClientAgent` with instructions, stateless run) replaces the direct call; `LlmChatClientFactory` and `ChatFailureMapper` extracted ([chat service](../specs/feature-llm-chat.md#agent)).
 - [ ] 03 Chat history: multi-turn conversation in the CLI.
 - [ ] 04 API: chat endpoint in `DotNextAI.Api` over the same services.
 
