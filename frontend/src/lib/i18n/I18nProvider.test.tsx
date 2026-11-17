@@ -12,7 +12,7 @@ function Greeting() {
   const { t, setLocale } = useI18n();
   return (
     <button type="button" onClick={() => setLocale("es")}>
-      {t("nav.home")}
+      {t("nav.images")}
     </button>
   );
 }
@@ -25,7 +25,7 @@ describe("I18nProvider", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByRole("button")).toHaveTextContent("Inicio");
+    expect(screen.getByRole("button")).toHaveTextContent("Imágenes");
   });
 
   it("switching the locale updates the texts, the cookie and the document language", () => {
@@ -37,7 +37,7 @@ describe("I18nProvider", () => {
 
     act(() => screen.getByRole("button").click());
 
-    expect(screen.getByRole("button")).toHaveTextContent("Inicio");
+    expect(screen.getByRole("button")).toHaveTextContent("Imágenes");
     expect(document.cookie).toContain(`${LOCALE_COOKIE}=es`);
     expect(document.documentElement.lang).toBe("es");
   });

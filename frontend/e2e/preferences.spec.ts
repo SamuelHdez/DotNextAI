@@ -8,19 +8,20 @@ test.describe("preferences", () => {
     await page.getByRole("button", { name: "EN · Language: English" }).click();
     await page.getByRole("menuitemradio", { name: "Español" }).click();
 
-    await expect(page.getByRole("heading", { level: 1, name: "Te damos la bienvenida a DotNextAI" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pregunta lo que quieras" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "es");
 
     await page.reload();
 
     // Rendered in Spanish by the server, from the cookie.
-    await expect(page).toHaveTitle("Inicio · DotNextAI");
+    await expect(page).toHaveTitle("Chat · DotNextAI");
+    await expect(page.getByRole("textbox", { name: "Tu pregunta" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "es");
     await expect(page.getByRole("navigation", { name: "Navegación principal" })).toBeVisible();
   });
 
   test("keeps the chat when the language changes", async ({ page }) => {
-    await page.goto("/chat");
+    await page.goto("/");
     const input = page.getByRole("textbox", { name: "Your question" });
     await input.fill("Hola");
     await input.press("Enter");
@@ -43,7 +44,7 @@ test.describe("preferences", () => {
     await page.reload();
 
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await expect(page.getByText("Online")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ask anything" })).toBeVisible();
     await expectNoA11yViolations(page);
   });
 });

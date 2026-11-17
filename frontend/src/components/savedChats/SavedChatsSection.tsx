@@ -98,7 +98,7 @@ interface SavedChatsSectionProps {
 
 /**
  * The *Saved chats* section of the side navigation, under *Workspace*: the folders (one level) with their chats, then
- * the chats without a folder, each with a menu to rename, move or delete. A chat is a link (`/chat?c=<id>`).
+ * the chats without a folder, each with a menu to rename, move or delete. A chat is a link (`/?c=<id>`).
  * Renders nothing outside the {@link SavedChatsProvider}.
  */
 export function SavedChatsSection(props: SavedChatsSectionProps) {

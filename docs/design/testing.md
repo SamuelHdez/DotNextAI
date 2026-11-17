@@ -42,10 +42,10 @@ No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on e
 
 ### Scenarios
 
-- `home.spec.ts`:
-  - Dashboard: title, the real API online with the model configured, the backlog.
-  - Navigation: from the card and the side navigation, collapse to the icon rail.
-  - axe.
+- `start-page.spec.ts`:
+  - `/` is a new chat (title, *Ask anything*, *Chat* current, no *Home* link), axe.
+  - `/chat` and `/chat?c=<id>` redirect to `/` (the saved chat kept).
+  - Navigation: back to the chat from *Images*, collapse to the icon rail.
 - `chat.spec.ts`:
   - Answers: answer with model, history ("Ana"), suggestion click, Shift+Enter.
   - Streaming: thinking, then a partial answer, then the complete one; Stop keeps what arrived; a connection dropped mid-answer shows the failure and gives the question back.

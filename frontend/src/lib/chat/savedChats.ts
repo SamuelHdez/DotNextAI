@@ -9,8 +9,8 @@ const AUTO_TITLE_LENGTH = 60;
 /** The title the server gives a conversation before its first question; the UI shows its own translation. */
 export const UNTITLED_TITLE = "New conversation";
 
-/** Link of a saved chat: `/chat?c=<id>` opens it (docs/specs/feature-saved-chats.md#web-app). */
-export const chatHref = (id: string) => `/chat?c=${encodeURIComponent(id)}`;
+/** Link of a saved chat: `/?c=<id>` opens it (docs/specs/feature-saved-chats.md#web-app). */
+export const chatHref = (id: string) => `/?c=${encodeURIComponent(id)}`;
 
 export type NameCheck = { ok: true; value: string } | { ok: false; reason: "empty" | "tooLong" | "control"; max: number };
 

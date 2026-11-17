@@ -6,7 +6,7 @@ import { SavedChatsProvider } from "@/components/savedChats/SavedChatsProvider";
 import { SideNav } from "@/components/shell/SideNav";
 import { chatPageFetch, conversationSummary, folderInfo, jsonResponse, renderWithProviders, savedChatsBackend, sseResponse } from "@/test/render";
 
-const navigation = vi.hoisted(() => ({ pathname: "/chat", push: vi.fn() }));
+const navigation = vi.hoisted(() => ({ pathname: "/", push: vi.fn() }));
 vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname, useRouter: () => ({ push: navigation.push }) }));
 
 type Fetch = ReturnType<typeof vi.fn>;
@@ -51,10 +51,10 @@ async function chooseOption(user: ReturnType<typeof userEvent.setup>, menuName: 
 
 beforeEach(() => {
   fetchMock = vi.fn();
-  navigation.pathname = "/chat";
+  navigation.pathname = "/";
   navigation.push.mockReset();
   window.localStorage.clear();
-  window.history.replaceState(null, "", "/chat");
+  window.history.replaceState(null, "", "/");
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -77,7 +77,7 @@ describe("ChatWorkspace", () => {
 
     await user.click(await within(panel()).findByRole("link", { name: "Plan" }));
 
-    expect(navigation.push).toHaveBeenCalledWith("/chat?c=c1");
+    expect(navigation.push).toHaveBeenCalledWith("/?c=c1");
   });
 
   it("lists the saved chats by folder, the untitled one in the selected language", async () => {
@@ -92,7 +92,7 @@ describe("ChatWorkspace", () => {
 
     const list = await screen.findByRole("region", { name: "Chats guardados" });
     const work = within(list).getByRole("region", { name: "Work" });
-    expect(within(work).getByRole("link", { name: "Offsite plan" })).toHaveAttribute("href", "/chat?c=c1");
+    expect(within(work).getByRole("link", { name: "Offsite plan" })).toHaveAttribute("href", "/?c=c1");
     const unfiled = within(list).getByRole("region", { name: "Sin carpeta" });
     expect(within(unfiled).getByRole("link", { name: "Nueva conversación" })).toBeInTheDocument();
   });

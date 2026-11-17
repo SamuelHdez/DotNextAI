@@ -53,6 +53,7 @@
 - [x] 2026-11-17 — Saved chats moved into the side navigation, under *Workspace* (one sidebar instead of two): `SavedChatsProvider` in the app shell, `SavedChatsSection` in `SideNav`, chats open in place on the chat page or navigate there from other pages.
 - [x] 2026-11-17 — jsdom 31 (Dependabot) no longer uses `@asamuzakjp/dom-selector`, so its `:focus-within` bug is gone and the focus workaround in `ChatWorkspace.test.tsx` was removed.
 - [x] 2026-11-17 — Folders with an icon and a colour (`FolderAppearance`, `FolderAppearance` migration, `PATCH /api/folders/{id}` with optional fields, *Folder appearance* dialog) and collapsible in the side navigation (kept in `localStorage`) ([saved chats](../specs/feature-saved-chats.md)).
+- [x] 2026-11-17 — Home page removed: the chat is the start page (`/`, `/?c=<id>` for a saved chat), `/chat` redirects to `/`, no *Home* link; the dashboard cards (service status, course backlog) and their texts and tests went with it ([web app](../specs/feature-web-app.md#chat-)).
 - [ ] Saved chats follow-up: search, and an owner per row once the API has authentication.
 
 ## Open questions

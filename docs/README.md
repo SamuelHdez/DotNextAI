@@ -11,7 +11,7 @@ Central index for the specs, design and day-to-day tasks of DotNextAI. Setup and
 | [Terminal app (CLI)](./specs/feature-cli.md) | `dotnextai`: chat with history and `ask`, images, input modes, chat commands, messages, exit codes, and the plan for the CLI in later steps. Permanent deliverable. | Step 10 implemented |
 | [Token metrics](./specs/feature-token-metrics.md) | Tokens per answer, per image and per conversation in the web, the CLI and the API; where they come from and how they are shown. | Step 10 implemented |
 | [Image generation](./specs/feature-images.md) | `gpt-image-2` through the proxy: rules, the `/images` page, `dotnextai image`, failures, limits. | Step 09 implemented |
-| [Web app](./specs/feature-web-app.md) | `frontend/`: dashboard shell, ERNI theme, English/Spanish, home and chat pages, saved chats in the side navigation, image attachments, streamed answers with Stop, model selector, images page, token metrics, errors, limits, security. | Saved chats implemented |
+| [Web app](./specs/feature-web-app.md) | `frontend/`: dashboard shell, ERNI theme, English/Spanish, chat as the start page, saved chats in the side navigation, image attachments, streamed answers with Stop, model selector, images page, token metrics, errors, limits, security. | Saved chats implemented |
 | [LLM chat service](./specs/feature-llm-chat.md) | `IChatService` contract shared by the CLI and the API, the Agent Framework agent over the LiteLLM proxy, rules, images, streaming, model catalog, usage, failure mapping, configuration. | Step 10 implemented |
 
 One `feature-*.md` per backlog step or feature is added when it starts.

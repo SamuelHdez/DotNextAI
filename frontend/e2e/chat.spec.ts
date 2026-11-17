@@ -11,7 +11,7 @@ const conversation = (page: Page) => page.getByRole("log", { name: "Conversation
 
 test.describe("chat", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/chat");
+    await page.goto("/");
     await expect(page.getByRole("heading", { name: "Ask anything" })).toBeVisible();
   });
 

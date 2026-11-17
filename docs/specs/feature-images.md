@@ -32,7 +32,7 @@ Users describe an image and the proxy's image model draws it. The service lives 
 - **Generate:** disabled while drawing, with *"Drawing the image… this can take up to a minute."*
 - **Gallery:** the newest image first, each with its revised prompt (or the description), the model and a **Download** link (`dotnextai-image-<n>.png`). Previews are `data:` URIs.
 - **Failures:** an error bar with the localized text of the `failure` code.
-- **Navigation and home:** *Images* in the navigation, and an *Image generation* card on the home dashboard.
+- **Navigation:** *Images* in the side navigation (the home dashboard and its *Image generation* card were removed on 2026-11-17).
 
 ## CLI (`dotnextai image`)
 

@@ -21,7 +21,7 @@ async function chatOption(page: Page, title: string, item: string) {
 
 test.describe("saved chats", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/chat");
+    await page.goto("/");
     await expect(page.getByRole("heading", { name: "Ask anything" })).toBeVisible();
   });
 
@@ -32,7 +32,7 @@ test.describe("saved chats", () => {
 
     const link = panel(page).getByRole("link", { name: `My name is ${name}.` });
     await expect(link).toHaveAttribute("aria-current", "page");
-    await expect(page).toHaveURL(/\/chat\?c=[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/:\d+\/\?c=[0-9a-f-]{36}$/);
 
     await page.reload();
     await expect(conversation(page).getByText(`Echo: My name is ${name}.`)).toBeVisible();
@@ -48,7 +48,7 @@ test.describe("saved chats", () => {
     await expect(conversation(page).getByText(`Echo: First ${topic}`)).toBeVisible();
 
     await page.getByRole("button", { name: "New conversation", exact: true }).click();
-    await expect(page).toHaveURL(/\/chat$/);
+    await expect(page).toHaveURL(/:\d+\/$/);
     await ask(page, `Second ${topic}`);
     await expect(conversation(page).getByText(`Echo: Second ${topic}`)).toBeVisible();
 
@@ -67,7 +67,7 @@ test.describe("saved chats", () => {
     await expect(page.getByRole("heading", { name: "Images", level: 1 })).toBeVisible();
     await panel(page).getByRole("link", { name: `Elsewhere ${topic}` }).click();
 
-    await expect(page).toHaveURL(/\/chat\?c=[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/:\d+\/\?c=[0-9a-f-]{36}$/);
     await expect(conversation(page).getByText(`Echo: Elsewhere ${topic}`)).toBeVisible();
     await expect(panel(page).getByRole("link", { name: `Elsewhere ${topic}` })).toHaveAttribute("aria-current", "page");
   });
@@ -205,10 +205,10 @@ test.describe("saved chats", () => {
   });
 
   test("starts a new conversation when the chat of the address no longer exists", async ({ page }) => {
-    await page.goto("/chat?c=00000000-0000-0000-0000-000000000000");
+    await page.goto("/?c=00000000-0000-0000-0000-000000000000");
 
     await expect(page.getByText("That chat no longer exists. You are in a new conversation.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Ask anything" })).toBeVisible();
-    await expect(page).toHaveURL(/\/chat$/);
+    await expect(page).toHaveURL(/:\d+\/$/);
   });
 });

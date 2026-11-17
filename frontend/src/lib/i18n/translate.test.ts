@@ -4,8 +4,8 @@ import { translate } from "@/lib/i18n/translate";
 
 describe("translate", () => {
   it("returns the text of the locale", () => {
-    expect(translate("en", "nav.home")).toBe("Home");
-    expect(translate("es", "nav.home")).toBe("Inicio");
+    expect(translate("en", "nav.images")).toBe("Images");
+    expect(translate("es", "nav.images")).toBe("Imágenes");
   });
 
   it("fills placeholders and formats numbers for the locale", () => {

@@ -1,14 +1,8 @@
-import type { Metadata } from "next";
-import { ChatWorkspace } from "@/components/savedChats/ChatWorkspace";
-import { getRequestLocale } from "@/lib/i18n/server";
-import { translate } from "@/lib/i18n/translate";
+import { redirect } from "next/navigation";
+import { chatHref } from "@/lib/chat/savedChats";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return { title: translate(await getRequestLocale(), "chat.title") };
-}
-
-/** `/chat?c=<id>` opens a saved conversation; `/chat` starts a new one. */
-export default async function ChatPage({ searchParams }: { searchParams: Promise<{ c?: string | string[] }> }) {
+/** The chat moved to `/` on 2026-11-17; old `/chat` and `/chat?c=<id>` links keep working. */
+export default async function LegacyChatPage({ searchParams }: PageProps<"/chat">) {
   const { c } = await searchParams;
-  return <ChatWorkspace initialConversationId={typeof c === "string" && c ? c : null} />;
+  redirect(typeof c === "string" && c ? chatHref(c) : "/");
 }

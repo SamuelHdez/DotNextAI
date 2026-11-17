@@ -43,7 +43,7 @@ interface SavedChatsContextValue {
   /** A stopped answer was saved with the text so far: the list shows it at once (there is no `done` event). */
   markStopped: (id: string, question: string) => void;
   remove: (id: string) => void;
-  /** Opens a chat on the chat page if it is shown; false when the caller must navigate to `/chat?c=<id>`. */
+  /** Opens a chat on the chat page if it is shown; false when the caller must navigate to `/?c=<id>`. */
   openInPlace: (id: string) => boolean;
   registerChatPage: (handle: ChatPageHandle) => () => void;
 }

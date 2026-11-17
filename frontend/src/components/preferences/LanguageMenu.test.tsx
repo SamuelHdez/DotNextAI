@@ -10,9 +10,9 @@ afterEach(() => {
   document.cookie = `${LOCALE_COOKIE}=; max-age=0; path=/`;
 });
 
-function HomeLabel() {
+function NavLabel() {
   const { t } = useI18n();
-  return <p>{t("nav.home")}</p>;
+  return <p>{t("nav.images")}</p>;
 }
 
 describe("LanguageMenu", () => {
@@ -21,14 +21,14 @@ describe("LanguageMenu", () => {
     renderWithProviders(
       <>
         <LanguageMenu />
-        <HomeLabel />
+        <NavLabel />
       </>,
     );
 
     await user.click(screen.getByRole("button", { name: "EN · Language: English" }));
     await user.click(screen.getByRole("menuitemradio", { name: "Español" }));
 
-    expect(screen.getByText("Inicio")).toBeInTheDocument();
+    expect(screen.getByText("Imágenes")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ES · Idioma: Español" })).toBeInTheDocument();
     expect(document.cookie).toContain(`${LOCALE_COOKIE}=es`);
   });

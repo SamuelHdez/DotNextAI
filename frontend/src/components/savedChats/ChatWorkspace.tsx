@@ -18,7 +18,7 @@ const useStyles = makeStyles({
 
 /** The open conversation in the address bar, so a reload or a shared link reopens it (no Next.js navigation). */
 function showInAddressBar(id: string | null) {
-  window.history.replaceState(window.history.state, "", id ? chatHref(id) : "/chat");
+  window.history.replaceState(window.history.state, "", id ? chatHref(id) : "/");
 }
 
 /**

@@ -10,12 +10,13 @@
 | ----- | -------- | ---- |
 | Stack | Next.js 16 (App Router, standalone output), React 19, TypeScript 5, Fluent UI v9, Vitest + Testing Library. Same as the ValidatorHub frontend and the ctf-janus admin. No Tailwind: Fluent tokens and a minimal CSS reset are enough. | 2026-11-16 |
 | Layout | ValidatorHub's dashboard shell: sticky header (hamburger, ERNI logo, product name, preferences) and a Fluent `NavDrawer`. Inline at 260 px with a collapsible 56 px icon rail, overlay below 640 px. Since 2026-11-17 the drawer also lists the *Saved chats* under *Workspace* (not in the icon rail). | 2026-11-16 |
+| Start page | **The chat is the start page** since 2026-11-17: `/` opens a new conversation and `/?c=<id>` a saved one. The *Home* dashboard (chat and images cards, service status, course backlog) was removed, with its navigation link, because opening the app should go straight to a chat. `/chat` (and `/chat?c=<id>`) redirects to `/`, so old links keep working. The chat already reports an unreachable API or a missing model configuration when a question fails. | 2026-11-17 |
 | Brand | ERNI Brand Book colours. Fluent brand ramp built on ERNI Dark Blue `#033778`, Source Sans 3 (next/font, self-hosted), full logo on light surfaces and white coat of arms on dark ones. Theme copied from ValidatorHub: system, light or dark, stored in `localStorage` (`dnai-theme`) and applied before first paint. | 2026-11-16 |
 | Languages | English (default) and Spanish. A selector in the header switches at once, with no reload, so the chat survives. The choice is stored in the `dnai-locale` cookie (1 year), so the server renders the right language and `<html lang>` from the first byte. The browser language is not detected. | 2026-11-16 |
 | i18n implementation | Own typed dictionaries (`src/lib/i18n/messages/en.ts`, `es.ts`) with `{name}` parameters and locale number formatting, no library. Two languages and about a hundred strings do not justify another dependency in the supply chain; a missing or extra Spanish key does not compile. | 2026-11-16 |
 | Errors | The text comes from the API's `failure` code (`error.<Failure>` keys), never from its English `detail`. An unreachable API, a validation problem or an unknown status have their own texts. | 2026-11-16 |
 | API access | The browser calls the API directly (`NEXT_PUBLIC_API_BASE_URL`, CORS on the API). The LiteLLM key stays in the API. | 2026-11-16 |
-| Conversation | **Saved** since 2026-11-16 ([saved chats](feature-saved-chats.md)): the first question creates the chat, every question goes to `POST /api/conversations/{id}/messages/stream` and the server reads the history from the database. The open chat is in the address (`/chat?c=<id>`). This replaced "kept in the chat page's React state, lost on reload", which followed the old product rule "conversations live in the browser". | 2026-11-16 |
+| Conversation | **Saved** since 2026-11-16 ([saved chats](feature-saved-chats.md)): the first question creates the chat, every question goes to `POST /api/conversations/{id}/messages/stream` and the server reads the history from the database. The open chat is in the address (`/?c=<id>`, `/chat?c=<id>` before 2026-11-17). This replaced "kept in the chat page's React state, lost on reload", which followed the old product rule "conversations live in the browser". | 2026-11-16 |
 | Answers | Plain text with the model's line breaks (`white-space: pre-wrap`). Markdown rendering is a follow-up, because it needs a sanitizing renderer. | 2026-11-16 |
 | Security | Strict CSP with a per-request nonce (`src/proxy.ts`). `connect-src` allows only the app and the API origin, so a model answer can never make the page call anywhere else. `img-src` adds the API origin for the saved chats' images. Static security headers come from ValidatorHub. No authentication: local use, like the API. | 2026-11-16 |
 | Images (step 06) | Attach with a button or by pasting (e.g. a screenshot). The browser checks count, size and the file signature before reading or sending, as the backend does. Previews are `data:` URIs (the CSP's `img-src` already allows them), so there are no object URLs to revoke. | 2026-11-16 |
@@ -25,24 +26,13 @@
 
 ## Pages
 
-### Home (`/`)
-
-A dashboard with four cards:
-
-| Card | Content |
-| ---- | ------- |
-| Chat | Short description and an **Open chat** button. |
-| Image generation | Short description and a **Create an image** button (step 09). |
-| Service status | `GET /api/health`: API *Online* / *Unreachable*, language model *Configured* / *Not configured* / *Unknown*, with a hint (`./scripts/dev.sh`, `./scripts/dev.sh secrets`) and a refresh button. |
-| Course backlog | The ten course steps in three phases, each *Done*, *In progress* or *Planned* (`src/lib/backlog.ts`, kept in sync with [product rules](product-rules.md#backlog)). |
-
 ### Images (`/images`)
 
 Image generation (step 09): description, shape, Generate, and a gallery of the session's images with downloads. Details in [image generation](feature-images.md#web-app-images).
 
-### Chat (`/chat`)
+### Chat (`/`)
 
-The saved chats are listed in the side navigation, under *Workspace* ([saved chats](feature-saved-chats.md#web-app)). `/chat?c=<id>` opens a saved chat.
+The start page. `/` is a new conversation and `/?c=<id>` opens a saved chat; `/chat` redirects here, keeping `c`. The saved chats are listed in the side navigation, under *Workspace* ([saved chats](feature-saved-chats.md#web-app)), and the *Chat* link opens `/`.
 
 
 - **Empty state:** "Ask anything" with three suggested questions; clicking one asks it.
@@ -91,12 +81,11 @@ The saved chats are listed in the side navigation, under *Workspace* ([saved cha
   - Attachments: remove, non-image rejected (in Spanish), the limit of 4, paste.
   - Failure: images kept after a failed question.
 - `images.test.ts`: signature detection, base64 and preview, the content winning over the declared type, size checked before reading.
-- `ServiceStatusCard.test.tsx`: online and configured, not configured hint, unreachable hint (in Spanish).
 - `LanguageMenu.test.tsx`: switching to Spanish updates the UI and the cookie; languages named in their own language. The button's accessible name starts with its visible code (`EN · Language: English`, WCAG 2.5.3).
-- `SideNav.test.tsx`: links, current page, collapsed rail names.
+- `SideNav.test.tsx`: links (*Chat* to `/`, no *Home*), current page, collapsed rail names.
 - `I18nProvider.test.tsx`, `translate.test.ts`, `messages.test.ts`: the same keys and placeholders in both languages, number formatting, cookie and `<html lang>`.
 - `chat.test.ts`, `apiClient.test.ts`: question rules, history, error mapping for every `failure`, the request shape, problem parsing, network and abort errors.
 - `contentSecurityPolicy.test.ts`: nonce-only scripts and `connect-src` limited to the API.
 - Theme and brand tests copied from ValidatorHub (`erniBrand`, `fluentThemeCss`, `themePreference`, `ErniLogo`, `streamedStyles`).
 - Manual, 2026-11-16: `./scripts/dev.sh`, then home and chat in light and dark, server-rendered English and Spanish (`<title>`, `<html lang>`), the CSP header, and CORS from `http://localhost:3030`.
-- Playwright E2E with axe (`frontend/e2e`, `e2e.yml`): home, chat (history across the whole chain, outage, thinking, new conversation), saved chats (reload, folders, stopped answers, images), language and theme kept after a reload. See [testing](../design/testing.md#end-to-end).
+- Playwright E2E with axe (`frontend/e2e`, `e2e.yml`): chat as the start page (title, `/chat` redirect, icon rail), chat (history across the whole chain, outage, thinking, new conversation), saved chats (reload, folders, stopped answers, images), language and theme kept after a reload. See [testing](../design/testing.md#end-to-end).
