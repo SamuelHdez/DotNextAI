@@ -11,7 +11,8 @@ async function ask(page: Page, question: string) {
 }
 
 const conversation = (page: Page) => page.getByRole("log", { name: "Conversation" });
-const panel = (page: Page) => page.getByRole("navigation", { name: "Saved chats" });
+// The Saved chats section of the side navigation, under Workspace.
+const panel = (page: Page) => page.getByRole("navigation", { name: "Main navigation" }).getByRole("region", { name: "Saved chats" });
 
 async function chatOption(page: Page, title: string, item: string) {
   await panel(page).getByRole("button", { name: `Options for ${title}` }).click();
@@ -55,6 +56,20 @@ test.describe("saved chats", () => {
     await expect(conversation(page).getByText(`Echo: First ${topic}`)).toBeVisible();
     await expect(conversation(page).getByText(`Echo: Second ${topic}`)).toBeHidden();
     await expectNoA11yViolations(page);
+  });
+
+  test("opens a saved chat from another page", async ({ page }) => {
+    const topic = unique();
+    await ask(page, `Elsewhere ${topic}`);
+    await expect(conversation(page).getByText(`Echo: Elsewhere ${topic}`)).toBeVisible();
+
+    await page.getByRole("link", { name: "Images" }).click();
+    await expect(page.getByRole("heading", { name: "Images", level: 1 })).toBeVisible();
+    await panel(page).getByRole("link", { name: `Elsewhere ${topic}` }).click();
+
+    await expect(page).toHaveURL(/\/chat\?c=[0-9a-f-]{36}$/);
+    await expect(conversation(page).getByText(`Echo: Elsewhere ${topic}`)).toBeVisible();
+    await expect(panel(page).getByRole("link", { name: `Elsewhere ${topic}` })).toHaveAttribute("aria-current", "page");
   });
 
   test("organises chats in folders: create, move, rename and delete", async ({ page }) => {

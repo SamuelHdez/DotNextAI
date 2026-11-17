@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Body1,
   Button,
   Caption1,
   makeStyles,
@@ -14,9 +13,10 @@ import {
   MessageBarActions,
   MessageBarBody,
   mergeClasses,
+  NavSectionHeader,
   Spinner,
-  Subtitle2,
   Text,
+  Tooltip,
   tokens,
 } from "@fluentui/react-components";
 import {
@@ -30,29 +30,40 @@ import { useId, useState, type MouseEvent } from "react";
 import { ConfirmDialog } from "@/components/savedChats/ConfirmDialog";
 import { MoveDialog } from "@/components/savedChats/MoveDialog";
 import { NameDialog } from "@/components/savedChats/NameDialog";
-import type { LocalizedError } from "@/lib/chat/chatErrors";
+import { useSavedChats } from "@/components/savedChats/SavedChatsProvider";
 import { groupByFolder, MAX_FOLDER_NAME_LENGTH, MAX_TITLE_LENGTH, UNTITLED_TITLE } from "@/lib/chat/savedChats";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { ConversationSummary, Folder } from "@/services/types";
 
 const useStyles = makeStyles({
-  panel: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalM, minWidth: 0 },
-  header: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalS },
+  section: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalS, minWidth: 0, marginTop: tokens.spacingVerticalL },
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: tokens.spacingHorizontalXS, paddingInlineEnd: tokens.spacingHorizontalXS },
+  status: { paddingInline: tokens.spacingHorizontalM },
   group: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXXS },
-  groupHeader: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXS, color: tokens.colorNeutralForeground2 },
+  groupHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: tokens.spacingHorizontalXS,
+    paddingInline: `${tokens.spacingHorizontalM} ${tokens.spacingHorizontalXS}`,
+    color: tokens.colorNeutralForeground2,
+  },
   groupName: { flexGrow: 1, minWidth: 0, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   list: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXXS, margin: 0, padding: 0, listStyle: "none" },
   nested: { paddingInlineStart: tokens.spacingHorizontalL },
+  emptyFolder: { paddingInline: `calc(${tokens.spacingHorizontalM} + ${tokens.spacingHorizontalL})` },
   row: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalXXS },
+  // Same look as the navigation's items above: transparent, filled on hover and when current.
   item: {
     flexGrow: 1,
     minWidth: 0,
     justifyContent: "flex-start",
     fontWeight: tokens.fontWeightRegular,
+    paddingInline: tokens.spacingHorizontalM,
   },
   itemText: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   active: { backgroundColor: tokens.colorNeutralBackground1Selected, fontWeight: tokens.fontWeightSemibold },
   muted: { color: tokens.colorNeutralForeground3 },
+  hint: { paddingInline: tokens.spacingHorizontalM, color: tokens.colorNeutralForeground3 },
 });
 
 type Dialog =
@@ -63,34 +74,25 @@ type Dialog =
   | { kind: "moveChat"; conversation: ConversationSummary }
   | { kind: "deleteChat"; conversation: ConversationSummary };
 
-/** Every action resolves with the error to show, or null when it worked. */
-export interface SavedChatsActions {
-  createFolder: (name: string) => Promise<LocalizedError | null>;
-  renameFolder: (id: string, name: string) => Promise<LocalizedError | null>;
-  deleteFolder: (id: string) => Promise<LocalizedError | null>;
-  renameConversation: (id: string, title: string) => Promise<LocalizedError | null>;
-  moveConversation: (id: string, folderId: string | null) => Promise<LocalizedError | null>;
-  deleteConversation: (id: string) => Promise<LocalizedError | null>;
-}
-
-interface ConversationsPanelProps {
-  state: "loading" | "ready" | "failed";
-  folders: readonly Folder[];
-  conversations: readonly ConversationSummary[];
-  activeId: string | null;
+interface SavedChatsSectionProps {
   /** Link of a conversation, so it can also be opened in a new tab. */
   hrefOf: (id: string) => string;
+  /** A chat was chosen (plain click). */
   onOpen: (id: string) => void;
-  onRetry: () => void;
-  actions: SavedChatsActions;
-  className?: string;
 }
 
 /**
- * Saved chats: the folders (one level) with their chats, then the chats without a folder, each with a menu to rename,
- * move or delete. Opening a chat is a link (`?c=<id>`) handled in place.
+ * The *Saved chats* section of the side navigation, under *Workspace*: the folders (one level) with their chats, then
+ * the chats without a folder, each with a menu to rename, move or delete. A chat is a link (`/chat?c=<id>`).
+ * Renders nothing outside the {@link SavedChatsProvider}.
  */
-export function ConversationsPanel({ state, folders, conversations, activeId, hrefOf, onOpen, onRetry, actions, className }: ConversationsPanelProps) {
+export function SavedChatsSection(props: SavedChatsSectionProps) {
+  const saved = useSavedChats();
+  return saved ? <SavedChatsList {...props} saved={saved} /> : null;
+}
+
+function SavedChatsList({ hrefOf, onOpen, saved }: SavedChatsSectionProps & { saved: NonNullable<ReturnType<typeof useSavedChats>> }) {
+  const { state, folders, conversations, activeId, retry, actions } = saved;
   const styles = useStyles();
   const { t } = useI18n();
   const headingId = useId();
@@ -133,7 +135,9 @@ export function ConversationsPanel({ state, folders, conversations, activeId, hr
                 aria-current={active ? "page" : undefined}
                 onClick={(event) => open(event, conversation.id)}
               >
-                <span className={styles.itemText}>{title}</span>
+                <span className={styles.itemText} title={title}>
+                  {title}
+                </span>
               </Button>
               <Menu>
                 <MenuTrigger disableButtonEnhancement>
@@ -155,22 +159,28 @@ export function ConversationsPanel({ state, folders, conversations, activeId, hr
   }
 
   return (
-    <nav aria-labelledby={headingId} className={mergeClasses(styles.panel, className)}>
+    <section aria-labelledby={headingId} className={styles.section}>
       <div className={styles.header}>
-        <Subtitle2 as="h2" id={headingId}>
-          {t("saved.title")}
-        </Subtitle2>
-        <Button appearance="subtle" icon={<FolderAdd20Regular />} onClick={() => show({ kind: "newFolder" })} disabled={state !== "ready"}>
-          {t("saved.newFolder")}
-        </Button>
+        <NavSectionHeader id={headingId}>{t("saved.title")}</NavSectionHeader>
+        <Tooltip content={t("saved.newFolder")} relationship="label">
+          <Button
+            appearance="subtle"
+            size="small"
+            icon={<FolderAdd20Regular />}
+            onClick={() => show({ kind: "newFolder" })}
+            disabled={state !== "ready"}
+          />
+        </Tooltip>
       </div>
 
-      {state === "loading" && <Spinner size="tiny" label={t("saved.loading")} />}
+      {state === "loading" && <Spinner size="tiny" label={t("saved.loading")} className={styles.status} />}
       {state === "failed" && (
-        <MessageBar intent="error">
+        <MessageBar intent="error" layout="multiline" className={styles.status}>
           <MessageBarBody>{t("saved.loadFailed")}</MessageBarBody>
           <MessageBarActions>
-            <Button onClick={onRetry}>{t("saved.retry")}</Button>
+            <Button size="small" onClick={retry}>
+              {t("saved.retry")}
+            </Button>
           </MessageBarActions>
         </MessageBar>
       )}
@@ -181,7 +191,7 @@ export function ConversationsPanel({ state, folders, conversations, activeId, hr
             <section key={folder.id} className={styles.group} aria-labelledby={`${headingId}-${folder.id}`}>
               <div className={styles.groupHeader}>
                 <Folder20Regular aria-hidden />
-                <Text as="h3" weight="semibold" size={300} id={`${headingId}-${folder.id}`} className={styles.groupName}>
+                <Text as="h4" weight="semibold" size={300} id={`${headingId}-${folder.id}`} className={styles.groupName}>
                   {folder.name}
                 </Text>
                 <Menu>
@@ -201,7 +211,7 @@ export function ConversationsPanel({ state, folders, conversations, activeId, hr
                   </MenuPopover>
                 </Menu>
               </div>
-              {inFolder.length > 0 ? chatList(inFolder, true) : <Caption1 className={mergeClasses(styles.muted, styles.nested)}>{t("saved.folderEmpty")}</Caption1>}
+              {inFolder.length > 0 ? chatList(inFolder, true) : <Caption1 className={mergeClasses(styles.muted, styles.emptyFolder)}>{t("saved.folderEmpty")}</Caption1>}
             </section>
           ))}
 
@@ -209,7 +219,7 @@ export function ConversationsPanel({ state, folders, conversations, activeId, hr
             <section className={styles.group} aria-labelledby={`${headingId}-unfiled`}>
               {groups.folders.length > 0 && (
                 <div className={styles.groupHeader}>
-                  <Text as="h3" weight="semibold" size={300} id={`${headingId}-unfiled`} className={styles.groupName}>
+                  <Text as="h4" weight="semibold" size={300} id={`${headingId}-unfiled`} className={styles.groupName}>
                     {t("saved.unfiled")}
                   </Text>
                 </div>
@@ -217,7 +227,7 @@ export function ConversationsPanel({ state, folders, conversations, activeId, hr
               {groups.unfiled.length > 0 ? (
                 chatList(groups.unfiled, false)
               ) : (
-                <Body1 className={styles.muted}>{t("saved.empty")}</Body1>
+                <Caption1 className={styles.hint}>{t("saved.empty")}</Caption1>
               )}
             </section>
           )}
@@ -295,7 +305,7 @@ export function ConversationsPanel({ state, folders, conversations, activeId, hr
           onClose={close}
         />
       )}
-    </nav>
+    </section>
   );
 }
 

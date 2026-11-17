@@ -57,7 +57,7 @@ No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on e
 - `images.spec.ts`: an image drawn through the API and the fake proxy, shown, downloaded with its file name, axe; an outage; navigation.
 - `saved-chats.spec.ts` (one database per run, so names are unique per test):
   - A chat kept after a reload, answered from its saved history (the browser sends only the question).
-  - Chats opened from the list; *New conversation* starts another one.
+  - Chats opened from the side navigation, also from the *Images* page; *New conversation* starts another one.
   - Folders: create, move a chat in, rename it, reload, delete the folder (the chat stays), delete the chat; axe with a dialog open and with folders.
   - A taken folder name; a stopped answer kept as stopped; an image saved and loaded from the API (CSP `img-src`); a missing chat in the address.
 - `preferences.spec.ts`:

@@ -113,3 +113,9 @@ Outcome: a new `DotNextAI.Persistence` project (EF Core 10.0.15 on SQLite, migra
 > Go ahead (part 2: the sidebar with folders and conversations).
 
 Outcome: the chat page became `ChatWorkspace`, a *Saved chats* panel (folders, chats, menus and dialogs to rename, move and delete) next to `ChatView`, which now creates the chat with its first question and asks through the saved conversation. The open chat is in the address (`/chat?c=<id>`). Found on the way: (1) a failed first question left an empty *New conversation* in the list, so such chats are now deleted again; (2) unmounting an open Fluent dialog left the page `aria-hidden`, so dialogs close with `open={false}`; (3) a jsdom selector bug, fixed upstream only 2 days ago, needs a focus workaround in one test; (4) a model selector test raced the model list. 333 Vitest tests and 31 Playwright scenarios (7 new) green, no axe violations.
+
+## 2026-11-17 — One sidebar
+
+> I don't like having two sidebars. Put everything in one, with the saved chats under the workspace section.
+
+Outcome: the *Saved chats* panel of the chat page became a section of the side navigation, under *Workspace*, on every page. The list moved into `SavedChatsProvider` in the app shell; the chat page registers with it, so a chat opens in place there and navigates to `/chat?c=<id>` from other pages. The icon rail leaves the section out. 336 Vitest tests and 32 Playwright scenarios green, no axe violations.

@@ -9,7 +9,7 @@
 | Topic | Decision | Date |
 | ----- | -------- | ---- |
 | Stack | Next.js 16 (App Router, standalone output), React 19, TypeScript 5, Fluent UI v9, Vitest + Testing Library. Same as the ValidatorHub frontend and the ctf-janus admin. No Tailwind: Fluent tokens and a minimal CSS reset are enough. | 2026-11-16 |
-| Layout | ValidatorHub's dashboard shell: sticky header (hamburger, ERNI logo, product name, preferences) and a Fluent `NavDrawer`. Inline at 260 px with a collapsible 56 px icon rail, overlay below 640 px. | 2026-11-16 |
+| Layout | ValidatorHub's dashboard shell: sticky header (hamburger, ERNI logo, product name, preferences) and a Fluent `NavDrawer`. Inline at 260 px with a collapsible 56 px icon rail, overlay below 640 px. Since 2026-11-17 the drawer also lists the *Saved chats* under *Workspace* (not in the icon rail). | 2026-11-16 |
 | Brand | ERNI Brand Book colours. Fluent brand ramp built on ERNI Dark Blue `#033778`, Source Sans 3 (next/font, self-hosted), full logo on light surfaces and white coat of arms on dark ones. Theme copied from ValidatorHub: system, light or dark, stored in `localStorage` (`dnai-theme`) and applied before first paint. | 2026-11-16 |
 | Languages | English (default) and Spanish. A selector in the header switches at once, with no reload, so the chat survives. The choice is stored in the `dnai-locale` cookie (1 year), so the server renders the right language and `<html lang>` from the first byte. The browser language is not detected. | 2026-11-16 |
 | i18n implementation | Own typed dictionaries (`src/lib/i18n/messages/en.ts`, `es.ts`) with `{name}` parameters and locale number formatting, no library. Two languages and about a hundred strings do not justify another dependency in the supply chain; a missing or extra Spanish key does not compile. | 2026-11-16 |
@@ -42,7 +42,7 @@ Image generation (step 09): description, shape, Generate, and a gallery of the s
 
 ### Chat (`/chat`)
 
-Next to the chat, the *Saved chats* panel: folders, chats, and their actions ([saved chats](feature-saved-chats.md#web-app)). `/chat?c=<id>` opens a saved chat.
+The saved chats are listed in the side navigation, under *Workspace* ([saved chats](feature-saved-chats.md#web-app)). `/chat?c=<id>` opens a saved chat.
 
 
 - **Empty state:** "Ask anything" with three suggested questions; clicking one asks it.

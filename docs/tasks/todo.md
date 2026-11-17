@@ -50,6 +50,7 @@
 
 - [x] 2026-11-16 — Saved chats part 1 (backend): `DotNextAI.Persistence` (EF Core 10 + SQLite, `InitialSavedChats` migration applied at startup), `IConversationStore` and `ConversationService`, `/api/folders` and `/api/conversations` (CRUD, images, streamed ask with the saved history), CORS for `PATCH`/`PUT`/`DELETE`, migrations checked in CI, Docker volume `/app/data` ([saved chats](../specs/feature-saved-chats.md)).
 - [x] 2026-11-16 — Saved chats part 2 (web): *Saved chats* panel on the chat page (folders, chats, rename, move, delete in dialogs), every chat saved by its first question and asked through `POST /api/conversations/{id}/messages/stream`, `/chat?c=<id>` to reopen, no empty chats left on failure, `img-src` for the API's images; Vitest (`ChatWorkspace`, `savedChats`) and 7 Playwright scenarios with axe ([saved chats](../specs/feature-saved-chats.md#web-app)).
+- [x] 2026-11-17 — Saved chats moved into the side navigation, under *Workspace* (one sidebar instead of two): `SavedChatsProvider` in the app shell, `SavedChatsSection` in `SideNav`, chats open in place on the chat page or navigate there from other pages.
 - [ ] After 2026-11-21: update `@asamuzakjp/dom-selector` to 10.0.6 (jsdom `:focus-within` fix) and remove the focus workaround in `ChatWorkspace.test.tsx` ([testing](../design/testing.md#known-test-environment-issue-2026-11-16)).
 - [ ] Saved chats follow-up: search, and an owner per row once the API has authentication.
 

@@ -2,7 +2,12 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatWorkspace } from "@/components/savedChats/ChatWorkspace";
+import { SavedChatsProvider } from "@/components/savedChats/SavedChatsProvider";
+import { SideNav } from "@/components/shell/SideNav";
 import { chatPageFetch, conversationSummary, jsonResponse, renderWithProviders, savedChatsBackend, sseResponse } from "@/test/render";
+
+const navigation = vi.hoisted(() => ({ pathname: "/chat", push: vi.fn() }));
+vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname, useRouter: () => ({ push: navigation.push }) }));
 
 type Fetch = ReturnType<typeof vi.fn>;
 type Backend = ReturnType<typeof savedChatsBackend>;
@@ -11,7 +16,17 @@ let fetchMock: Fetch;
 
 function start(backend: Backend, initialConversationId: string | null = null, locale: "en" | "es" = "en") {
   vi.stubGlobal("fetch", chatPageFetch(fetchMock, undefined, backend));
-  return renderWithProviders(<ChatWorkspace initialConversationId={initialConversationId} />, { locale });
+  return renderWithProviders(<Shell initialConversationId={initialConversationId} />, { locale });
+}
+
+/** The side navigation (with the saved chats) next to the chat page, as the app shell renders them. */
+function Shell({ initialConversationId = null, page = true }: { initialConversationId?: string | null; page?: boolean }) {
+  return (
+    <SavedChatsProvider>
+      <SideNav type="inline" open />
+      {page && <ChatWorkspace initialConversationId={initialConversationId} />}
+    </SavedChatsProvider>
+  );
 }
 
 /** A complete answer whose `done` carries the conversation as the server saved it. */
@@ -19,9 +34,10 @@ function savedAnswer(text: string, conversation: ReturnType<typeof conversationS
   return sseResponse({ event: "delta", data: { text } }, { event: "done", data: { answer: text, model: "gpt-5.6-luna", truncated: false, usage: null, conversation } });
 }
 
-const panel = () => screen.getByRole("navigation", { name: "Saved chats" });
-/** The panel once a dialog has finished closing (Fluent hides the rest of the page until then). */
-const panelAfterDialog = () => screen.findByRole("navigation", { name: "Saved chats" });
+/** The Saved chats section of the side navigation. */
+const panel = () => screen.getByRole("region", { name: "Saved chats" });
+/** The section once a dialog has finished closing (Fluent hides the rest of the page until then). */
+const panelAfterDialog = () => screen.findByRole("region", { name: "Saved chats" });
 
 async function ask(user: ReturnType<typeof userEvent.setup>, text: string) {
   await user.type(screen.getByRole("textbox", { name: "Your question" }), text);
@@ -35,12 +51,34 @@ async function chooseOption(user: ReturnType<typeof userEvent.setup>, menuName: 
 
 beforeEach(() => {
   fetchMock = vi.fn();
+  navigation.pathname = "/chat";
+  navigation.push.mockReset();
   window.history.replaceState(null, "", "/chat");
 });
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("ChatWorkspace", () => {
+  it("lists the saved chats under the workspace links of the side navigation", async () => {
+    start(savedChatsBackend({ conversations: [conversationSummary("c1", { title: "Plan" })] }));
+
+    const nav = screen.getByRole("navigation", { name: "Main navigation" });
+    const section = await within(nav).findByRole("region", { name: "Saved chats" });
+    expect(within(section).getByRole("link", { name: "Plan" })).toBeInTheDocument();
+    expect(within(nav).getByRole("group", { name: "Workspace" })).toBeInTheDocument();
+  });
+
+  it("opens a saved chat from another page by navigating to the chat page", async () => {
+    navigation.pathname = "/images";
+    vi.stubGlobal("fetch", chatPageFetch(fetchMock, undefined, savedChatsBackend({ conversations: [conversationSummary("c1", { title: "Plan" })] })));
+    const user = userEvent.setup();
+    renderWithProviders(<Shell page={false} />);
+
+    await user.click(await within(panel()).findByRole("link", { name: "Plan" }));
+
+    expect(navigation.push).toHaveBeenCalledWith("/chat?c=c1");
+  });
+
   it("lists the saved chats by folder, the untitled one in the selected language", async () => {
     start(
       savedChatsBackend({
@@ -51,7 +89,7 @@ describe("ChatWorkspace", () => {
       "es",
     );
 
-    const list = await screen.findByRole("navigation", { name: "Chats guardados" });
+    const list = await screen.findByRole("region", { name: "Chats guardados" });
     const work = within(list).getByRole("region", { name: "Work" });
     expect(within(work).getByRole("link", { name: "Offsite plan" })).toHaveAttribute("href", "/chat?c=c1");
     const unfiled = within(list).getByRole("region", { name: "Sin carpeta" });
@@ -152,7 +190,7 @@ describe("ChatWorkspace", () => {
     await user.type(within(dialog).getByRole("textbox", { name: "Folder name" }), "  Archive ");
     await user.click(within(dialog).getByRole("button", { name: "Create" }));
 
-    expect(within(await panelAfterDialog()).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["Archive", "Work"]);
+    expect(within(await panelAfterDialog()).getAllByRole("heading", { level: 4 }).map((h) => h.textContent)).toEqual(["Archive", "Work"]);
   });
 
   it("checks the name before calling the API", async () => {
@@ -248,7 +286,7 @@ describe("ChatWorkspace", () => {
         : chatPageFetch(fetchMock, undefined, backend)(input, init),
     );
     const user = userEvent.setup();
-    renderWithProviders(<ChatWorkspace />);
+    renderWithProviders(<Shell />);
 
     const retry = await within(panel()).findByRole("button", { name: "Try again" });
     fail = false;

@@ -14,6 +14,9 @@ import {
 import { bundleIcon, Chat20Filled, Chat20Regular, Home20Filled, Home20Regular, Image20Filled, Image20Regular } from "@fluentui/react-icons";
 import { usePathname, useRouter } from "next/navigation";
 import type { MouseEvent, ReactElement } from "react";
+import { SavedChatsSection } from "@/components/savedChats/SavedChatsSection";
+import { useSavedChats } from "@/components/savedChats/SavedChatsProvider";
+import { chatHref } from "@/lib/chat/savedChats";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { MessageKey } from "@/lib/i18n/messages/en";
 
@@ -110,6 +113,13 @@ export function SideNav({ type, open, collapsed = false, onOpenChange, onNavigat
   const router = useRouter();
   // usePathname() is only null outside the App Router (e.g. isolated component tests).
   const pathname = usePathname() ?? "/";
+  const saved = useSavedChats();
+
+  // A saved chat opens in place on the chat page, or navigates there from any other page.
+  function openChat(id: string) {
+    if (!saved?.openInPlace(id)) router.push(chatHref(id));
+    onNavigate?.();
+  }
 
   function navigate(event: MouseEvent, href: string) {
     // Keep native behaviour for new-tab / new-window clicks; use client-side navigation otherwise.
@@ -158,6 +168,8 @@ export function SideNav({ type, open, collapsed = false, onOpenChange, onNavigat
             })}
           </div>
         ))}
+        {/* The saved chats need the labels; the icon rail leaves them out. */}
+        {!collapsed && <SavedChatsSection hrefOf={chatHref} onOpen={openChat} />}
       </NavDrawerBody>
     </NavDrawer>
   );

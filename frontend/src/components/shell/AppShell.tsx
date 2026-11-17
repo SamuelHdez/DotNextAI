@@ -2,6 +2,7 @@
 
 import { makeStyles, tokens } from "@fluentui/react-components";
 import { useEffect, useState, type ReactNode } from "react";
+import { SavedChatsProvider } from "@/components/savedChats/SavedChatsProvider";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { HEADER_HEIGHT, NAV_OVERLAY_MEDIA, NAV_OVERLAY_QUERY } from "@/components/shell/navBreakpoint";
 import { SideNav } from "@/components/shell/SideNav";
@@ -67,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
+    <SavedChatsProvider>
       <a href="#main-content" className={styles.skipLink}>
         {t("a11y.skipToContent")}
       </a>
@@ -79,6 +80,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
-    </>
+    </SavedChatsProvider>
   );
 }
