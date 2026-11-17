@@ -8,6 +8,10 @@ internal sealed class FolderEntity
 
     public required string Name { get; set; }
 
+    public string Icon { get; set; } = DotNextAI.Application.Conversations.FolderAppearance.DefaultIcon;
+
+    public string Color { get; set; } = DotNextAI.Application.Conversations.FolderAppearance.DefaultColor;
+
     public DateTime CreatedAt { get; set; }
 
     public List<ConversationEntity> Conversations { get; set; } = [];

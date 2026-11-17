@@ -107,9 +107,17 @@ export const STORE_FAILURES = ["NotFound", "FolderNotFound", "DuplicateFolderNam
 
 export type StoreFailure = (typeof STORE_FAILURES)[number];
 
+/** Icon and colour keys of a folder (FolderAppearance on the backend). */
+export const FOLDER_ICONS = ["folder", "briefcase", "star", "heart", "book", "code", "lightbulb", "rocket", "people", "home", "beaker", "airplane"] as const;
+export type FolderIcon = (typeof FOLDER_ICONS)[number];
+export const FOLDER_COLORS = ["default", "red", "orange", "yellow", "green", "teal", "blue", "purple", "berry", "pink", "brown"] as const;
+export type FolderColor = (typeof FOLDER_COLORS)[number];
+
 export interface Folder {
   id: string;
   name: string;
+  icon: FolderIcon;
+  color: FolderColor;
   conversationCount: number;
   createdAt: string;
 }
@@ -150,6 +158,13 @@ export interface StoredMessage {
 export interface ConversationDetail {
   conversation: ConversationSummary;
   messages: StoredMessage[];
+}
+
+/** Body of PATCH /api/folders/{id}: what to change (at least one). */
+export interface FolderChanges {
+  name?: string;
+  icon?: FolderIcon;
+  color?: FolderColor;
 }
 
 /** Body of POST /api/conversations/{id}/messages/stream: a chat request without history (the server has it). */

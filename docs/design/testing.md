@@ -59,6 +59,7 @@ No test calls the real LiteLLM proxy or needs a secret. CI runs every layer on e
   - A chat kept after a reload, answered from its saved history (the browser sends only the question).
   - Chats opened from the side navigation, also from the *Images* page; *New conversation* starts another one.
   - Folders: create, move a chat in, rename it, reload, delete the folder (the chat stays), delete the chat; axe with a dialog open and with folders.
+  - A folder's icon and colour (axe on the appearance dialog) and its collapsed state, kept after a reload.
   - A taken folder name; a stopped answer kept as stopped; an image saved and loaded from the API (CSP `img-src`); a missing chat in the address.
 - `preferences.spec.ts`:
   - Language: Spanish switch kept after a reload and rendered by the server (`<title>`, `<html lang>`); the chat survives a language change.
@@ -78,7 +79,3 @@ On failure, `frontend/test-results/` keeps a screenshot and a trace per test (`n
 
 - `label-content-name-mismatch` on the language button. Its visible "EN" was not part of its name "Language: English", so voice control users could not say what they see. The name is now `EN · Language: English`; axe matches whole words, so the code is not wrapped in parentheses.
 - `listitem` in the chat. `role="log"` sat on the `<ol>` itself, which dropped its list semantics; the live region now wraps the list.
-
-### Known test-environment issue (2026-11-16)
-
-jsdom's selector engine (`@asamuzakjp/dom-selector` 10.0.5) can throw `Cannot read properties of null (reading 'add')` from `:focus-within` while a link has the focus, inside Testing Library's role queries. 10.0.6 fixes it but was released on 2026-11-14, so it waits for the 7-day rule. `ChatWorkspace.test.tsx` moves the focus to the question after clicking a chat link; remove that line after updating.

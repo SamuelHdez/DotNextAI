@@ -114,6 +114,42 @@ test.describe("saved chats", () => {
     await expect(page.getByRole("heading", { name: "Ask anything" })).toBeVisible();
   });
 
+  test("gives a folder an icon and a colour, and collapses it", async ({ page }) => {
+    const topic = unique();
+    const folder = `Look ${topic}`;
+    await ask(page, `Inside ${topic}`);
+    await expect(conversation(page).getByText(`Echo: Inside ${topic}`)).toBeVisible();
+    await panel(page).getByRole("button", { name: "New folder" }).click();
+    await page.getByRole("dialog", { name: "New folder" }).getByRole("textbox", { name: "Folder name" }).fill(folder);
+    await page.getByRole("dialog", { name: "New folder" }).getByRole("button", { name: "Create" }).click();
+    await chatOption(page, `Inside ${topic}`, "Move to folder…");
+    await page.getByRole("dialog", { name: "Move chat" }).getByRole("combobox").selectOption({ label: folder });
+    await page.getByRole("dialog", { name: "Move chat" }).getByRole("button", { name: "Move" }).click();
+    await expect(panel(page).getByRole("region", { name: folder }).getByRole("link", { name: `Inside ${topic}` })).toBeVisible();
+
+    await panel(page).getByRole("button", { name: `Options for the folder ${folder}` }).click();
+    await page.getByRole("menuitem", { name: "Icon and colour…" }).click();
+    const dialog = page.getByRole("dialog", { name: "Folder appearance" });
+    await dialog.getByRole("radiogroup", { name: "Icon" }).getByRole("radio", { name: "Rocket" }).click();
+    await dialog.getByRole("radiogroup", { name: "Colour" }).getByRole("radio", { name: "Purple" }).click();
+    await expectNoA11yViolations(page);
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(dialog).toBeHidden();
+
+    const toggle = panel(page).getByRole("button", { name: folder, exact: true });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(panel(page).getByRole("link", { name: `Inside ${topic}` })).toBeHidden();
+
+    // The appearance is saved on the server, the collapsed state in this browser: both survive a reload.
+    await page.reload();
+    await expect(panel(page).getByRole("button", { name: folder, exact: true })).toHaveAttribute("aria-expanded", "false");
+    await panel(page).getByRole("button", { name: `Options for the folder ${folder}` }).click();
+    await page.getByRole("menuitem", { name: "Icon and colour…" }).click();
+    await expect(page.getByRole("dialog", { name: "Folder appearance" }).getByRole("radio", { name: "Rocket" })).toBeChecked();
+    await expect(page.getByRole("dialog", { name: "Folder appearance" }).getByRole("radio", { name: "Purple" })).toBeChecked();
+  });
+
   test("refuses a folder name that is taken", async ({ page }) => {
     const folder = `Taken ${unique()}`;
     for (const attempt of [folder, folder.toUpperCase()]) {

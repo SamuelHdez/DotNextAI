@@ -14,7 +14,8 @@ internal static class ConversationEndpoints
         var folders = app.MapGroup("/api/folders").WithTags("Saved chats");
         folders.MapGet("/", ListFoldersAsync).WithName("ListFolders");
         folders.MapPost("/", CreateFolderAsync).WithName("CreateFolder").ProducesValidationProblem().ProducesProblem(StatusCodes.Status409Conflict);
-        folders.MapPatch("/{id:guid}", RenameFolderAsync).WithName("RenameFolder").ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
+        folders.MapPatch("/{id:guid}", UpdateFolderAsync).WithName("UpdateFolder")
+            .WithDescription("Renames the folder and/or changes its icon and colour; omitted fields stay as they are.").ProducesValidationProblem().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
         folders.MapDelete("/{id:guid}", DeleteFolderAsync).WithName("DeleteFolder")
             .WithDescription("Deletes the folder; its conversations stay, without a folder.").ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -53,7 +54,24 @@ internal static class ConversationEndpoints
             summary.CreatedAt,
             summary.UpdatedAt);
 
-    private static FolderDto ToDto(FolderInfo folder) => new(folder.Id, folder.Name, folder.ConversationCount, folder.CreatedAt);
+    private static FolderDto ToDto(FolderInfo folder) => new(folder.Id, folder.Name, folder.Icon, folder.Color, folder.ConversationCount, folder.CreatedAt);
+
+    /// <summary>The icon and colour of a folder request: each must be a key of <see cref="FolderAppearance"/> when given.</summary>
+    private static Dictionary<string, string[]> AppearanceErrors(FolderRequestDto request)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (request.Icon is not null && !FolderAppearance.IsIcon(request.Icon))
+        {
+            errors["icon"] = [$"Unknown icon. Use one of: {string.Join(", ", FolderAppearance.Icons)}."];
+        }
+
+        if (request.Color is not null && !FolderAppearance.IsColor(request.Color))
+        {
+            errors["color"] = [$"Unknown colour. Use one of: {string.Join(", ", FolderAppearance.Colors)}."];
+        }
+
+        return errors;
+    }
 
     private static async Task<Ok<FolderDto[]>> ListFoldersAsync(IConversationStore store, CancellationToken cancellationToken) =>
         TypedResults.Ok((await store.ListFoldersAsync(cancellationToken)).Select(ToDto).ToArray());
@@ -63,14 +81,24 @@ internal static class ConversationEndpoints
         IConversationStore store,
         CancellationToken cancellationToken)
     {
+        var errors = AppearanceErrors(request);
         if (!ConversationRules.TryNormalizeFolderName(request.Name, out var name, out var error))
         {
-            return Invalid("name", error);
+            errors["name"] = [error];
+        }
+
+        if (errors.Count > 0)
+        {
+            return TypedResults.ValidationProblem(errors);
         }
 
         try
         {
-            var folder = await store.CreateFolderAsync(name, cancellationToken);
+            var folder = await store.CreateFolderAsync(
+                name,
+                request.Icon ?? FolderAppearance.DefaultIcon,
+                request.Color ?? FolderAppearance.DefaultColor,
+                cancellationToken);
             return TypedResults.Created($"/api/folders/{folder.Id}", ToDto(folder));
         }
         catch (ConversationStoreException ex)
@@ -79,20 +107,38 @@ internal static class ConversationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<FolderDto>, ValidationProblem, ProblemHttpResult>> RenameFolderAsync(
+    private static async Task<Results<Ok<FolderDto>, ValidationProblem, ProblemHttpResult>> UpdateFolderAsync(
         Guid id,
         FolderRequestDto request,
         IConversationStore store,
         CancellationToken cancellationToken)
     {
-        if (!ConversationRules.TryNormalizeFolderName(request.Name, out var name, out var error))
+        var errors = AppearanceErrors(request);
+        string? name = null;
+        if (request.Name is not null)
         {
-            return Invalid("name", error);
+            if (ConversationRules.TryNormalizeFolderName(request.Name, out var normalized, out var error))
+            {
+                name = normalized;
+            }
+            else
+            {
+                errors["name"] = [error];
+            }
+        }
+        else if (request.Icon is null && request.Color is null)
+        {
+            errors["name"] = ["Give a name, an icon or a colour to change."];
+        }
+
+        if (errors.Count > 0)
+        {
+            return TypedResults.ValidationProblem(errors);
         }
 
         try
         {
-            return TypedResults.Ok(ToDto(await store.RenameFolderAsync(id, name, cancellationToken)));
+            return TypedResults.Ok(ToDto(await store.UpdateFolderAsync(id, new FolderUpdate(name, request.Icon, request.Color), cancellationToken)));
         }
         catch (ConversationStoreException ex)
         {

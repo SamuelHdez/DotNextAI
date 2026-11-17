@@ -11,29 +11,39 @@ internal sealed class SqliteConversationStore(ChatsDbContext db, TimeProvider ti
     public async Task<IReadOnlyList<FolderInfo>> ListFoldersAsync(CancellationToken cancellationToken) =>
         (await db.Folders.AsNoTracking()
             .OrderBy(folder => folder.Name)
-            .Select(folder => new { folder.Id, folder.Name, Count = folder.Conversations.Count, folder.CreatedAt })
+            .Select(folder => new { folder.Id, folder.Name, folder.Icon, folder.Color, Count = folder.Conversations.Count, folder.CreatedAt })
             .ToListAsync(cancellationToken))
-        .Select(folder => new FolderInfo(folder.Id, folder.Name, folder.Count, Utc(folder.CreatedAt)))
+        .Select(folder => new FolderInfo(folder.Id, folder.Name, folder.Icon, folder.Color, folder.Count, Utc(folder.CreatedAt)))
         .ToArray();
 
-    public async Task<FolderInfo> CreateFolderAsync(string name, CancellationToken cancellationToken)
+    public async Task<FolderInfo> CreateFolderAsync(string name, string icon, string color, CancellationToken cancellationToken)
     {
         await EnsureFolderNameIsFreeAsync(name, except: null, cancellationToken);
-        var folder = new FolderEntity { Id = Guid.NewGuid(), Name = name, CreatedAt = Now() };
+        var folder = new FolderEntity { Id = Guid.NewGuid(), Name = name, Icon = icon, Color = color, CreatedAt = Now() };
         db.Folders.Add(folder);
         await SaveAsync(cancellationToken);
-        return new FolderInfo(folder.Id, folder.Name, 0, Utc(folder.CreatedAt));
+        return Info(folder, 0);
     }
 
-    public async Task<FolderInfo> RenameFolderAsync(Guid id, string name, CancellationToken cancellationToken)
+    public async Task<FolderInfo> UpdateFolderAsync(Guid id, FolderUpdate update, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(update);
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == id, cancellationToken) ?? throw FolderNotFound();
-        await EnsureFolderNameIsFreeAsync(name, except: id, cancellationToken);
-        folder.Name = name;
+        if (update.Name is { } name)
+        {
+            await EnsureFolderNameIsFreeAsync(name, except: id, cancellationToken);
+            folder.Name = name;
+        }
+
+        folder.Icon = update.Icon ?? folder.Icon;
+        folder.Color = update.Color ?? folder.Color;
         await SaveAsync(cancellationToken);
         var count = await db.Conversations.CountAsync(c => c.FolderId == id, cancellationToken);
-        return new FolderInfo(folder.Id, folder.Name, count, Utc(folder.CreatedAt));
+        return Info(folder, count);
     }
+
+    private static FolderInfo Info(FolderEntity folder, int count) =>
+        new(folder.Id, folder.Name, folder.Icon, folder.Color, count, Utc(folder.CreatedAt));
 
     public async Task DeleteFolderAsync(Guid id, CancellationToken cancellationToken)
     {

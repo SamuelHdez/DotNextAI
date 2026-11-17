@@ -2,14 +2,16 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { chatErrorMessage, type LocalizedError } from "@/lib/chat/chatErrors";
+import { readCollapsedFolders, storeCollapsedFolders } from "@/lib/chat/collapsedFolders";
 import { sortFolders, titleFrom, UNTITLED_TITLE, upsertConversation } from "@/lib/chat/savedChats";
 import * as savedChats from "@/services/conversationsService";
-import type { ConversationSummary, Folder } from "@/services/types";
+import type { ConversationSummary, Folder, FolderColor, FolderIcon } from "@/services/types";
 
 /** Every action resolves with the error to show, or null when it worked. */
 export interface SavedChatsActions {
   createFolder: (name: string) => Promise<LocalizedError | null>;
   renameFolder: (id: string, name: string) => Promise<LocalizedError | null>;
+  setFolderAppearance: (id: string, icon: FolderIcon, color: FolderColor) => Promise<LocalizedError | null>;
   deleteFolder: (id: string) => Promise<LocalizedError | null>;
   renameConversation: (id: string, title: string) => Promise<LocalizedError | null>;
   moveConversation: (id: string, folderId: string | null) => Promise<LocalizedError | null>;
@@ -31,6 +33,9 @@ interface SavedChatsContextValue {
   /** The chat open on the chat page; null elsewhere or for a new conversation. */
   activeId: string | null;
   setActiveId: (id: string | null) => void;
+  /** Folders whose chats are hidden (a preference of this browser). */
+  collapsed: ReadonlySet<string>;
+  toggleFolder: (id: string) => void;
   retry: () => void;
   actions: SavedChatsActions;
   /** The conversation as the server saved it (created or answered). */
@@ -68,6 +73,7 @@ export function SavedChatsProvider({ children }: { children: ReactNode }) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeId, setActiveIdState] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
   const activeRef = useRef<string | null>(null);
   const chatPage = useRef<ChatPageHandle | null>(null);
 
@@ -75,6 +81,8 @@ export function SavedChatsProvider({ children }: { children: ReactNode }) {
   const load = useCallback((signal?: AbortSignal) => {
     Promise.all([savedChats.listFolders(signal), savedChats.listConversations(signal)])
       .then(([loadedFolders, loadedConversations]) => {
+        // Read once the list is here: localStorage does not exist while the server renders the shell.
+        setCollapsed(readCollapsedFolders());
         setFolders(sortFolders(loadedFolders));
         setConversations(loadedConversations);
         setState("ready");
@@ -109,6 +117,14 @@ export function SavedChatsProvider({ children }: { children: ReactNode }) {
       conversations,
       activeId,
       setActiveId,
+      collapsed,
+      toggleFolder: (id) =>
+        setCollapsed((current) => {
+          const next = new Set(current);
+          if (!next.delete(id)) next.add(id);
+          storeCollapsedFolders(next, folders.map((f) => f.id));
+          return next;
+        }),
       retry: () => {
         setState("loading");
         load();
@@ -140,8 +156,13 @@ export function SavedChatsProvider({ children }: { children: ReactNode }) {
           }),
         renameFolder: (id, name) =>
           attempt(async () => {
-            const folder = await savedChats.renameFolder(id, name);
+            const folder = await savedChats.updateFolder(id, { name });
             setFolders((current) => sortFolders(current.map((f) => (f.id === id ? folder : f))));
+          }),
+        setFolderAppearance: (id, icon, color) =>
+          attempt(async () => {
+            const folder = await savedChats.updateFolder(id, { icon, color });
+            setFolders((current) => current.map((f) => (f.id === id ? folder : f)));
           }),
         deleteFolder: (id) =>
           attempt(async () => {
@@ -168,7 +189,7 @@ export function SavedChatsProvider({ children }: { children: ReactNode }) {
           }),
       },
     };
-  }, [state, folders, conversations, activeId, load, setActiveId, registerChatPage]);
+  }, [state, folders, conversations, activeId, collapsed, load, setActiveId, registerChatPage]);
 
   return <SavedChatsContext.Provider value={value}>{children}</SavedChatsContext.Provider>;
 }

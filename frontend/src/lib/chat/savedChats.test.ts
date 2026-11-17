@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { checkName, groupByFolder, sortFolders, titleFrom, toChatMessages, upsertConversation } from "@/lib/chat/savedChats";
 import type { ConversationSummary, Folder } from "@/services/types";
+import { folderInfo } from "@/test/render";
 
 function summary(id: string, updatedAt: string, folderId: string | null = null): ConversationSummary {
   const usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   return { id, title: id, folderId, model: null, questionCount: 0, usage, createdAt: updatedAt, updatedAt };
 }
 
-const folder = (id: string, name: string): Folder => ({ id, name, conversationCount: 0, createdAt: "2026-11-16T10:00:00Z" });
+const folder = (id: string, name: string): Folder => folderInfo(id, name);
 
 describe("saved chats rules", () => {
   it.each([

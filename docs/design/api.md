@@ -137,8 +137,8 @@ Folders and saved conversations of the single local user ([saved chats](../specs
 | Method | Path | Body | Success | Problems |
 | ------ | ---- | ---- | ------- | -------- |
 | `GET` | `/api/folders` | — | `200` `Folder[]` by name | — |
-| `POST` | `/api/folders` | `{ name }` | `201` `Folder` | 400 `errors.name`; 409 `DuplicateFolderName` |
-| `PATCH` | `/api/folders/{id}` | `{ name }` | `200` `Folder` | 400 `errors.name`; 404 `NotFound`; 409 `DuplicateFolderName` |
+| `POST` | `/api/folders` | `{ name, icon?, color? }` | `201` `Folder` (icon `folder` and colour `default` when omitted) | 400 `errors.name` / `errors.icon` / `errors.color`; 409 `DuplicateFolderName` |
+| `PATCH` | `/api/folders/{id}` | `{ name?, icon?, color? }`, at least one; omitted fields stay | `200` `Folder` | 400 `errors.name` (also when nothing is given) / `errors.icon` / `errors.color`; 404 `NotFound`; 409 `DuplicateFolderName` |
 | `DELETE` | `/api/folders/{id}` | — | `204`; its conversations stay, with `folderId: null` | 404 `NotFound` |
 | `GET` | `/api/conversations` | — | `200` `ConversationSummary[]`, last updated first | — |
 | `POST` | `/api/conversations` | `{ title?, folderId? }` (both optional) | `201` `ConversationSummary`, title *New conversation* by default | 400 `errors.title`; 400 `FolderNotFound` |
@@ -153,7 +153,7 @@ Shapes:
 
 ```jsonc
 // Folder
-{ "id": "5f0c…", "name": "Work", "conversationCount": 3, "createdAt": "2026-11-16T21:40:00+00:00" }
+{ "id": "5f0c…", "name": "Work", "icon": "briefcase", "color": "blue", "conversationCount": 3, "createdAt": "2026-11-16T21:40:00+00:00" }
 
 // ConversationSummary
 {
@@ -173,6 +173,8 @@ Shapes:
   ]
 }
 ```
+
+Folder `icon`: `folder`, `briefcase`, `star`, `heart`, `book`, `code`, `lightbulb`, `rocket`, `people`, `home`, `beaker`, `airplane`. `color`: `default`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `berry`, `pink`, `brown` (`FolderAppearance`). The web app maps them to Fluent icons and theme colours.
 
 `url` is relative to the API. The conversation's `usage` is the sum of its answers'; `model` is the model of the last answer.
 

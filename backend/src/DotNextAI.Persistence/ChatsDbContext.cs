@@ -1,3 +1,4 @@
+using DotNextAI.Application.Conversations;
 using DotNextAI.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +23,9 @@ internal sealed class ChatsDbContext(DbContextOptions<ChatsDbContext> options) :
             folder.Property(f => f.Name).HasMaxLength(100).UseCollation("NOCASE");
             // "Work" and "work" are the same folder.
             folder.HasIndex(f => f.Name).IsUnique();
+            // Existing folders get the defaults when the columns are added.
+            folder.Property(f => f.Icon).HasMaxLength(20).HasDefaultValue(FolderAppearance.DefaultIcon);
+            folder.Property(f => f.Color).HasMaxLength(20).HasDefaultValue(FolderAppearance.DefaultColor);
         });
 
         modelBuilder.Entity<ConversationEntity>(conversation =>

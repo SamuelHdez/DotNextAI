@@ -3,7 +3,11 @@ using DotNextAI.Application.Chat;
 namespace DotNextAI.Application.Conversations;
 
 /// <summary>A folder of saved conversations (one level, no nesting).</summary>
-public sealed record FolderInfo(Guid Id, string Name, int ConversationCount, DateTimeOffset CreatedAt);
+/// <summary>A folder; <see cref="Icon"/> and <see cref="Color"/> are keys of <see cref="FolderAppearance"/>.</summary>
+public sealed record FolderInfo(Guid Id, string Name, string Icon, string Color, int ConversationCount, DateTimeOffset CreatedAt);
+
+/// <summary>What to change in a folder; null leaves a value as it is.</summary>
+public sealed record FolderUpdate(string? Name = null, string? Icon = null, string? Color = null);
 
 /// <summary>A saved conversation without its messages, for lists.</summary>
 /// <param name="Model">Model of the last answer, when there is one.</param>
@@ -93,10 +97,11 @@ public interface IConversationStore
     Task<IReadOnlyList<FolderInfo>> ListFoldersAsync(CancellationToken cancellationToken);
 
     /// <exception cref="ConversationStoreException"><see cref="StoreFailure.DuplicateFolderName"/>.</exception>
-    Task<FolderInfo> CreateFolderAsync(string name, CancellationToken cancellationToken);
+    Task<FolderInfo> CreateFolderAsync(string name, string icon, string color, CancellationToken cancellationToken);
 
+    /// <summary>Renames the folder and/or changes its icon and colour.</summary>
     /// <exception cref="ConversationStoreException">Not found or duplicate name.</exception>
-    Task<FolderInfo> RenameFolderAsync(Guid id, string name, CancellationToken cancellationToken);
+    Task<FolderInfo> UpdateFolderAsync(Guid id, FolderUpdate update, CancellationToken cancellationToken);
 
     /// <summary>Deletes the folder; its conversations stay, without a folder.</summary>
     /// <exception cref="ConversationStoreException">Not found.</exception>

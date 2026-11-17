@@ -81,6 +81,11 @@ type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respo
 
 const NO_USAGE = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
+/** A folder as the API lists it. */
+export function folderInfo(id: string, name: string, overrides: Partial<Folder> = {}): Folder {
+  return { id, name, icon: "folder", color: "default", conversationCount: 0, createdAt: "2026-11-16T10:00:00Z", ...overrides };
+}
+
 /** A saved conversation as the API lists it. */
 export function conversationSummary(id: string, overrides: Partial<ConversationSummary> = {}): ConversationSummary {
   return {
@@ -118,7 +123,10 @@ export function savedChatsBackend({
       if (state.folders.some((f) => f.name.toLowerCase() === String(body.name).toLowerCase())) {
         return jsonResponse({ status: 409, failure: "DuplicateFolderName" }, 409, "application/problem+json");
       }
-      const folder: Folder = { id: `f${++created}`, name: String(body.name), conversationCount: 0, createdAt: "2026-11-16T10:00:00Z" };
+      const folder = folderInfo(`f${++created}`, String(body.name), {
+        ...(body.icon ? { icon: body.icon as Folder["icon"] } : {}),
+        ...(body.color ? { color: body.color as Folder["color"] } : {}),
+      });
       state.folders.push(folder);
       return jsonResponse(folder, 201);
     }
@@ -130,8 +138,10 @@ export function savedChatsBackend({
         state.folders = state.folders.filter((f) => f !== folder);
         return new Response(null, { status: 204 });
       }
-      folder.name = String(body.name);
-      return jsonResponse(folder);
+      if (body.name !== undefined) folder.name = String(body.name);
+      if (body.icon !== undefined) folder.icon = body.icon as Folder["icon"];
+      if (body.color !== undefined) folder.color = body.color as Folder["color"];
+      return jsonResponse({ ...folder });
     }
     if (path === "/api/conversations" && method === "GET") return jsonResponse(state.conversations);
     if (path === "/api/conversations" && method === "POST") {

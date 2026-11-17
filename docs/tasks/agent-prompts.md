@@ -119,3 +119,9 @@ Outcome: the chat page became `ChatWorkspace`, a *Saved chats* panel (folders, c
 > I don't like having two sidebars. Put everything in one, with the saved chats under the workspace section.
 
 Outcome: the *Saved chats* panel of the chat page became a section of the side navigation, under *Workspace*, on every page. The list moved into `SavedChatsProvider` in the app shell; the chat page registers with it, so a chat opens in place there and navigates to `/chat?c=<id>` from other pages. The icon rail leaves the section out. 336 Vitest tests and 32 Playwright scenarios green, no axe violations.
+
+## 2026-11-17 — Folder icons, colours and collapsing
+
+> Let folders change their icon and colour, and let the chats of a folder be collapsed.
+
+Outcome: folders store an icon and a colour from fixed lists (`FolderAppearance`, a new migration); `PATCH /api/folders/{id}` takes the name, icon and colour, each optional. The web app maps them to Fluent icons and theme palette tokens and edits them in a *Folder appearance* dialog with swatch pickers. A folder's heading is a disclosure button; the collapsed folders are remembered in `localStorage`. On the way: the Dependabot update to jsdom 31 dropped the selector engine whose bug needed a test workaround, so the workaround is gone, and an `npm ci` run while the dev server was up left `node_modules` broken until the server was stopped. 335 .NET tests, 365 Vitest tests and 33 Playwright scenarios green, no axe violations.

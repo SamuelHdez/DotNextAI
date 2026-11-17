@@ -47,9 +47,13 @@ public sealed record ImageResponseDto(string MediaType, string Data, string Mode
 
 // Saved chats (docs/design/api.md#saved-chats).
 
-public sealed record FolderDto(Guid Id, string Name, int ConversationCount, DateTimeOffset CreatedAt);
+public sealed record FolderDto(Guid Id, string Name, string Icon, string Color, int ConversationCount, DateTimeOffset CreatedAt);
 
-public sealed record FolderRequestDto(string? Name);
+/// <summary>
+/// Body of <c>POST /api/folders</c> (name required; icon and colour default to "folder" and "default") and of
+/// <c>PATCH /api/folders/{id}</c> (each field optional, at least one).
+/// </summary>
+public sealed record FolderRequestDto(string? Name, string? Icon = null, string? Color = null);
 
 public sealed record ConversationSummaryDto(
     Guid Id,

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatWorkspace } from "@/components/savedChats/ChatWorkspace";
 import { SavedChatsProvider } from "@/components/savedChats/SavedChatsProvider";
 import { SideNav } from "@/components/shell/SideNav";
-import { chatPageFetch, conversationSummary, jsonResponse, renderWithProviders, savedChatsBackend, sseResponse } from "@/test/render";
+import { chatPageFetch, conversationSummary, folderInfo, jsonResponse, renderWithProviders, savedChatsBackend, sseResponse } from "@/test/render";
 
 const navigation = vi.hoisted(() => ({ pathname: "/chat", push: vi.fn() }));
 vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname, useRouter: () => ({ push: navigation.push }) }));
@@ -53,6 +53,7 @@ beforeEach(() => {
   fetchMock = vi.fn();
   navigation.pathname = "/chat";
   navigation.push.mockReset();
+  window.localStorage.clear();
   window.history.replaceState(null, "", "/chat");
 });
 
@@ -82,7 +83,7 @@ describe("ChatWorkspace", () => {
   it("lists the saved chats by folder, the untitled one in the selected language", async () => {
     start(
       savedChatsBackend({
-        folders: [{ id: "f1", name: "Work", conversationCount: 1, createdAt: "x" }],
+        folders: [folderInfo("f1", "Work")],
         conversations: [conversationSummary("c1", { title: "Offsite plan", folderId: "f1" }), conversationSummary("c2")],
       }),
       null,
@@ -151,9 +152,6 @@ describe("ChatWorkspace", () => {
     start(backend);
 
     await user.click(await within(panel()).findByRole("link", { name: "Pixel" }));
-    // jsdom's selector engine (@asamuzakjp/dom-selector 10.0.5, fixed in 10.0.6) can throw on :focus-within while a
-    // link has the focus; move it to the question, as a user would before typing.
-    await user.click(screen.getByLabelText("Your question"));
 
     const log = await screen.findByRole("log", { name: "Conversation" });
     expect(await within(log).findByText("A pixel.")).toBeInTheDocument();
@@ -177,7 +175,7 @@ describe("ChatWorkspace", () => {
 
   it("creates a folder and refuses a duplicate name under the field", async () => {
     const user = userEvent.setup();
-    start(savedChatsBackend({ folders: [{ id: "f0", name: "Work", conversationCount: 0, createdAt: "x" }] }));
+    start(savedChatsBackend({ folders: [folderInfo("f0", "Work")] }));
     await within(panel()).findByRole("region", { name: "Work" });
 
     await user.click(within(panel()).getByRole("button", { name: "New folder" }));
@@ -207,7 +205,7 @@ describe("ChatWorkspace", () => {
 
   it("moves a chat into a folder and renames it", async () => {
     const backend = savedChatsBackend({
-      folders: [{ id: "f1", name: "Work", conversationCount: 0, createdAt: "x" }],
+      folders: [folderInfo("f1", "Work")],
       conversations: [conversationSummary("c1", { title: "Plan" })],
     });
     const user = userEvent.setup();
@@ -260,11 +258,50 @@ describe("ChatWorkspace", () => {
     expect(window.location.search).toBe("");
   });
 
+  it("collapses a folder's chats and remembers it in this browser", async () => {
+    const backend = savedChatsBackend({
+      folders: [folderInfo("f1", "Work")],
+      conversations: [conversationSummary("c1", { title: "Plan", folderId: "f1" })],
+    });
+    const user = userEvent.setup();
+    const { unmount } = start(backend);
+    const toggle = await within(panel()).findByRole("button", { name: "Work" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(panel()).queryByRole("link", { name: "Plan" })).not.toBeInTheDocument();
+    unmount();
+    start(backend);
+    expect(await within(panel()).findByRole("button", { name: "Work" })).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(within(panel()).getByRole("button", { name: "Work" }));
+    expect(within(panel()).getByRole("link", { name: "Plan" })).toBeInTheDocument();
+  });
+
+  it("changes a folder's icon and colour", async () => {
+    const backend = savedChatsBackend({ folders: [folderInfo("f1", "Work")] });
+    const user = userEvent.setup();
+    start(backend, null, "es");
+    const section = await screen.findByRole("region", { name: "Chats guardados" });
+
+    await user.click(within(section).getByRole("button", { name: "Opciones de la carpeta Work" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Icono y color…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Aspecto de la carpeta" });
+    expect(within(dialog).getByRole("radio", { name: "Carpeta" })).toBeChecked();
+    await user.click(within(within(dialog).getByRole("radiogroup", { name: "Icono" })).getByRole("radio", { name: "Cohete" }));
+    await user.click(within(within(dialog).getByRole("radiogroup", { name: "Color" })).getByRole("radio", { name: "Azul" }));
+    await user.click(within(dialog).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(backend.state.folders[0]).toMatchObject({ icon: "rocket", color: "blue" }));
+  });
+
   it("deletes a folder and keeps its chats without a folder", async () => {
     const user = userEvent.setup();
     start(
       savedChatsBackend({
-        folders: [{ id: "f1", name: "Work", conversationCount: 1, createdAt: "x" }],
+        folders: [folderInfo("f1", "Work")],
         conversations: [conversationSummary("c1", { title: "Plan", folderId: "f1" })],
       }),
     );

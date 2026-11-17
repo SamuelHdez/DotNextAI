@@ -22,15 +22,18 @@ import {
 import {
   Chat20Regular,
   Dismiss20Regular,
-  Folder20Regular,
+  ChevronDown16Regular,
+  ChevronRight16Regular,
   FolderAdd20Regular,
   MoreHorizontal20Regular,
 } from "@fluentui/react-icons";
 import { useId, useState, type MouseEvent } from "react";
 import { ConfirmDialog } from "@/components/savedChats/ConfirmDialog";
+import { FolderAppearanceDialog } from "@/components/savedChats/FolderAppearanceDialog";
 import { MoveDialog } from "@/components/savedChats/MoveDialog";
 import { NameDialog } from "@/components/savedChats/NameDialog";
 import { useSavedChats } from "@/components/savedChats/SavedChatsProvider";
+import { FolderGlyph } from "@/lib/chat/folderAppearance";
 import { groupByFolder, MAX_FOLDER_NAME_LENGTH, MAX_TITLE_LENGTH, UNTITLED_TITLE } from "@/lib/chat/savedChats";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { ConversationSummary, Folder } from "@/services/types";
@@ -48,6 +51,17 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
   },
   groupName: { flexGrow: 1, minWidth: 0, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  // The folder's heading is a disclosure button: chevron, the folder's icon in its colour, the name.
+  folderHeading: { flexGrow: 1, minWidth: 0, margin: 0 },
+  folderToggle: {
+    width: "100%",
+    minWidth: 0,
+    justifyContent: "flex-start",
+    gap: tokens.spacingHorizontalXS,
+    paddingInline: tokens.spacingHorizontalXS,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  folderToggleText: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalS, minWidth: 0 },
   list: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXXS, margin: 0, padding: 0, listStyle: "none" },
   nested: { paddingInlineStart: tokens.spacingHorizontalL },
   emptyFolder: { paddingInline: `calc(${tokens.spacingHorizontalM} + ${tokens.spacingHorizontalL})` },
@@ -69,6 +83,7 @@ const useStyles = makeStyles({
 type Dialog =
   | { kind: "newFolder" }
   | { kind: "renameFolder"; folder: Folder }
+  | { kind: "folderAppearance"; folder: Folder }
   | { kind: "deleteFolder"; folder: Folder }
   | { kind: "renameChat"; conversation: ConversationSummary }
   | { kind: "moveChat"; conversation: ConversationSummary }
@@ -92,7 +107,7 @@ export function SavedChatsSection(props: SavedChatsSectionProps) {
 }
 
 function SavedChatsList({ hrefOf, onOpen, saved }: SavedChatsSectionProps & { saved: NonNullable<ReturnType<typeof useSavedChats>> }) {
-  const { state, folders, conversations, activeId, retry, actions } = saved;
+  const { state, folders, conversations, activeId, collapsed, toggleFolder, retry, actions } = saved;
   const styles = useStyles();
   const { t } = useI18n();
   const headingId = useId();
@@ -190,10 +205,24 @@ function SavedChatsList({ hrefOf, onOpen, saved }: SavedChatsSectionProps & { sa
           {groups.folders.map(({ folder, conversations: inFolder }) => (
             <section key={folder.id} className={styles.group} aria-labelledby={`${headingId}-${folder.id}`}>
               <div className={styles.groupHeader}>
-                <Folder20Regular aria-hidden />
-                <Text as="h4" weight="semibold" size={300} id={`${headingId}-${folder.id}`} className={styles.groupName}>
-                  {folder.name}
-                </Text>
+                <h4 id={`${headingId}-${folder.id}`} className={styles.folderHeading}>
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    className={styles.folderToggle}
+                    icon={collapsed.has(folder.id) ? <ChevronRight16Regular /> : <ChevronDown16Regular />}
+                    aria-expanded={!collapsed.has(folder.id)}
+                    aria-controls={`${headingId}-${folder.id}-chats`}
+                    onClick={() => toggleFolder(folder.id)}
+                  >
+                    <span className={styles.folderToggleText}>
+                      <FolderGlyph icon={folder.icon} color={folder.color} />
+                      <span className={styles.itemText} title={folder.name}>
+                        {folder.name}
+                      </span>
+                    </span>
+                  </Button>
+                </h4>
                 <Menu>
                   <MenuTrigger disableButtonEnhancement>
                     <Button
@@ -206,12 +235,20 @@ function SavedChatsList({ hrefOf, onOpen, saved }: SavedChatsSectionProps & { sa
                   <MenuPopover>
                     <MenuList>
                       <MenuItem onClick={() => show({ kind: "renameFolder", folder })}>{t("saved.rename")}</MenuItem>
+                      <MenuItem onClick={() => show({ kind: "folderAppearance", folder })}>{t("saved.appearance")}</MenuItem>
                       <MenuItem onClick={() => show({ kind: "deleteFolder", folder })}>{t("saved.delete")}</MenuItem>
                     </MenuList>
                   </MenuPopover>
                 </Menu>
               </div>
-              {inFolder.length > 0 ? chatList(inFolder, true) : <Caption1 className={mergeClasses(styles.muted, styles.emptyFolder)}>{t("saved.folderEmpty")}</Caption1>}
+              {/* Hidden rather than removed, so the button's aria-controls always points at it. */}
+              <div id={`${headingId}-${folder.id}-chats`} hidden={collapsed.has(folder.id)}>
+                {inFolder.length > 0 ? (
+                  chatList(inFolder, true)
+                ) : (
+                  <Caption1 className={mergeClasses(styles.muted, styles.emptyFolder)}>{t("saved.folderEmpty")}</Caption1>
+                )}
+              </div>
             </section>
           ))}
 
@@ -256,6 +293,15 @@ function SavedChatsList({ hrefOf, onOpen, saved }: SavedChatsSectionProps & { sa
           initialValue={dialog.folder.name}
           max={MAX_FOLDER_NAME_LENGTH}
           onSubmit={(name) => actions.renameFolder(dialog.folder.id, name)}
+          onClose={close}
+        />
+      )}
+      {dialog?.kind === "folderAppearance" && (
+        <FolderAppearanceDialog
+          key={dialogKey}
+          open={dialogOpen}
+          folder={dialog.folder}
+          onSave={(icon, color) => actions.setFolderAppearance(dialog.folder.id, icon, color)}
           onClose={close}
         />
       )}

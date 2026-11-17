@@ -70,6 +70,51 @@ public class ConversationEndpointTests(DotNextAIApiFactory factory) : IClassFixt
     }
 
     [Fact]
+    public async Task Folders_HaveAnIconAndAColourThatChangeAlone()
+    {
+        using var client = factory.CreateClientWith(new FakeChatService());
+
+        var plain = await CreateAsync(client, "/api/folders", new { name = "Plain" });
+        Assert.Equal(("folder", "default"), (plain.GetProperty("icon").GetString(), plain.GetProperty("color").GetString()));
+
+        var work = await CreateAsync(client, "/api/folders", new { name = "Work", icon = "briefcase", color = "blue" });
+        using var recoloured = await client.PatchAsJsonAsync(Url($"/api/folders/{Id(work)}"), new { color = "green" }, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, recoloured.StatusCode);
+        var body = await JsonAsync(recoloured);
+        Assert.Equal(("Work", "briefcase", "green"), (body.GetProperty("name").GetString(), body.GetProperty("icon").GetString(), body.GetProperty("color").GetString()));
+    }
+
+    [Theory]
+    [InlineData("icon", "unicorn")]
+    [InlineData("color", "#ff0000")]
+    public async Task Folders_UnknownIconOrColour_Returns400OnTheField(string field, string value)
+    {
+        using var client = factory.CreateClientWith(new FakeChatService());
+        var folder = await CreateAsync(client, "/api/folders", new { name = "Work" });
+
+        using var created = await client.PostAsJsonAsync(Url("/api/folders"), new Dictionary<string, string> { ["name"] = "Other", [field] = value }, Ct);
+        using var updated = await client.PatchAsJsonAsync(Url($"/api/folders/{Id(folder)}"), new Dictionary<string, string> { [field] = value }, Ct);
+
+        foreach (var response in new[] { created, updated })
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.True((await JsonAsync(response)).GetProperty("errors").TryGetProperty(field, out _));
+        }
+    }
+
+    [Fact]
+    public async Task Folders_PatchWithNothingToChange_Returns400()
+    {
+        using var client = factory.CreateClientWith(new FakeChatService());
+        var folder = await CreateAsync(client, "/api/folders", new { name = "Work" });
+
+        using var response = await client.PatchAsJsonAsync(Url($"/api/folders/{Id(folder)}"), new { }, Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Folders_DuplicateName_Returns409()
     {
         using var client = factory.CreateClientWith(new FakeChatService());

@@ -6,6 +6,7 @@ import type {
   ConversationMessageRequest,
   ConversationSummary,
   Folder,
+  FolderChanges,
 } from "@/services/types";
 
 /** Saved chats and folders (docs/design/api.md#saved-chats). */
@@ -22,7 +23,7 @@ const folderPath = (id: string) => `/api/folders/${encodeURIComponent(id)}`;
 
 export const listFolders = (signal?: AbortSignal) => apiFetch<Folder[]>("/api/folders", { signal });
 export const createFolder = (name: string) => apiFetch<Folder>("/api/folders", json("POST", { name }));
-export const renameFolder = (id: string, name: string) => apiFetch<Folder>(folderPath(id), json("PATCH", { name }));
+export const updateFolder = (id: string, changes: FolderChanges) => apiFetch<Folder>(folderPath(id), json("PATCH", changes));
 export const deleteFolder = (id: string) => apiSend(folderPath(id), { method: "DELETE" });
 
 export const listConversations = (signal?: AbortSignal) => apiFetch<ConversationSummary[]>("/api/conversations", { signal });

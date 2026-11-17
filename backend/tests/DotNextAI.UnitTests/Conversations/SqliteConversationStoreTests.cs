@@ -17,10 +17,10 @@ public sealed class SqliteConversationStoreTests : IDisposable
     public async Task Folders_AreCreatedListedByNameAndRenamed()
     {
         var store = _database.NewStore();
-        var work = await store.CreateFolderAsync("Work", TestContext.Current.CancellationToken);
-        await store.CreateFolderAsync("Archive", TestContext.Current.CancellationToken);
+        var work = await store.CreateFolderAsync("Work", FolderAppearance.DefaultIcon, FolderAppearance.DefaultColor, TestContext.Current.CancellationToken);
+        await store.CreateFolderAsync("Archive", FolderAppearance.DefaultIcon, FolderAppearance.DefaultColor, TestContext.Current.CancellationToken);
 
-        var renamed = await store.RenameFolderAsync(work.Id, "Projects", TestContext.Current.CancellationToken);
+        var renamed = await store.UpdateFolderAsync(work.Id, new FolderUpdate(Name: "Projects"), TestContext.Current.CancellationToken);
 
         Assert.Equal("Projects", renamed.Name);
         Assert.Equal(["Archive", "Projects"], (await _database.NewStore().ListFoldersAsync(TestContext.Current.CancellationToken)).Select(f => f.Name));
@@ -32,9 +32,9 @@ public sealed class SqliteConversationStoreTests : IDisposable
     public async Task Folders_NamesAreUniqueIgnoringCase(string other)
     {
         var store = _database.NewStore();
-        await store.CreateFolderAsync("Work", TestContext.Current.CancellationToken);
+        await store.CreateFolderAsync("Work", FolderAppearance.DefaultIcon, FolderAppearance.DefaultColor, TestContext.Current.CancellationToken);
 
-        var ex = await Assert.ThrowsAsync<ConversationStoreException>(() => store.CreateFolderAsync(other, TestContext.Current.CancellationToken));
+        var ex = await Assert.ThrowsAsync<ConversationStoreException>(() => store.CreateFolderAsync(other, FolderAppearance.DefaultIcon, FolderAppearance.DefaultColor, TestContext.Current.CancellationToken));
 
         Assert.Equal(StoreFailure.DuplicateFolderName, ex.Failure);
     }
@@ -43,18 +43,31 @@ public sealed class SqliteConversationStoreTests : IDisposable
     public async Task Folders_RenamingToItsOwnNameIsAllowed()
     {
         var store = _database.NewStore();
-        var folder = await store.CreateFolderAsync("Work", TestContext.Current.CancellationToken);
+        var folder = await store.CreateFolderAsync("Work", FolderAppearance.DefaultIcon, FolderAppearance.DefaultColor, TestContext.Current.CancellationToken);
 
-        var renamed = await store.RenameFolderAsync(folder.Id, "WORK", TestContext.Current.CancellationToken);
+        var renamed = await store.UpdateFolderAsync(folder.Id, new FolderUpdate(Name: "WORK"), TestContext.Current.CancellationToken);
 
         Assert.Equal("WORK", renamed.Name);
+    }
+
+    [Fact]
+    public async Task Folders_KeepTheirIconAndColourAndChangeThemAlone()
+    {
+        var store = _database.NewStore();
+        var folder = await store.CreateFolderAsync("Work", "briefcase", "blue", TestContext.Current.CancellationToken);
+
+        var recoloured = await store.UpdateFolderAsync(folder.Id, new FolderUpdate(Color: "green"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(("Work", "briefcase", "green"), (recoloured.Name, recoloured.Icon, recoloured.Color));
+        var listed = Assert.Single(await _database.NewStore().ListFoldersAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(("briefcase", "green"), (listed.Icon, listed.Color));
     }
 
     [Fact]
     public async Task DeletingAFolder_KeepsItsConversationsWithoutAFolder()
     {
         var store = _database.NewStore();
-        var folder = await store.CreateFolderAsync("Work", TestContext.Current.CancellationToken);
+        var folder = await store.CreateFolderAsync("Work", FolderAppearance.DefaultIcon, FolderAppearance.DefaultColor, TestContext.Current.CancellationToken);
         var conversation = await store.CreateConversationAsync("Plan", folder.Id, TestContext.Current.CancellationToken);
 
         await store.DeleteFolderAsync(folder.Id, TestContext.Current.CancellationToken);
