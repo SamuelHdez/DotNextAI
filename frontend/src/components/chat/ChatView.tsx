@@ -17,7 +17,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { ModelPicker, type ModelList } from "@/components/chat/ModelPicker";
-import { PageBody, PageHeader } from "@/components/ui/PageLayout";
+import { PageHeader } from "@/components/ui/PageLayout";
 import { chatErrorMessage, type LocalizedError } from "@/lib/chat/chatErrors";
 import { checkQuestion, MAX_CONVERSATION_QUESTIONS, MAX_QUESTION_LENGTH } from "@/lib/chat/chatRules";
 import { MAX_IMAGE_MEGABYTES, MAX_IMAGES_PER_QUESTION, readImageFile, type ImageAttachment } from "@/lib/chat/images";
@@ -33,12 +33,31 @@ import type { ConversationSummary } from "@/services/types";
 
 const SUGGESTIONS: MessageKey[] = ["chat.suggestion.1", "chat.suggestion.2", "chat.suggestion.3"];
 
+// The same centred column as PageBody, for each of the three bands of the chat.
+const column = {
+  width: "100%",
+  maxWidth: "1200px",
+  marginInline: "auto",
+  boxSizing: "border-box",
+  paddingInline: tokens.spacingHorizontalXXL,
+  "@media (max-width: 639px)": { paddingInline: tokens.spacingHorizontalL },
+} as const;
+
 const useStyles = makeStyles({
-  page: { gap: tokens.spacingVerticalL },
+  // Header, conversation and composer fill the space they get (ChatWorkspace gives the screen's height); only the
+  // conversation scrolls, so the title, the model and the composer never move.
+  root: { flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column" },
+  top: { ...column, flexShrink: 0, paddingTop: tokens.spacingVerticalXXL, paddingBottom: tokens.spacingVerticalL },
+  scroller: { flexGrow: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" },
+  bottom: {
+    flexShrink: 0,
+    borderTop: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
   usage: { display: "flex", flexDirection: "column", color: tokens.colorNeutralForeground2 },
   usageHint: { color: tokens.colorNeutralForeground3 },
   actions: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: tokens.spacingHorizontalM },
-  conversation: { flexGrow: 1, display: "flex", flexDirection: "column", gap: tokens.spacingVerticalL },
+  conversation: { ...column, display: "flex", flexDirection: "column", gap: tokens.spacingVerticalL, paddingBlock: tokens.spacingVerticalL },
   empty: {
     display: "flex",
     flexDirection: "column",
@@ -50,15 +69,12 @@ const useStyles = makeStyles({
   emptyIcon: { color: tokens.colorBrandForeground1, fontSize: "32px" },
   emptyText: { color: tokens.colorNeutralForeground3 },
   suggestions: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: tokens.spacingHorizontalS },
-  // The composer stays reachable at the bottom of the window while the conversation scrolls.
   composer: {
-    position: "sticky",
-    bottom: 0,
+    ...column,
     display: "flex",
     flexDirection: "column",
     gap: tokens.spacingVerticalS,
     paddingBlock: tokens.spacingVerticalM,
-    backgroundColor: tokens.colorNeutralBackground2,
   },
 });
 
@@ -103,6 +119,17 @@ export function ChatView({ initialConversationId = null, onSaved, onStopped, onM
   // The saved conversation of this chat; null until its first question creates it.
   const conversationId = useRef<string | null>(initialConversationId);
   const [opening, setOpening] = useState(initialConversationId !== null);
+  // Set when the page is unloading (reload, closing the tab): requests then fail as network errors, which says nothing
+  // about what the server saved, so nothing may be deleted.
+  const leaving = useRef(false);
+  useEffect(() => {
+    const onPageHide = () => {
+      leaving.current = true;
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, []);
+
   // Not a dependency of the effect below: it runs once per conversation to open.
   const reportMissing = useEffectEvent(() => onMissing?.());
 
@@ -233,8 +260,10 @@ export function ChatView({ initialConversationId = null, onSaved, onStopped, onM
       ]);
     } catch (failure) {
       if (controller.signal.aborted) return;
-      // Nothing is saved for a failed answer: a conversation created for this question would stay empty.
-      if (request.current?.controller === controller && request.current.created) discardEmpty();
+      // A conversation created for this question stays empty when the server saved nothing: no text arrived, or the
+      // answer broke with an `error` event. After text, a dropped connection is saved by the server as stopped.
+      const savedNothing = !answerSoFar.current.trim() || (failure instanceof ApiError && !failure.isNetworkError);
+      if (request.current?.controller === controller && request.current.created && savedNothing && !leaving.current) discardEmpty();
       setError(chatErrorMessage(failure));
       // Give the question and its images back so they can be sent again (unless the user already typed or attached more).
       setDraft((current) => current || text);
@@ -333,81 +362,87 @@ export function ChatView({ initialConversationId = null, onSaved, onStopped, onM
   const usage = conversationUsage(messages);
 
   return (
-    <PageBody className={styles.page}>
-      <PageHeader
-        title={t("chat.title")}
-        subtitle={t("chat.subtitle")}
-        actions={
-          <div className={styles.actions}>
-            <ModelPicker list={modelList} value={model} onChange={chooseModel} />
-            <Button icon={<ArrowCounterclockwise20Regular />} onClick={newConversation} disabled={isEmpty}>
-              {t("chat.new")}
-            </Button>
-          </div>
-        }
-      />
-
-      <div className={styles.conversation}>
-        {opening ? (
-          <Spinner size="small" label={t("saved.opening")} />
-        ) : isEmpty ? (
-          <div className={styles.empty}>
-            <Sparkle24Regular className={styles.emptyIcon} aria-hidden />
-            <Subtitle1 as="h2">{t("chat.empty.title")}</Subtitle1>
-            <Body1 className={styles.emptyText}>{t("chat.empty.description")}</Body1>
-            <div className={styles.suggestions}>
-              {SUGGESTIONS.map((key) => (
-                <Button key={key} appearance="outline" shape="circular" onClick={() => ask(t(key))}>
-                  {t(key)}
-                </Button>
-              ))}
+    <div className={styles.root}>
+      <div className={styles.top}>
+        <PageHeader
+          title={t("chat.title")}
+          subtitle={t("chat.subtitle")}
+          actions={
+            <div className={styles.actions}>
+              <ModelPicker list={modelList} value={model} onChange={chooseModel} />
+              <Button icon={<ArrowCounterclockwise20Regular />} onClick={newConversation} disabled={isEmpty}>
+                {t("chat.new")}
+              </Button>
             </div>
-          </div>
-        ) : (
-          <ChatMessageList messages={messages} pendingQuestion={pendingQuestion} pendingImages={pendingImages} pendingAnswer={pendingAnswer} />
-        )}
-      </div>
-
-      <div className={styles.composer}>
-        {usage && (
-          <div className={styles.usage} aria-live="polite">
-            <Caption1>
-              {t("chat.usage.total", { total: usage.totalTokens, input: usage.inputTokens, output: usage.outputTokens, answers: usage.answers })}
-            </Caption1>
-            <Caption1 className={styles.usageHint}>{t("chat.usage.hint")}</Caption1>
-          </div>
-        )}
-        {error && (
-          <MessageBar intent="error">
-            <MessageBarBody>{t(error.key, error.params)}</MessageBarBody>
-            <MessageBarActions
-              containerAction={
-                <Button appearance="transparent" icon={<Dismiss20Regular />} aria-label={t("chat.error.dismiss")} onClick={() => setError(null)} />
-              }
-            />
-          </MessageBar>
-        )}
-        {full && (
-          <MessageBar intent="warning">
-            <MessageBarBody>{t("chat.limit", { max: MAX_CONVERSATION_QUESTIONS })}</MessageBarBody>
-          </MessageBar>
-        )}
-        <ChatComposer
-          value={draft}
-          onChange={(value) => {
-            setDraft(value);
-            if (inputError) setInputError(null);
-          }}
-          onSubmit={() => ask(draft)}
-          busy={pendingQuestion !== null}
-          disabled={full || opening}
-          validationMessage={inputError ? t(inputError.key, inputError.params) : undefined}
-          attachments={attachments}
-          onAddFiles={(files) => void addFiles(files)}
-          onRemoveAttachment={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
-          onStop={stop}
+          }
         />
       </div>
-    </PageBody>
+
+      <div className={styles.scroller}>
+        <div className={styles.conversation}>
+          {opening ? (
+            <Spinner size="small" label={t("saved.opening")} />
+          ) : isEmpty ? (
+            <div className={styles.empty}>
+              <Sparkle24Regular className={styles.emptyIcon} aria-hidden />
+              <Subtitle1 as="h2">{t("chat.empty.title")}</Subtitle1>
+              <Body1 className={styles.emptyText}>{t("chat.empty.description")}</Body1>
+              <div className={styles.suggestions}>
+                {SUGGESTIONS.map((key) => (
+                  <Button key={key} appearance="outline" shape="circular" onClick={() => ask(t(key))}>
+                    {t(key)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ChatMessageList messages={messages} pendingQuestion={pendingQuestion} pendingImages={pendingImages} pendingAnswer={pendingAnswer} />
+          )}
+        </div>
+      </div>
+
+      <div className={styles.bottom}>
+        <div className={styles.composer}>
+          {usage && (
+            <div className={styles.usage} aria-live="polite">
+              <Caption1>
+                {t("chat.usage.total", { total: usage.totalTokens, input: usage.inputTokens, output: usage.outputTokens, answers: usage.answers })}
+              </Caption1>
+              <Caption1 className={styles.usageHint}>{t("chat.usage.hint")}</Caption1>
+            </div>
+          )}
+          {error && (
+            <MessageBar intent="error">
+              <MessageBarBody>{t(error.key, error.params)}</MessageBarBody>
+              <MessageBarActions
+                containerAction={
+                  <Button appearance="transparent" icon={<Dismiss20Regular />} aria-label={t("chat.error.dismiss")} onClick={() => setError(null)} />
+                }
+              />
+            </MessageBar>
+          )}
+          {full && (
+            <MessageBar intent="warning">
+              <MessageBarBody>{t("chat.limit", { max: MAX_CONVERSATION_QUESTIONS })}</MessageBarBody>
+            </MessageBar>
+          )}
+          <ChatComposer
+            value={draft}
+            onChange={(value) => {
+              setDraft(value);
+              if (inputError) setInputError(null);
+            }}
+            onSubmit={() => ask(draft)}
+            busy={pendingQuestion !== null}
+            disabled={full || opening}
+            validationMessage={inputError ? t(inputError.key, inputError.params) : undefined}
+            attachments={attachments}
+            onAddFiles={(files) => void addFiles(files)}
+            onRemoveAttachment={(id) => setAttachments((current) => current.filter((attachment) => attachment.id !== id))}
+            onStop={stop}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

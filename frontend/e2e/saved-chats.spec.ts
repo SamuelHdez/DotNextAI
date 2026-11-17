@@ -175,11 +175,25 @@ test.describe("saved chats", () => {
     await expect(conversation(page).getByText(`Long story ${topic} [e2e:slow]`)).toBeVisible();
   });
 
+  test("keeps a new chat when the page is reloaded in the middle of its first answer", async ({ page }) => {
+    const topic = unique();
+    await ask(page, `Reload ${topic} [e2e:slow]`);
+    await expect(conversation(page).locator("[data-streaming]")).toHaveText(/^Echo: Reload/);
+
+    await page.reload();
+
+    // The server saved what had arrived, as a stopped answer; the browser deleted nothing while unloading.
+    await expect(page.getByText("That chat no longer exists. You are in a new conversation.")).toBeHidden();
+    await expect(conversation(page).getByText(`Reload ${topic} [e2e:slow]`)).toBeVisible();
+    await expect(conversation(page).getByText("Stopped before the end.")).toBeVisible();
+  });
+
   test("keeps the images of a question and loads them from the API", async ({ page }) => {
     const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
     await page.getByTestId("image-input").setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: png });
     await ask(page, `What is this ${unique()}?`);
     await expect(conversation(page).getByText(/^I see 1 image \(image\/png\)/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
 
     await page.reload();
 

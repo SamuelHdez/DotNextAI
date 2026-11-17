@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatView } from "@/components/chat/ChatView";
@@ -57,6 +57,22 @@ describe("ChatView images", () => {
     await screen.findByText("Black.");
 
     expect(sentBodies()[1]).toEqual({ question: "What colour?" });
+  });
+
+  it("shows a sent image at full size when it is clicked, and closes it", async () => {
+    fetchMock.mockResolvedValue(answer("A pixel."));
+    const user = userEvent.setup();
+    renderWithProviders(<ChatView />);
+
+    await user.upload(fileInput(), pngFile("pixel.png"));
+    await send(user, "What is this?");
+    await screen.findByText("A pixel.");
+    await user.click(within(screen.getByRole("log")).getByRole("button", { name: "Attached image pixel.png" }));
+
+    const viewer = await screen.findByRole("dialog", { name: "Attached image pixel.png" });
+    expect(within(viewer).getByRole("img", { name: "Attached image pixel.png" })).toHaveAttribute("src", expect.stringMatching(/^data:image\/png;base64,/));
+    await user.click(within(viewer).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("removes an attachment", async () => {

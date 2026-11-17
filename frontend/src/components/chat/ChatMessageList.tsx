@@ -2,7 +2,8 @@
 
 import { Caption1, makeStyles, mergeClasses, Spinner, Text, tokens } from "@fluentui/react-components";
 import { Warning16Regular } from "@fluentui/react-icons";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ImageViewer, type ViewedImage } from "@/components/ui/ImageViewer";
 import type { ChatMessage } from "@/lib/chat/conversation";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
@@ -35,23 +36,57 @@ const useStyles = makeStyles({
   stopped: { color: tokens.colorNeutralForeground3 },
   images: { display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: tokens.spacingHorizontalS },
   image: {
+    display: "block",
     maxWidth: "200px",
     maxHeight: "160px",
     borderRadius: tokens.borderRadiusLarge,
     border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke2}`,
     objectFit: "cover",
   },
+  // The thumbnail is a button that opens the image at full size.
+  imageButton: {
+    padding: 0,
+    border: "none",
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: "transparent",
+    cursor: "zoom-in",
+    ":hover": { opacity: 0.9 },
+    ":focus-visible": { outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`, outlineOffset: "2px" },
+  },
 });
 
-function Images({ images, className, imageClassName }: { images?: { name: string; src: string }[]; className: string; imageClassName: string }) {
+function Images({
+  images,
+  className,
+  imageClassName,
+  buttonClassName,
+  onOpen,
+}: {
+  images?: { name: string; src: string }[];
+  className: string;
+  imageClassName: string;
+  buttonClassName: string;
+  onOpen: (image: ViewedImage) => void;
+}) {
   const { t } = useI18n();
   if (!images?.length) return null;
   return (
     <div className={className}>
-      {images.map((image, index) => (
-        // eslint-disable-next-line @next/next/no-img-element -- local data: URI of an attached image, nothing to optimise
-        <img key={index} src={image.src} alt={t("chat.image.alt", { name: image.name })} className={imageClassName} />
-      ))}
+      {images.map((image, index) => {
+        const alt = t("chat.image.alt", { name: image.name });
+        return (
+          <button
+            key={index}
+            type="button"
+            className={buttonClassName}
+            title={t("chat.image.enlarge")}
+            onClick={() => onOpen({ src: image.src, alt })}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- data: URI or an API image, nothing to optimise */}
+            <img src={image.src} alt={alt} className={imageClassName} />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -71,6 +106,7 @@ export function ChatMessageList({ messages, pendingQuestion, pendingImages, pend
   const styles = useStyles();
   const { t } = useI18n();
   const end = useRef<HTMLLIElement>(null);
+  const [viewed, setViewed] = useState<ViewedImage | null>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
@@ -94,7 +130,13 @@ export function ChatMessageList({ messages, pendingQuestion, pendingImages, pend
                 <Caption1>{t("chat.tokens", { input: message.usage.inputTokens, output: message.usage.outputTokens })}</Caption1>
               )}
               </div>
-              <Images images={message.images} className={styles.images} imageClassName={styles.image} />
+              <Images
+                images={message.images}
+                className={styles.images}
+                imageClassName={styles.image}
+                buttonClassName={styles.imageButton}
+                onOpen={setViewed}
+              />
               <div className={mergeClasses(styles.bubble, isUser ? styles.userBubble : styles.assistantBubble)}>{message.text}</div>
               {message.truncated && (
                 <Caption1 className={styles.truncated}>
@@ -114,7 +156,13 @@ export function ChatMessageList({ messages, pendingQuestion, pendingImages, pend
                   {t("chat.you")}
                 </Text>
               </div>
-              <Images images={pendingImages} className={styles.images} imageClassName={styles.image} />
+              <Images
+                images={pendingImages}
+                className={styles.images}
+                imageClassName={styles.image}
+                buttonClassName={styles.imageButton}
+                onOpen={setViewed}
+              />
               <div className={mergeClasses(styles.bubble, styles.userBubble)}>{pendingQuestion}</div>
             </li>
             <li className={mergeClasses(styles.row, styles.assistantRow)}>
@@ -137,6 +185,7 @@ export function ChatMessageList({ messages, pendingQuestion, pendingImages, pend
         )}
         <li ref={end} aria-hidden />
       </ol>
+      <ImageViewer image={viewed} onClose={() => setViewed(null)} />
     </div>
   );
 }

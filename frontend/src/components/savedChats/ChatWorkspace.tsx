@@ -5,12 +5,14 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { ChatView } from "@/components/chat/ChatView";
 import { SavedChatsNotice } from "@/components/savedChats/SavedChatsSection";
 import { useSavedChats } from "@/components/savedChats/SavedChatsProvider";
+import { HEADER_HEIGHT } from "@/components/shell/navBreakpoint";
 import { chatHref } from "@/lib/chat/savedChats";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { ConversationSummary } from "@/services/types";
 
 const useStyles = makeStyles({
-  chat: { flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" },
+  // Exactly the screen below the header: the chat scrolls inside, the page itself does not.
+  chat: { height: `calc(100dvh - ${HEADER_HEIGHT})`, minWidth: 0, display: "flex", flexDirection: "column" },
   notice: { width: "100%", maxWidth: "1200px", marginInline: "auto", boxSizing: "border-box", padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalXXL} 0` },
 });
 

@@ -134,6 +134,34 @@ describe("ChatWorkspace", () => {
     expect(screen.getByRole("textbox", { name: "Your question" })).toHaveValue("Hi");
   });
 
+  it("keeps a new chat whose connection drops after the first words (the server saves them as stopped)", async () => {
+    const backend = savedChatsBackend();
+    fetchMock.mockResolvedValue(sseResponse({ event: "delta", data: { text: "Hello " } }));
+    const user = userEvent.setup();
+    start(backend);
+    await within(panel()).findByText(/No saved chats yet/);
+
+    await ask(user, "Hi");
+
+    expect(await screen.findByText("Cannot reach the DotNextAI API. Check that the backend is running.")).toBeInTheDocument();
+    expect(backend.state.conversations.map((c) => c.id)).toEqual(["c1"]);
+  });
+
+  it("deletes a new chat whose answer breaks with an error event (the server saved nothing)", async () => {
+    const backend = savedChatsBackend();
+    fetchMock.mockResolvedValue(
+      sseResponse({ event: "delta", data: { text: "Hello " } }, { event: "error", data: { status: 502, failure: "Unavailable", title: "x", detail: "x" } }),
+    );
+    const user = userEvent.setup();
+    start(backend);
+    await within(panel()).findByText(/No saved chats yet/);
+
+    await ask(user, "Hi");
+
+    expect(await screen.findByText("The model provider is unavailable right now. Try again later.")).toBeInTheDocument();
+    await waitFor(() => expect(backend.state.conversations).toEqual([]));
+  });
+
   it("opens a saved chat with its messages and images, and goes on in it", async () => {
     const backend = savedChatsBackend({
       conversations: [conversationSummary("c1", { title: "Pixel", questionCount: 1 }), conversationSummary("c2", { title: "Other" })],

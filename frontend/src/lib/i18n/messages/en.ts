@@ -162,6 +162,8 @@ export const en = {
   "saved.opening": "Opening the chat…",
   "saved.missing": "That chat no longer exists. You are in a new conversation.",
 
+  "chat.image.enlarge": "Click to see it larger",
+  "image.viewer.close": "Close",
   "image.tooMany": "You can attach up to {max} images to one question.",
   "image.tooLarge": "{name} is too large (the maximum is {max} MB).",
   "image.unsupported": "{name} is not a PNG, JPEG, WebP or GIF image.",

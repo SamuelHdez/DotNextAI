@@ -119,6 +119,42 @@ test.describe("chat", () => {
     await expect(page.getByRole("list", { name: "Images for your next question" })).toBeHidden();
   });
 
+  test("shows an image of the conversation at full size", async ({ page }) => {
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+    await page.getByTestId("image-input").setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: png });
+    await ask(page, "What is in this image?");
+    await expect(conversation(page).getByText("I see 1 image (image/png): What is in this image?")).toBeVisible();
+
+    await conversation(page).getByRole("button", { name: "Attached image pixel.png" }).click();
+
+    const viewer = page.getByRole("dialog", { name: "Attached image pixel.png" });
+    await expect(viewer.getByRole("img", { name: "Attached image pixel.png" })).toBeVisible();
+    await expectNoA11yViolations(page);
+    await page.keyboard.press("Escape");
+    await expect(viewer).toBeHidden();
+  });
+
+  test("keeps the title and the composer in place while the conversation scrolls", async ({ page }) => {
+    for (let i = 1; i <= 5; i++) {
+      await ask(page, `Long question ${i}\n${"line\n".repeat(6)}end`);
+      // The whole answer, not its first words: the next question waits for it.
+      await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+      await expect(conversation(page).getByText(`Echo: Long question ${i}`, { exact: false })).toBeVisible();
+    }
+    const input = page.getByRole("textbox", { name: "Your question" });
+    const title = page.getByRole("heading", { name: "Chat", level: 1 });
+    const before = { input: (await input.boundingBox())!.y, title: (await title.boundingBox())!.y };
+
+    // Only the conversation scrolls: the page itself does not.
+    await conversation(page).hover();
+    await page.mouse.wheel(0, -3000);
+    await expect.poll(() => conversation(page).getByText("Echo: Long question 1", { exact: false }).isVisible()).toBe(true);
+
+    expect((await input.boundingBox())!.y).toBe(before.input);
+    expect((await title.boundingBox())!.y).toBe(before.title);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
   test("rejects a file that is not an image before sending it", async ({ page }) => {
     await page.getByTestId("image-input").setInputFiles({ name: "notes.png", mimeType: "image/png", buffer: Buffer.from("not an image") });
 

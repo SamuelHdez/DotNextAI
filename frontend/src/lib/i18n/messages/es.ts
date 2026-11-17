@@ -161,6 +161,8 @@ export const es: Messages = {
   "saved.opening": "Abriendo el chat…",
   "saved.missing": "Ese chat ya no existe. Estás en una conversación nueva.",
 
+  "chat.image.enlarge": "Pulsa para verla más grande",
+  "image.viewer.close": "Cerrar",
   "image.tooMany": "Puedes adjuntar hasta {max} imágenes a una pregunta.",
   "image.tooLarge": "{name} es demasiado grande (el máximo es {max} MB).",
   "image.unsupported": "{name} no es una imagen PNG, JPEG, WebP o GIF.",
