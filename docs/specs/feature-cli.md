@@ -32,7 +32,7 @@
 | `dotnextai ask What is .NET?` | Same: unquoted words are joined with single spaces. |
 | `echo "…" \| dotnextai ask`, `dotnextai ask < question.txt` | With no question argument and redirected stdin, the whole of stdin is the question (multi-line allowed). |
 | `dotnextai ask` in a terminal | Writes `Question: ` to stderr and reads one line. |
-| `dotnextai ask --model gpt-5.6-terra "…"` (`-m`) | Answers with another chat model (step 08). It is checked against `dotnextai models` before the question is read; an unknown or non-chat model exits with 2. |
+| `dotnextai ask --model gpt-6.1-terra "…"` (`-m`) | Answers with another chat model (step 08). It is checked against `dotnextai models` before the question is read; an unknown or non-chat model exits with 2. |
 | `dotnextai ask --image cat.png -i dog.jpg "What is in these pictures?"` | Attaches up to 4 image files (step 06). Each one is loaded and checked before the question is read. |
 
 Rules:
@@ -79,8 +79,8 @@ Rules:
 | ------------ | ------ |
 | `/image <path>` | Loads an image and attaches it to the **next** question: `Attached cat.png (image/png, 120 KB). It goes with your next question.` Up to 4 per question. |
 | `/images` | Lists the images waiting for the next question, or `No images attached.` |
-| `/model` | Shows the current model (`Model: gpt-5.6-luna`) and the list, the current one marked with `*`. |
-| `/model <name>` | Answers the next questions with another chat model: `Now using gpt-5.6-terra. The conversation goes on with it.` The history goes to the new model. A non-chat or unknown model is refused with the list. |
+| `/model` | Shows the current model (`Model: gpt-6-luna`) and the list, the current one marked with `*`. |
+| `/model <name>` | Answers the next questions with another chat model: `Now using gpt-6.1-terra. The conversation goes on with it.` The history goes to the new model. A non-chat or unknown model is refused with the list. |
 | `/usage` | Tokens of the conversation so far (step 10), see [token metrics](feature-token-metrics.md#formats). |
 | `/new` | Forgets the conversation, its token total and the attached images, and writes `Started a new conversation.` |
 | `/help` | Lists the chat commands. |
@@ -92,8 +92,8 @@ Rules:
 Lists the proxy's chat models on stdout, the default marked with `*`:
 
 ```text
-* gpt-5.6-luna   (default, 922,000 input / 128,000 output tokens)
-  gpt-5.6-terra  (922,000 input / 128,000 output tokens)
+* gpt-6-luna   (default, 922,000 input / 128,000 output tokens)
+  gpt-6.1-terra  (922,000 input / 128,000 output tokens)
 ```
 
 Exit codes: 0, 1 if the list cannot be read, 3 if not configured.

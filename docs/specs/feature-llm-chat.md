@@ -20,7 +20,7 @@ How DotNextAI talks to the language model. The contract lives in Application (`D
 | Prompt | Step 01: one user message with the question. Step 02: the agent's instructions as a system message, then the question ([agent](#agent)). | 2026-11-16 |
 | History owner (step 03) | The front end keeps the history and sends it with every question; the service is stateless and uses no `AgentSession`. `ChatConversation` (Application) does the bookkeeping for the CLI, and the web app will keep its own in the browser. Since 2026-11-16 saved chats are the exception: `ConversationService` (Application) builds the history from the database and calls the same stateless `IChatService` ([saved chats](feature-saved-chats.md)). | 2026-11-16 |
 | Why not `AgentSession` | A server-side session would make the API (step 04) stateful: per-user storage, expiry, and affinity across instances. Sending the history matches the rule "conversations live in memory, in the CLI process or the browser" and keeps every request self-contained. | 2026-11-16 |
-| Images (step 06) | `AskAsync(question, history, images)`: each image is a `ChatImage(MediaType, Data)` sent as a `DataContent` next to the question text; the SDK turns it into an OpenAI `image_url` part with a base64 data URI. The model (`gpt-5.6-luna`) is assumed to accept images; this is to be confirmed against the real proxy. | 2026-11-16 |
+| Images (step 06) | `AskAsync(question, history, images)`: each image is a `ChatImage(MediaType, Data)` sent as a `DataContent` next to the question text; the SDK turns it into an OpenAI `image_url` part with a base64 data URI. The model was assumed to accept images; confirmed on 2026-11-17 with `gpt-6-luna` through the real proxy. | 2026-11-16 |
 | Images only with their question | An image travels with the question it was attached to; the history stays text. Later questions see the model's earlier answer about the image, not the image. Resending every image with every turn would make each request up to tens of MB and multiply the image tokens. | 2026-11-16 |
 | Format from the bytes | `ImageFormats.Detect` reads the file signature (PNG, JPEG, GIF, WebP). A declared media type that does not match the bytes is rejected; file names and extensions are never trusted. | 2026-11-16 |
 | Streaming (step 07) | `AskStreamingAsync(question, history, images)` returns `IAsyncEnumerable<ChatStreamUpdate>`: text pieces as the agent's `RunStreamingAsync` yields them, then one final update with the whole `ChatAnswer`. Same request as `AskAsync` plus `"stream": true`. The non-streaming `AskAsync` stays for callers that want the whole answer at once. | 2026-11-16 |
@@ -107,7 +107,7 @@ Every question resends the whole history, so tokens and latency grow with the co
 | ------- | ------- | ----- | ------- |
 | `Llm:Endpoint` | — | HTTPS, or HTTP on loopback | Proxy base URL |
 | `Llm:ApiKey` | — | — | Proxy virtual key (secret, user-secrets) |
-| `Llm:DefaultModel` | — | — | Chat model, e.g. `gpt-5.6-luna` ([available models](product-rules.md#models-available-through-the-proxy)) |
+| `Llm:DefaultModel` | — | — | Chat model, e.g. `gpt-6-luna` ([available models](product-rules.md#models-available-through-the-proxy)) |
 | `Llm:TimeoutSeconds` | 120 | 5-600 | Timeout of each attempt |
 | `Llm:MaxRetries` | 2 | 0-5 | SDK retries |
 

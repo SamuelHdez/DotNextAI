@@ -36,24 +36,22 @@ The course backlog, with how this repository maps each step. The spec of each st
 
 ## Models available through the proxy
 
-Model list reported by the ERNI LiteLLM proxy on 2026-11-16. Each entry has a `mode` field. The model selector (step 08, done) reads the list at runtime through `GET /api/models` and offers only `mode = chat` models, so nothing is hard-coded.
+Model list reported by the ERNI LiteLLM proxy for our key (`GET /models`) on 2026-11-17. Each entry has a `mode` field. The model selector (step 08, done) reads the list at runtime through `GET /api/models` and offers only `mode = chat` models, so nothing is hard-coded.
 
 | Model | Mode | Limits (input / output tokens) | Used for |
 | ----- | ---- | ------------------------------ | -------- |
-| `gpt-5.6-luna` | chat | 922,000 / 128,000 | Default model (`Llm:DefaultModel` in the local user-secrets), steps 01-08 and 10. |
-| `gpt-5.6-terra` | chat | 922,000 / 128,000 | Second option in the model selector (step 08). |
+| `gpt-6-luna` | chat | 922,000 / 128,000 | Default model (`Llm:DefaultModel` in the local user-secrets). |
+| `gpt-6.1-terra` | chat | 922,000 / 128,000 | Option in the model selector. |
+| `gpt-6.1-sol` | chat | 922,000 / 128,000 | Option in the model selector. |
+| `gpt-6-astra` | chat | 922,000 / 128,000 | Option in the model selector. |
 | `gpt-image-2` | image_generation | — | Image generation (step 09). |
 | `gpt-realtime-1.5` | realtime | 32,000 / 4,096 | Not used. |
 | `text-embedding-3-small` | embedding | 8,192 / — | Not used. |
 
-Image input (step 06) assumes that `gpt-5.6-luna` accepts images (decided 2026-11-16, to be confirmed against the real proxy).
+**History of the access (probes with our key):**
 
-**Findings of 2026-11-16 (`GET /v2/model/info` and probes with our key):**
-
-- The proxy also runs `gpt-6-luna`, `gpt-6.1-terra`, `gpt-6.1-sol` and `gpt-6-astra` (chat, 922,000 / 128,000 tokens, `supports_vision: true`).
-- Our key's team only has access to `gpt-5.6-luna` and `gpt-5.6-terra` (the `/models` list above), and those have **no healthy deployments**.
-- The `gpt-6.x` models answer 403 `team_model_access_denied` to our key.
-- Real answers need the proxy administrator to give the key's team access to the `gpt-6.x` models (or to restore `gpt-5.6`). Then set `Llm:DefaultModel` with `./scripts/dev.sh secrets`, or pick the model in the selector.
+- 2026-11-16: the key's team only had `gpt-5.6-luna` (then the default) and `gpt-5.6-terra`, which had **no healthy deployments**; the `gpt-6.x` models answered 403 `team_model_access_denied`.
+- 2026-11-17: the proxy administrator gave the team access to the four `gpt-6.x` chat models; each answered a test question. `gpt-5.6-*` left the key's list (and still has no healthy deployments). `Llm:DefaultModel` is now `gpt-6-luna`. Confirmed with it: a real answer, the history across two turns of `dotnextai chat`, and image input (`dotnextai ask -i`, a red PNG described as "Red"); `/v2/model/info` reports `supports_vision: true` for the `gpt-6.x` models.
 
 ## Global rules
 

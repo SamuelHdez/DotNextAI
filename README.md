@@ -110,7 +110,7 @@ Answers go to stdout and everything else to stderr, so answers can be piped. Aft
 curl -s -H "Content-Type: application/json" \
   -d '{"question":"What is my name?","history":[{"role":"user","text":"My name is Ana."},{"role":"assistant","text":"Hi Ana!"}]}' \
   http://localhost:5100/api/chat
-# {"answer":"Your name is Ana.","model":"gpt-5.6-luna","truncated":false}
+# {"answer":"Your name is Ana.","model":"gpt-6-luna","truncated":false}
 ```
 
 `/api/chat` is stateless: the client sends the history with every question. Saved chats (`/api/folders`, `/api/conversations`) keep it in the database instead, and `POST /api/conversations/{id}/messages/stream` takes only the new question. `GET /api/models` lists the chat models, `model` in the body picks one, and `POST /api/chat/stream` takes the same body and streams the answer as Server-Sent Events (`delta`, `done`, `error`). Errors are `ProblemDetails` with a `failure` code (`ModelUnavailable`, `Timeout`, …). See the [API contract](docs/design/api.md), or use `backend/src/DotNextAI.Api/DotNextAI.Api.http` and Swagger UI.

@@ -25,7 +25,7 @@
 ## Phase 1 — Backend basics
 
 - [x] 2026-11-16 — 01 Terminal Q&A: `dotnextai ask` (argument, stdin or prompt) through the proxy with the OpenAI .NET SDK; `IChatService` contract, failure mapping, 20,000-character limit, exit codes ([CLI](../specs/feature-cli.md), [chat service](../specs/feature-llm-chat.md)).
-- [ ] 01-04 follow-up: confirm a real answer (and a remembered name across two chat turns) from the proxy, in the CLI and through `POST /api/chat`. On 2026-11-16 every chat model answered *"no healthy deployments"* (proxy side); the CLI shows it as `ModelUnavailable`.
+- [x] 2026-11-17 — 01-04 follow-up: real answers from the proxy with `gpt-6-luna`: `dotnextai ask`, the history across two `dotnextai chat` turns, and image input (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)).
 - [x] 2026-11-16 — 02 Agent Framework: `AgentChatService` (`ChatClientAgent` with instructions, stateless run) replaces the direct call; `LlmChatClientFactory` and `ChatFailureMapper` extracted ([chat service](../specs/feature-llm-chat.md#agent)).
 - [x] 2026-11-16 — 03 Chat history: `dotnextai` / `dotnextai chat` with in-memory history (`ChatConversation`), `/new`, `/help`, `/exit`, 50-question limit; stateless `IChatService.AskAsync(question, history)` ([CLI](../specs/feature-cli.md), [chat service](../specs/feature-llm-chat.md#conversation-history)).
 - [x] 2026-11-16 — 04 API: `POST /api/chat` (question + history), `ProblemDetails` with a `failure` code per `ChatFailure`, rate limit per IP (20/min), OpenAPI ([API contract](../design/api.md)).
@@ -57,7 +57,8 @@
 ## Open questions
 
 - [x] 2026-11-16 — UI languages: English (default) and Spanish, with a selector.
-- [x] 2026-11-16 — Models of the ERNI LiteLLM proxy: chat `gpt-5.6-luna` (default) and `gpt-5.6-terra`, image `gpt-image-2` (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)).
-- [ ] **Ask the ERNI proxy administrator** to give our key's team access to `gpt-6.x` (`gpt-6-luna`, `gpt-6.1-terra`…): today the key only reaches `gpt-5.6-*`, which has no healthy deployments, and `gpt-6.x` answers 403 `team_model_access_denied` (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)). Then set `Llm:DefaultModel`.
-- [ ] Confirm image input with the real model (`/v2/model/info` reports `supports_vision: true` for `gpt-6.x`).
+- [x] 2026-11-16 — Models of the ERNI LiteLLM proxy: chat `gpt-5.6-luna` (default) and `gpt-5.6-terra` (replaced on 2026-11-17 by the `gpt-6.x` models, default `gpt-6-luna`), image `gpt-image-2` (see [product rules](../specs/product-rules.md#models-available-through-the-proxy)).
+- [x] 2026-11-17 — The ERNI proxy administrator gave our key's team access to `gpt-6-luna`, `gpt-6.1-terra`, `gpt-6.1-sol` and `gpt-6-astra`; `Llm:DefaultModel` set to `gpt-6-luna` ([product rules](../specs/product-rules.md#models-available-through-the-proxy)).
+- [x] 2026-11-17 — Image input confirmed with `gpt-6-luna` (`dotnextai ask -i`).
+- [ ] `./scripts/dev.sh cli` from WSL loses piped stdin (`printf … | ./scripts/dev.sh cli chat` prints nothing) because it runs the Windows `dotnet.exe`; `cmd.exe /c "dotnet run --project backend\src\DotNextAI.Cli -- chat < file"` works.
 - [x] 2026-11-16 — CLI language: English only (invariant culture). Multi-language is for the web UI.

@@ -35,10 +35,10 @@
 
 ```json
 {
-  "defaultModel": "gpt-5.6-luna",
+  "defaultModel": "gpt-6-luna",
   "models": [
-    { "id": "gpt-5.6-luna", "isDefault": true, "maxInputTokens": 922000, "maxOutputTokens": 128000 },
-    { "id": "gpt-5.6-terra", "isDefault": false, "maxInputTokens": 922000, "maxOutputTokens": 128000 }
+    { "id": "gpt-6-luna", "isDefault": true, "maxInputTokens": 922000, "maxOutputTokens": 128000 },
+    { "id": "gpt-6.1-terra", "isDefault": false, "maxInputTokens": 922000, "maxOutputTokens": 128000 }
   ]
 }
 ```
@@ -76,7 +76,7 @@ Request:
 ```json
 {
   "answer": "Your name is Ana.",
-  "model": "gpt-5.6-luna",
+  "model": "gpt-6-luna",
   "truncated": false,
   "usage": { "inputTokens": 1200, "outputTokens": 34, "totalTokens": 1234 }
 }
@@ -98,7 +98,7 @@ event: delta
 data: {"text":"is Ana."}
 
 event: done
-data: {"answer":"Your name is Ana.","model":"gpt-5.6-luna","truncated":false}
+data: {"answer":"Your name is Ana.","model":"gpt-6-luna","truncated":false}
 ```
 
 | Event | Data | When |
@@ -157,7 +157,7 @@ Shapes:
 
 // ConversationSummary
 {
-  "id": "9b1e…", "title": "Plan the team offsite", "folderId": "5f0c…", "model": "gpt-5.6-luna", "questionCount": 2,
+  "id": "9b1e…", "title": "Plan the team offsite", "folderId": "5f0c…", "model": "gpt-6-luna", "questionCount": 2,
   "usage": { "inputTokens": 30, "outputTokens": 4, "totalTokens": 34 },
   "createdAt": "2026-11-16T21:41:00+00:00", "updatedAt": "2026-11-16T21:45:00+00:00"
 }
@@ -168,7 +168,7 @@ Shapes:
   "messages": [
     { "id": "…", "role": "user", "text": "What is this?", "images": [{ "id": "…", "mediaType": "image/png", "size": 70, "url": "/api/conversations/9b1e…/images/…" }],
       "model": null, "usage": null, "truncated": false, "stopped": false, "createdAt": "…" },
-    { "id": "…", "role": "assistant", "text": "A diagram.", "images": [], "model": "gpt-5.6-luna",
+    { "id": "…", "role": "assistant", "text": "A diagram.", "images": [], "model": "gpt-6-luna",
       "usage": { "inputTokens": 120, "outputTokens": 3, "totalTokens": 123 }, "truncated": false, "stopped": false, "createdAt": "…" }
   ]
 }
@@ -182,7 +182,7 @@ The body is a chat request without `history`: the server reads the history from 
 
 ```text
 event: done
-data: {"answer":"Hello Ana!","model":"gpt-5.6-luna","truncated":false,"usage":{…},"conversation":{ /* ConversationSummary */ }}
+data: {"answer":"Hello Ana!","model":"gpt-6-luna","truncated":false,"usage":{…},"conversation":{ /* ConversationSummary */ }}
 ```
 
 Saving:
@@ -216,7 +216,7 @@ Example:
   "type": "https://tools.ietf.org/html/rfc9110#section-15.6.4",
   "title": "The model is unavailable",
   "status": 503,
-  "detail": "The model 'gpt-5.6-luna' is currently unavailable in the LiteLLM proxy (no healthy deployments).",
+  "detail": "The model 'gpt-6-luna' is currently unavailable in the LiteLLM proxy (no healthy deployments).",
   "failure": "ModelUnavailable",
   "traceId": "00-56c0af94…-00"
 }
