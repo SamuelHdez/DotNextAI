@@ -1,0 +1,710 @@
+/*
+ * DotNextAI additions to the ERNI deck (deck.css): the chat mock-up, the ten-step backlog, the model cards and the
+ * cost formula. Only brand variables, the same 1.25pt rules and the same motion primitives as deck.css.
+ */
+
+/* ---------- Ten-step backlog in three phases ---------- */
+
+.backlog {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 64px;
+  align-items: start;
+}
+.phase {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.phase .k-label {
+  margin-bottom: 18px;
+}
+.phase ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.phase li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 0;
+  border-top: var(--rule);
+  font-size: 24px;
+  line-height: 1.3;
+}
+.phase li:last-child {
+  border-bottom: var(--rule);
+}
+.phase .sn {
+  font-weight: 600;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+}
+.phase .ok {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: var(--lblue);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.phase .sd {
+  display: block;
+  font-size: 18px;
+  color: var(--grey);
+}
+.backlog-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* ---------- Chat mock-up ---------- */
+
+.chatmock {
+  grid-column: 1 / 8;
+  align-self: start;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  height: 564px;
+  border: 2px solid var(--blue);
+  background: var(--white);
+  font-size: 20px;
+  line-height: 1.35;
+  overflow: hidden;
+}
+.chatmock .side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px 18px;
+  border-right: var(--rule);
+  background: var(--tint);
+}
+.chatmock .side .k-label {
+  font-size: 15px;
+  margin: 8px 0 4px;
+}
+.chatmock .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  color: var(--text);
+}
+.chatmock .nav-item .icon {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  stroke-width: 4;
+}
+.chatmock .nav-item.on {
+  background: var(--white);
+  font-weight: 600;
+  color: var(--blue);
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+.chatmock .folder {
+  padding-left: 10px;
+  font-size: 18px;
+  color: var(--blue);
+  font-weight: 600;
+}
+.chatmock .saved {
+  padding: 2px 10px 2px 30px;
+  font-size: 18px;
+  color: var(--grey);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chatmock .main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.chatmock .bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 26px;
+  border-bottom: var(--rule);
+}
+.chatmock .bar .h {
+  font-size: 30px;
+  color: var(--blue);
+}
+.chatmock .picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px;
+  border: var(--rule);
+  font-size: 18px;
+}
+.chatmock .picker::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--grey);
+  border-bottom: 2px solid var(--grey);
+  transform: translateY(-3px) rotate(45deg);
+}
+.chatmock .log {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 26px;
+}
+.chatmock .who {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 16px;
+  color: var(--grey);
+}
+.chatmock .who b {
+  color: var(--text);
+}
+.chatmock .msg-u,
+.chatmock .msg-a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 82%;
+}
+.chatmock .msg-u {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.chatmock .bubble {
+  padding: 9px 16px;
+  border-radius: 14px;
+}
+.chatmock .msg-u .bubble {
+  background: var(--blue);
+  color: var(--white);
+  border-bottom-right-radius: 4px;
+}
+.chatmock .msg-a .bubble {
+  border: var(--rule);
+  border-bottom-left-radius: 4px;
+}
+.chatmock .cost {
+  color: var(--blue);
+  font-weight: 600;
+}
+.chatmock .caret {
+  display: inline-block;
+  width: 3px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: var(--lblue);
+}
+.slide.is-active .chatmock .caret {
+  animation: caret 900ms steps(1) infinite;
+}
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+.chatmock .foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 26px 16px;
+  border-top: var(--rule);
+  background: var(--tint);
+}
+.chatmock .total {
+  font-size: 16px;
+  color: var(--grey);
+}
+.chatmock .total b {
+  color: var(--blue);
+}
+.chatmock .input {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border: var(--rule);
+  background: var(--white);
+  color: var(--lgrey);
+  font-size: 18px;
+}
+.chatmock .send {
+  padding: 4px 16px;
+  background: var(--blue);
+  color: var(--white);
+  font-size: 16px;
+  font-weight: 600;
+}
+.chatmock + .bullets {
+  grid-column: 9 / 13;
+}
+
+/* ---------- Model cards with prices ---------- */
+
+.models {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 32px;
+}
+.model {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 30px 30px 26px;
+  background: var(--tint);
+  border-top: 4px solid var(--lgrey);
+}
+.model--default {
+  border-top-color: var(--blue);
+}
+.model .mn {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--blue);
+}
+.model .tag {
+  position: absolute;
+  top: 30px;
+  right: 26px;
+}
+.model .price {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 14px;
+  border-top: var(--rule);
+}
+.model .pv {
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 300;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+}
+.model .meter {
+  height: 8px;
+  background: var(--white);
+}
+.model .meter span {
+  display: block;
+  height: 100%;
+  width: var(--w);
+  background: var(--lblue);
+  transform-origin: left center;
+}
+.slide.is-active .model .meter span {
+  animation: a-line 1100ms var(--ease-in-out) both;
+  animation-delay: calc(var(--d, 0) * 90ms + 700ms);
+}
+.models-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* ---------- Cost formula ---------- */
+
+.formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 18px;
+  padding: 26px 30px;
+  background: var(--tint);
+  font-size: 26px;
+}
+.formula .term {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 18px;
+  background: var(--white);
+  border: var(--rule);
+}
+.formula .term b {
+  font-weight: 600;
+  color: var(--blue);
+}
+.formula .term small {
+  font-size: 16px;
+  color: var(--grey);
+}
+.formula .op {
+  font-size: 34px;
+  font-weight: 300;
+  color: var(--blue);
+}
+.formula .eq {
+  margin-left: 6px;
+  padding: 12px 22px;
+  background: var(--blue);
+  color: var(--white);
+  font-weight: 600;
+}
+.cost-cols {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: 32px;
+  margin-top: 40px;
+}
+.cost-cols .bullets {
+  grid-column: 1 / 7;
+}
+.terminal {
+  grid-column: 8 / 13;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  background: var(--blue-deep);
+  color: var(--white);
+  font-family: Menlo, "Cascadia Code", Consolas, "Liberation Mono", monospace;
+  font-size: 20px;
+  line-height: 1.6;
+}
+.terminal .tb {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--blue);
+}
+.terminal .tb span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+}
+.terminal pre {
+  margin: 0;
+  padding: 18px 22px 22px;
+  white-space: pre-wrap;
+  font: inherit;
+}
+.terminal .p {
+  color: var(--lblue);
+}
+.terminal .e {
+  color: #b9c8e6;
+}
+.terminal .c {
+  color: var(--white);
+  font-weight: 600;
+}
+.terminal-note {
+  padding: 12px 22px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: var(--font);
+  font-size: 18px;
+  color: #b9c8e6;
+}
+
+/* ---------- Five layers (the onion page) ---------- */
+
+.layers--5 .layer {
+  padding: 15px 0;
+}
+.layers--5 .layer p {
+  margin-top: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide.is-active .chatmock .caret,
+  .slide.is-active .model .meter span {
+    animation: none;
+  }
+}
+
+/* ---------- The Agent Framework stack, layer by layer ---------- */
+
+.pila {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.band {
+  display: grid;
+  grid-template-columns: 470px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 32px;
+  min-height: 96px;
+  padding: 0 28px;
+  border: 2px solid var(--blue);
+  background: var(--white);
+}
+.band .bn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.band .bn b {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--blue);
+}
+.band .bn span {
+  font-size: 18px;
+  color: var(--grey);
+}
+.band p {
+  font-size: 21px;
+  line-height: 1.35;
+}
+.band--fill {
+  background: var(--blue);
+  color: var(--white);
+}
+.band--fill .bn b,
+.band--fill .bn span {
+  color: var(--white);
+}
+.band--fill .tag {
+  color: var(--white);
+  border-color: var(--white);
+}
+.band--light {
+  background: var(--tint-blue);
+}
+.band--soft {
+  border-color: var(--lgrey);
+}
+
+/* ---------- Code blocks ---------- */
+
+.code {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--blue-deep);
+  color: #e6edf7;
+  font-family: Menlo, "Cascadia Code", Consolas, "Liberation Mono", monospace;
+  font-size: 18.5px;
+  line-height: 1.55;
+  overflow: hidden;
+}
+.code .ch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--blue);
+  font-family: var(--font);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--white);
+}
+.code .ch small {
+  font-weight: 400;
+  opacity: 0.8;
+}
+.code pre {
+  margin: 0;
+  padding: 18px 22px 20px;
+  font: inherit;
+  white-space: pre;
+}
+.code .k {
+  color: #7fc8ff;
+}
+.code .t {
+  color: #00aadb;
+}
+.code .s {
+  color: #f2c48d;
+}
+.code .c {
+  color: #8a9bbd;
+  font-style: italic;
+}
+.code .m {
+  color: #ffffff;
+  font-weight: 600;
+}
+.code-cols {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: 32px;
+}
+.code-cols > .code {
+  grid-column: 1 / 8;
+  align-self: start;
+}
+.code-cols > .bullets {
+  grid-column: 9 / 13;
+}
+.code-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+.code-duo .code {
+  font-size: 18px;
+}
+.code-duo + .caption {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+
+/* ---------- Comparison tables ---------- */
+
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 21px;
+  line-height: 1.3;
+}
+.compare th {
+  padding: 0 18px 12px 0;
+  text-align: left;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue);
+  border-bottom: 2px solid var(--blue);
+}
+.compare td {
+  padding: 9px 18px 9px 0;
+  border-bottom: var(--rule);
+  vertical-align: top;
+}
+.compare td:first-child {
+  width: 18%;
+  font-weight: 600;
+  color: var(--blue);
+}
+.compare td:nth-child(2),
+.compare td:nth-child(3) {
+  width: 41%;
+}
+.compare code {
+  font-size: 0.86em;
+  white-space: normal;
+}
+.compare--loose td {
+  padding: 13px 18px 13px 0;
+}
+.compare .hl {
+  background: var(--tint-blue);
+}
+
+/* ---------- Two ecosystems side by side ---------- */
+
+.duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+.duo .card {
+  gap: 18px;
+}
+.duo .card--blue {
+  background: var(--blue);
+  color: var(--white);
+}
+.duo .card--blue .card-h,
+.duo .card--blue .card-h .icon {
+  color: var(--white);
+}
+.duo dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  row-gap: 0;
+}
+.duo dt,
+.duo dd {
+  margin: 0;
+  padding: 13px 0;
+  border-top: var(--rule);
+  font-size: 21px;
+  line-height: 1.35;
+}
+.duo dt {
+  font-weight: 600;
+}
+.duo .card--blue dt,
+.duo .card--blue dd {
+  border-top-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ---------- Notes beside a diagram ---------- */
+
+.side-notes {
+  position: absolute;
+  left: 1240px;
+  top: 10px;
+  width: 572px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+.side-notes p {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.edges .head-m {
+  fill: var(--blue);
+  stroke: none;
+}
+.edges .head-m.soft {
+  fill: var(--lgrey);
+}
+.criteria-wide {
+  grid-column: 7 / 13;
+}
+.criteria-wide ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.criteria-wide li {
+  display: flex;
+  gap: 28px;
+  align-items: baseline;
+  padding: 15px 0;
+  border-top: var(--rule);
+  font-size: 23px;
+  line-height: 1.38;
+}
+.criteria-wide li:last-child {
+  border-bottom: var(--rule);
+}
+.criteria-wide .ci {
+  font-weight: 600;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+}
+.lead {
+  grid-column: 1 / 6;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.card .tag {
+  align-self: flex-start;
+}
+.card p.b2 {
+  font-size: 22px;
+}

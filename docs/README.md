@@ -30,3 +30,9 @@ One `feature-*.md` per backlog step or feature is added when it starts.
 | -------- | ----------- |
 | [To-do / backlog](./tasks/todo.md) | Course steps and repository work, pending and done. |
 | [Agent prompts](./tasks/agent-prompts.md) | History of the prompts that shaped the project. |
+
+## Presentation
+
+| Document | Description |
+| -------- | ----------- |
+| [Technical presentation](./presentation/index.html) | Animated HTML slide deck in Spanish (ERNI Brand Book, same design as the ValidatorHub deck), focused on the architecture, how Microsoft Agent Framework works and how it compares with LangChain; also the product, stack, quality and roadmap. Open it in a browser; arrows to navigate, `F` for full screen, `P` to export to PDF. Figures as of 2026-11-17. |

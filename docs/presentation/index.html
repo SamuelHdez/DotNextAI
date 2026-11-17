@@ -1,0 +1,1341 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DotNextAI · Presentación técnica · ERNI</title>
+    <meta name="description" content="DotNextAI: arquitectura de un chatbot con LLM en .NET, cómo funciona Microsoft Agent Framework y cómo se compara con LangChain." />
+    <link rel="icon" href="../../frontend/src/app/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/deck.css" />
+    <link rel="stylesheet" href="assets/dotnextai.css" />
+    <script src="assets/deck.js" defer></script>
+  </head>
+  <body>
+    <!-- Brand logo (ERNI Brand Book v.04) and icon sprite: 3px rounded strokes (Brand Book p.44) -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="erni-logo" viewBox="0 0 514.51 133.40">
+          <path fill="#515455" d="M156.97 118.20C170.43 116.11 170.21 112.63 170.21 98.69L170.21 35.96C170.21 21.32 171.14 16.45 160.51 14.36C160.51 14.36 158.25 13.97 158.25 12.07C158.25 10.17 158.26 10.17 158.26 10.17L230.21 10.17C230.21 10.17 232.29 10.10 232.57 12.39C232.84 14.69 235.20 34.34 235.40 35.96C235.60 37.58 231.86 37.36 231.86 37.36C226.19 22.72 218.39 17.84 207.06 17.14L185.09 16.25L185.09 61.50L202.10 61.05C215.56 60.53 218.39 60.48 220.52 49.33C220.52 49.33 220.75 47.11 222.41 47.11L224.06 47.11L224.06 83.35L222.41 83.35C220.71 83.35 220.52 81.14 220.52 81.14C218.39 68.59 215.56 69.24 202.10 68.72L185.09 68.24L185.09 98.69C185.09 111.58 188.63 115.42 203.51 115.42C221.23 115.42 229.73 109.84 238.24 92.42C238.24 92.42 242.17 92.21 241.78 93.81C241.38 95.41 235.40 117.95 234.69 120.16C233.99 122.38 230.21 122.38 230.21 122.38L154.71 122.38C154.71 122.38 154.71 122.37 154.71 120.29C154.71 118.21 156.97 118.20 156.97 118.20Z" />
+          <path fill="#515455" d="M292.05 66.94C287.80 67.07 281.32 66.84 276.85 65.11L276.85 17.35C296.86 17.57 310.03 22.55 312.28 41.72C313.42 51.41 306.73 66.46 292.05 66.94M512.25 14.36C512.25 14.36 514.51 13.97 514.51 12.07L514.51 10.17L466.73 10.17L466.70 10.17L423.27 10.17L423.27 12.07C423.27 13.96 425.53 14.36 425.53 14.36C438.99 16.45 440.01 19.06 440.19 33.17L439.47 96.12C439.47 96.12 376.94 12.39 376.13 11.28C375.32 10.17 373.66 10.17 373.66 10.17L346.96 10.17L346.96 12.07C346.96 13.79 349.22 14.36 349.22 14.36C363.75 19.41 363.97 22.02 363.97 41.71L363.97 42.23L363.75 99.38C363.43 113.91 359.47 117.26 353.24 117.26C330.24 117.26 304.25 70.39 304.25 70.39C311.89 66.94 326.62 56.93 326.62 39.13C326.62 20.75 313.08 10.18 294.66 10.18C285.45 10.18 249.31 10.18 249.31 10.18L249.31 12.07C249.31 13.77 251.57 14.35 251.57 14.35C262.90 18.54 261.97 22.72 261.97 36.66L261.97 98.56C261.97 112.50 262.19 115.99 248.02 118.08C248.02 118.08 245.77 118.33 245.77 120.29L245.77 122.26L293.77 122.26L293.77 120.29C293.77 118.32 291.52 118.08 291.52 118.08C276.64 115.99 276.85 113.20 276.85 98.56L276.85 74.17C282.51 75.27 291.26 74.36 291.26 74.36C304.61 96.31 312.61 110.88 322.86 117.54C332.30 123.66 339.88 122.38 361.49 122.38L393.51 122.38L393.51 120.29C393.51 118.40 391.25 118.20 391.25 118.20C377.79 115.42 374.56 114.02 374.38 99.38L373.67 32.56C373.67 32.56 440.42 120.90 441.26 121.99C442.09 123.07 443.55 123.09 443.55 123.09L445.92 123.08C445.92 123.08 448.00 123.09 448.00 120.85C448.00 119.78 449.31 32.48 449.31 32.48C449.66 18.54 454.67 14.36 466.73 14.36C478.79 14.36 483.42 19.94 483.42 33.17L483.42 98.69C483.42 112.63 483.64 116.11 469.47 118.20C469.47 118.20 467.21 118.43 467.21 120.29L467.21 122.38L514.51 122.38L514.51 120.29C514.51 118.38 512.25 118.20 512.25 118.20C498.08 116.11 498.30 112.45 498.30 98.69L498.30 33.17C498.30 19.58 498.25 16.62 512.25 14.36Z" />
+          <path fill="#033778" d="M95.28 53.32C97.47 50.44 99.01 46.62 99.75 42.96C101.73 33.06 94.82 26.06 85.56 28.57C82.33 29.45 78.97 31.16 76.56 33.50C66.26 43.49 63.22 55.31 63.65 71.69C75.94 68.08 87.35 63.78 95.28 53.32Z" />
+          <path fill="#ffffff" d="M87.28 96.73C72.35 96.87 65.04 90.05 64.02 78.17C64.02 78.17 83.54 71.52 89.21 68.94C89.73 68.71 90.24 68.48 90.76 68.24C100.68 63.51 109.18 56.63 114.15 45.91C120.12 33.02 115.43 18.39 103.74 13.77C96.75 11.01 89.78 11.83 82.97 14.05C66.70 19.35 54.02 29.72 44.74 44.58C36.36 57.99 32.02 72.58 35.51 89.07C38.21 101.85 47.15 110.86 59.48 112.47C72.32 114.14 88.41 111.93 101.74 106.07C106.35 100.80 110.28 95.03 113.49 88.74C114.94 85.90 116.21 83.01 117.33 80.07C113.74 88.91 97.46 96.21 87.28 96.73M76.56 33.50C78.97 31.16 82.33 29.45 85.56 28.57C94.82 26.06 101.73 33.06 99.75 42.96C99.01 46.62 97.47 50.44 95.28 53.32C87.35 63.78 75.94 68.08 63.65 71.69C63.22 55.31 66.26 43.49 76.56 33.50Z" />
+          <path fill="#033778" d="M22.31 79.72C19.37 80.45 17.58 83.38 18.32 86.28C19.06 89.17 22.04 90.93 24.98 90.20C27.92 89.48 29.71 86.55 28.98 83.65C28.24 80.76 25.26 79.00 22.31 79.72Z" />
+          <path fill="#ffffff" d="M24.98 90.20C27.83 89.50 29.59 86.72 29.03 83.92C29.01 83.83 29.00 83.74 28.98 83.65C28.24 80.76 25.26 79.00 22.31 79.72C19.74 80.36 18.05 82.68 18.16 85.19C18.18 85.55 18.23 85.91 18.32 86.28C19.06 89.17 22.04 90.93 24.98 90.20Z" />
+          <path fill="#033778" d="M24.98 90.20C22.04 90.93 19.06 89.17 18.32 86.28C17.58 83.38 19.37 80.45 22.31 79.72C25.26 79.00 28.24 80.76 28.98 83.65C29.71 86.55 27.92 89.48 24.98 90.20M125.15 10.24C125.15 9.75 124.93 9.56 124.49 9.43C123.17 9.04 121.88 8.60 120.56 8.21C109.76 5.00 98.76 2.72 87.54 1.40C80.40 0.55 69.82 0.08 62.63 0.00L62.63 0.00C55.44 0.08 44.86 0.55 37.72 1.40C26.51 2.72 15.50 5.00 4.70 8.21C3.38 8.60 2.09 9.04 0.78 9.43C0.34 9.56 0.11 9.75 0.11 10.24C0.10 18.03 0.00 25.82 0.08 33.61C0.12 37.65 0.42 41.68 0.71 45.70C1.22 52.70 2.23 59.64 3.81 66.49C5.60 74.20 8.15 81.65 11.77 88.74C16.82 98.63 23.64 107.21 32.04 114.62C40.68 122.23 51.73 128.23 62.11 133.29C62.26 133.36 62.43 133.40 62.60 133.40L62.66 133.40C62.83 133.40 63.00 133.36 63.15 133.29C73.53 128.23 84.58 122.23 93.22 114.62C96.27 111.92 99.12 109.08 101.74 106.07C97.35 108.00 92.66 109.52 87.89 110.65C78.44 112.89 68.66 113.55 60.21 112.55C59.97 112.52 59.72 112.50 59.48 112.47C59.04 112.41 58.62 112.32 58.19 112.25C46.53 110.19 38.11 101.39 35.51 89.07C33.55 79.80 34.06 71.12 36.38 62.92C38.18 56.54 41.07 50.44 44.73 44.58C50.84 34.81 58.42 26.99 67.52 21.27C70.05 19.68 72.70 18.25 75.46 16.99C77.88 15.88 80.37 14.90 82.97 14.05C83.73 13.80 84.49 13.58 85.26 13.37C90.94 11.80 96.71 11.37 102.51 13.32C102.92 13.46 103.33 13.61 103.74 13.77C115.42 18.39 120.12 33.02 114.15 45.91C109.18 56.64 100.68 63.51 90.76 68.24C90.32 68.45 89.85 68.66 89.35 68.88C89.30 68.90 89.26 68.92 89.21 68.94C83.54 71.52 64.02 78.17 64.02 78.17C64.34 81.88 65.27 85.10 66.86 87.77C70.35 93.63 77.01 96.82 87.28 96.73C87.51 96.71 87.76 96.70 88.00 96.68C88.08 96.67 88.17 96.67 88.25 96.66C88.28 96.66 88.31 96.65 88.33 96.65C98.54 95.71 113.86 88.61 117.33 80.07C117.33 80.08 117.32 80.09 117.32 80.10C117.32 80.09 117.33 80.08 117.33 80.07C119.02 75.65 120.38 71.12 121.45 66.49C123.03 59.64 124.04 52.70 124.55 45.70C124.84 41.68 125.14 37.65 125.18 33.61C125.26 25.82 125.16 18.03 125.15 10.24Z" />
+        </symbol>
+        <symbol id="i-search" viewBox="0 0 48 48"><circle cx="21" cy="21" r="12" /><path d="M30 30l10 10" /></symbol>
+        <symbol id="i-shield" viewBox="0 0 48 48"><path d="M24 6l14 5v12c0 9-6 15-14 19-8-4-14-10-14-19V11z" /><path d="M18 24l4 4 8-8" /></symbol>
+        <symbol id="i-calendar" viewBox="0 0 48 48"><rect x="8" y="11" width="32" height="29" rx="4" /><path d="M8 19h32M16 7v7M32 7v7M16 27h4M28 27h4M16 33h4" /></symbol>
+        <symbol id="i-clock" viewBox="0 0 48 48"><circle cx="24" cy="24" r="16" /><path d="M24 15v9l6 4" /></symbol>
+        <symbol id="i-chart" viewBox="0 0 48 48"><path d="M8 40h32M14 34V24M24 34V13M34 34V19" /></symbol>
+        <symbol id="i-users" viewBox="0 0 48 48"><circle cx="18" cy="17" r="6" /><path d="M7 38c0-7 5-11 11-11s11 4 11 11" /><circle cx="33" cy="19" r="5" /><path d="M32 28c6 0 9 4 9 10" /></symbol>
+        <symbol id="i-user" viewBox="0 0 48 48"><circle cx="24" cy="16" r="8" /><path d="M9 41c0-9 7-14 15-14s15 5 15 14" /></symbol>
+        <symbol id="i-user-check" viewBox="0 0 48 48"><circle cx="20" cy="16" r="7" /><path d="M7 40c0-8 6-13 13-13 3 0 5 .7 7 2" /><path d="M29 36l4 4 9-9" /></symbol>
+        <symbol id="i-settings" viewBox="0 0 48 48"><path d="M8 14h18M34 14h6M8 24h6M22 24h18M8 34h20M36 34h4" /><circle cx="30" cy="14" r="4" /><circle cx="18" cy="24" r="4" /><circle cx="32" cy="34" r="4" /></symbol>
+        <symbol id="i-layers" viewBox="0 0 48 48"><path d="M24 8l18 9-18 9-18-9z" /><path d="M6 25l18 9 18-9M6 33l18 9 18-9" /></symbol>
+        <symbol id="i-code" viewBox="0 0 48 48"><path d="M17 15l-9 9 9 9M31 15l9 9-9 9M27 11l-6 26" /></symbol>
+        <symbol id="i-lock" viewBox="0 0 48 48"><rect x="10" y="21" width="28" height="20" rx="4" /><path d="M16 21v-6a8 8 0 0116 0v6M24 29v4" /></symbol>
+        <symbol id="i-key" viewBox="0 0 48 48"><circle cx="16" cy="31" r="8" /><path d="M22 25L40 7M33 14l5 5M28 19l4 4" /></symbol>
+        <symbol id="i-eye" viewBox="0 0 48 48"><path d="M4 24c6-9 13-14 20-14s14 5 20 14c-6 9-13 14-20 14S10 33 4 24z" /><circle cx="24" cy="24" r="6" /></symbol>
+        <symbol id="i-box" viewBox="0 0 48 48"><path d="M24 6l17 9v18l-17 9-17-9V15z" /><path d="M7 15l17 9 17-9M24 24v18" /></symbol>
+        <symbol id="i-doc" viewBox="0 0 48 48"><path d="M12 6h18l8 8v28H12z" /><path d="M30 6v8h8M18 22h14M18 29h14M18 36h8" /></symbol>
+        <symbol id="i-scan" viewBox="0 0 48 48"><path d="M8 16V8h8M32 8h8v8M40 32v8h-8M16 40H8v-8M14 24h20" /></symbol>
+        <symbol id="i-refresh" viewBox="0 0 48 48"><path d="M38 19a15 15 0 00-27-4M10 7v8h8M10 29a15 15 0 0027 4M38 41v-8h-8" /></symbol>
+        <symbol id="i-database" viewBox="0 0 48 48"><ellipse cx="24" cy="12" rx="14" ry="5" /><path d="M10 12v24c0 3 6 5 14 5s14-2 14-5V12M10 24c0 3 6 5 14 5s14-2 14-5" /></symbol>
+        <symbol id="i-cloud" viewBox="0 0 48 48"><path d="M15 37h19a8 8 0 001-16 11 11 0 00-21-2 9 9 0 001 18z" /></symbol>
+        <symbol id="i-sparkle" viewBox="0 0 48 48"><path d="M22 8c1 10 4 15 14 17-10 2-13 7-14 17-1-10-4-15-14-17 10-2 13-7 14-17z" /><path d="M38 6v6M35 9h6" /></symbol>
+        <symbol id="i-link" viewBox="0 0 48 48"><path d="M21 27a7 7 0 0010 0l6-6a7 7 0 00-10-10l-2 2M27 21a7 7 0 00-10 0l-6 6a7 7 0 0010 10l2-2" /></symbol>
+        <symbol id="i-filter" viewBox="0 0 48 48"><path d="M7 9h34L28 26v13l-8-4v-9z" /></symbol>
+        <symbol id="i-check" viewBox="0 0 48 48"><path d="M10 25l9 9 19-20" /></symbol>
+        <symbol id="i-globe" viewBox="0 0 48 48"><circle cx="24" cy="24" r="17" /><path d="M7 24h34M24 7c5 5 7 11 7 17s-2 12-7 17c-5-5-7-11-7-17s2-12 7-17z" /></symbol>
+        <symbol id="i-pin" viewBox="0 0 48 48"><path d="M24 42s13-12 13-22a13 13 0 00-26 0c0 10 13 22 13 22z" /><circle cx="24" cy="20" r="5" /></symbol>
+        <symbol id="i-edit" viewBox="0 0 48 48"><path d="M30 9l9 9-21 21H9v-9zM26 13l9 9" /></symbol>
+        <symbol id="i-download" viewBox="0 0 48 48"><path d="M24 8v22M15 22l9 9 9-9M9 40h30" /></symbol>
+        <symbol id="i-text" viewBox="0 0 48 48"><path d="M10 12h28M10 20h28M10 28h22M10 36h14" /></symbol>
+        <symbol id="i-flask" viewBox="0 0 48 48"><path d="M19 7h10M21 7v12L10 38a3 3 0 003 4h22a3 3 0 003-4L27 19V7M15 30h18" /></symbol>
+        <symbol id="i-x" viewBox="0 0 48 48"><path d="M15 15l18 18M33 15L15 33" /></symbol>
+        <symbol id="i-chat" viewBox="0 0 48 48"><path d="M8 11h32v21H22l-9 8v-8H8z" /><path d="M16 19h16M16 25h10" /></symbol>
+        <symbol id="i-terminal" viewBox="0 0 48 48"><rect x="6" y="9" width="36" height="30" rx="4" /><path d="M14 19l6 5-6 5M24 31h10" /></symbol>
+        <symbol id="i-image" viewBox="0 0 48 48"><rect x="7" y="10" width="34" height="28" rx="4" /><circle cx="17" cy="19" r="3" /><path d="M7 33l10-9 8 7 6-5 10 8" /></symbol>
+        <symbol id="i-coin" viewBox="0 0 48 48"><circle cx="24" cy="24" r="16" /><path d="M29 18c-1-2-3-3-5-3-3 0-5 2-5 4 0 6 11 3 11 9 0 3-3 5-6 5s-5-1-6-3M24 11v4M24 33v4" /></symbol>
+        <symbol id="i-folder" viewBox="0 0 48 48"><path d="M6 13h13l4 5h19v20H6z" /></symbol>
+        <symbol id="i-moon" viewBox="0 0 48 48"><path d="M36 30A15 15 0 0118 12a15 15 0 1018 18z" /></symbol>
+        <symbol id="i-cpu" viewBox="0 0 48 48"><rect x="13" y="13" width="22" height="22" rx="3" /><path d="M19 7v6M29 7v6M19 35v6M29 35v6M7 19h6M7 29h6M35 19h6M35 29h6M20 20h8v8h-8z" /></symbol>
+        <symbol id="i-bolt" viewBox="0 0 48 48"><path d="M27 6L12 27h11l-2 15 15-21H25z" /></symbol>
+        <symbol id="i-stop" viewBox="0 0 48 48"><circle cx="24" cy="24" r="16" /><rect x="18" y="18" width="12" height="12" rx="1" /></symbol>
+        <symbol id="i-access" viewBox="0 0 48 48"><circle cx="24" cy="9" r="4" /><path d="M10 17l14 3 14-3M24 20v9l-6 12M24 29l6 12" /></symbol>
+        <symbol id="i-chevron" viewBox="0 0 20 28"><path d="M4 4l10 10-10 10" /></symbol>
+      </defs>
+    </svg>
+
+    <main class="stage" id="stage" aria-label="Presentación DotNextAI">
+      <!-- Intro: the coat of arms is drawn, filled and reveals the logo with a mask (Brand Book p.127) -->
+      <div class="intro" id="intro" hidden aria-hidden="true">
+        <svg viewBox="0 0 514.51 133.40">
+          <g class="wordmark">
+            <path fill="#515455" d="M156.97 118.20C170.43 116.11 170.21 112.63 170.21 98.69L170.21 35.96C170.21 21.32 171.14 16.45 160.51 14.36C160.51 14.36 158.25 13.97 158.25 12.07C158.25 10.17 158.26 10.17 158.26 10.17L230.21 10.17C230.21 10.17 232.29 10.10 232.57 12.39C232.84 14.69 235.20 34.34 235.40 35.96C235.60 37.58 231.86 37.36 231.86 37.36C226.19 22.72 218.39 17.84 207.06 17.14L185.09 16.25L185.09 61.50L202.10 61.05C215.56 60.53 218.39 60.48 220.52 49.33C220.52 49.33 220.75 47.11 222.41 47.11L224.06 47.11L224.06 83.35L222.41 83.35C220.71 83.35 220.52 81.14 220.52 81.14C218.39 68.59 215.56 69.24 202.10 68.72L185.09 68.24L185.09 98.69C185.09 111.58 188.63 115.42 203.51 115.42C221.23 115.42 229.73 109.84 238.24 92.42C238.24 92.42 242.17 92.21 241.78 93.81C241.38 95.41 235.40 117.95 234.69 120.16C233.99 122.38 230.21 122.38 230.21 122.38L154.71 122.38C154.71 122.38 154.71 122.37 154.71 120.29C154.71 118.21 156.97 118.20 156.97 118.20Z" />
+            <path fill="#515455" d="M292.05 66.94C287.80 67.07 281.32 66.84 276.85 65.11L276.85 17.35C296.86 17.57 310.03 22.55 312.28 41.72C313.42 51.41 306.73 66.46 292.05 66.94M512.25 14.36C512.25 14.36 514.51 13.97 514.51 12.07L514.51 10.17L466.73 10.17L466.70 10.17L423.27 10.17L423.27 12.07C423.27 13.96 425.53 14.36 425.53 14.36C438.99 16.45 440.01 19.06 440.19 33.17L439.47 96.12C439.47 96.12 376.94 12.39 376.13 11.28C375.32 10.17 373.66 10.17 373.66 10.17L346.96 10.17L346.96 12.07C346.96 13.79 349.22 14.36 349.22 14.36C363.75 19.41 363.97 22.02 363.97 41.71L363.97 42.23L363.75 99.38C363.43 113.91 359.47 117.26 353.24 117.26C330.24 117.26 304.25 70.39 304.25 70.39C311.89 66.94 326.62 56.93 326.62 39.13C326.62 20.75 313.08 10.18 294.66 10.18C285.45 10.18 249.31 10.18 249.31 10.18L249.31 12.07C249.31 13.77 251.57 14.35 251.57 14.35C262.90 18.54 261.97 22.72 261.97 36.66L261.97 98.56C261.97 112.50 262.19 115.99 248.02 118.08C248.02 118.08 245.77 118.33 245.77 120.29L245.77 122.26L293.77 122.26L293.77 120.29C293.77 118.32 291.52 118.08 291.52 118.08C276.64 115.99 276.85 113.20 276.85 98.56L276.85 74.17C282.51 75.27 291.26 74.36 291.26 74.36C304.61 96.31 312.61 110.88 322.86 117.54C332.30 123.66 339.88 122.38 361.49 122.38L393.51 122.38L393.51 120.29C393.51 118.40 391.25 118.20 391.25 118.20C377.79 115.42 374.56 114.02 374.38 99.38L373.67 32.56C373.67 32.56 440.42 120.90 441.26 121.99C442.09 123.07 443.55 123.09 443.55 123.09L445.92 123.08C445.92 123.08 448.00 123.09 448.00 120.85C448.00 119.78 449.31 32.48 449.31 32.48C449.66 18.54 454.67 14.36 466.73 14.36C478.79 14.36 483.42 19.94 483.42 33.17L483.42 98.69C483.42 112.63 483.64 116.11 469.47 118.20C469.47 118.20 467.21 118.43 467.21 120.29L467.21 122.38L514.51 122.38L514.51 120.29C514.51 118.38 512.25 118.20 512.25 118.20C498.08 116.11 498.30 112.45 498.30 98.69L498.30 33.17C498.30 19.58 498.25 16.62 512.25 14.36Z" />
+          </g>
+          <g class="coat">
+            <g class="coat-fill">
+              <path fill="#033778" d="M95.28 53.32C97.47 50.44 99.01 46.62 99.75 42.96C101.73 33.06 94.82 26.06 85.56 28.57C82.33 29.45 78.97 31.16 76.56 33.50C66.26 43.49 63.22 55.31 63.65 71.69C75.94 68.08 87.35 63.78 95.28 53.32Z" />
+              <path fill="#ffffff" d="M87.28 96.73C72.35 96.87 65.04 90.05 64.02 78.17C64.02 78.17 83.54 71.52 89.21 68.94C89.73 68.71 90.24 68.48 90.76 68.24C100.68 63.51 109.18 56.63 114.15 45.91C120.12 33.02 115.43 18.39 103.74 13.77C96.75 11.01 89.78 11.83 82.97 14.05C66.70 19.35 54.02 29.72 44.74 44.58C36.36 57.99 32.02 72.58 35.51 89.07C38.21 101.85 47.15 110.86 59.48 112.47C72.32 114.14 88.41 111.93 101.74 106.07C106.35 100.80 110.28 95.03 113.49 88.74C114.94 85.90 116.21 83.01 117.33 80.07C113.74 88.91 97.46 96.21 87.28 96.73M76.56 33.50C78.97 31.16 82.33 29.45 85.56 28.57C94.82 26.06 101.73 33.06 99.75 42.96C99.01 46.62 97.47 50.44 95.28 53.32C87.35 63.78 75.94 68.08 63.65 71.69C63.22 55.31 66.26 43.49 76.56 33.50Z" />
+              <path fill="#033778" d="M22.31 79.72C19.37 80.45 17.58 83.38 18.32 86.28C19.06 89.17 22.04 90.93 24.98 90.20C27.92 89.48 29.71 86.55 28.98 83.65C28.24 80.76 25.26 79.00 22.31 79.72Z" />
+              <path fill="#ffffff" d="M24.98 90.20C27.83 89.50 29.59 86.72 29.03 83.92C29.01 83.83 29.00 83.74 28.98 83.65C28.24 80.76 25.26 79.00 22.31 79.72C19.74 80.36 18.05 82.68 18.16 85.19C18.18 85.55 18.23 85.91 18.32 86.28C19.06 89.17 22.04 90.93 24.98 90.20Z" />
+              <path fill="#033778" d="M24.98 90.20C22.04 90.93 19.06 89.17 18.32 86.28C17.58 83.38 19.37 80.45 22.31 79.72C25.26 79.00 28.24 80.76 28.98 83.65C29.71 86.55 27.92 89.48 24.98 90.20M125.15 10.24C125.15 9.75 124.93 9.56 124.49 9.43C123.17 9.04 121.88 8.60 120.56 8.21C109.76 5.00 98.76 2.72 87.54 1.40C80.40 0.55 69.82 0.08 62.63 0.00L62.63 0.00C55.44 0.08 44.86 0.55 37.72 1.40C26.51 2.72 15.50 5.00 4.70 8.21C3.38 8.60 2.09 9.04 0.78 9.43C0.34 9.56 0.11 9.75 0.11 10.24C0.10 18.03 0.00 25.82 0.08 33.61C0.12 37.65 0.42 41.68 0.71 45.70C1.22 52.70 2.23 59.64 3.81 66.49C5.60 74.20 8.15 81.65 11.77 88.74C16.82 98.63 23.64 107.21 32.04 114.62C40.68 122.23 51.73 128.23 62.11 133.29C62.26 133.36 62.43 133.40 62.60 133.40L62.66 133.40C62.83 133.40 63.00 133.36 63.15 133.29C73.53 128.23 84.58 122.23 93.22 114.62C96.27 111.92 99.12 109.08 101.74 106.07C97.35 108.00 92.66 109.52 87.89 110.65C78.44 112.89 68.66 113.55 60.21 112.55C59.97 112.52 59.72 112.50 59.48 112.47C59.04 112.41 58.62 112.32 58.19 112.25C46.53 110.19 38.11 101.39 35.51 89.07C33.55 79.80 34.06 71.12 36.38 62.92C38.18 56.54 41.07 50.44 44.73 44.58C50.84 34.81 58.42 26.99 67.52 21.27C70.05 19.68 72.70 18.25 75.46 16.99C77.88 15.88 80.37 14.90 82.97 14.05C83.73 13.80 84.49 13.58 85.26 13.37C90.94 11.80 96.71 11.37 102.51 13.32C102.92 13.46 103.33 13.61 103.74 13.77C115.42 18.39 120.12 33.02 114.15 45.91C109.18 56.64 100.68 63.51 90.76 68.24C90.32 68.45 89.85 68.66 89.35 68.88C89.30 68.90 89.26 68.92 89.21 68.94C83.54 71.52 64.02 78.17 64.02 78.17C64.34 81.88 65.27 85.10 66.86 87.77C70.35 93.63 77.01 96.82 87.28 96.73C87.51 96.71 87.76 96.70 88.00 96.68C88.08 96.67 88.17 96.67 88.25 96.66C88.28 96.66 88.31 96.65 88.33 96.65C98.54 95.71 113.86 88.61 117.33 80.07C117.33 80.08 117.32 80.09 117.32 80.10C117.32 80.09 117.33 80.08 117.33 80.07C119.02 75.65 120.38 71.12 121.45 66.49C123.03 59.64 124.04 52.70 124.55 45.70C124.84 41.68 125.14 37.65 125.18 33.61C125.26 25.82 125.16 18.03 125.15 10.24Z" />
+            </g>
+            <path class="shield-stroke" pathLength="1" d="M24.98 90.20C22.04 90.93 19.06 89.17 18.32 86.28C17.58 83.38 19.37 80.45 22.31 79.72C25.26 79.00 28.24 80.76 28.98 83.65C29.71 86.55 27.92 89.48 24.98 90.20M125.15 10.24C125.15 9.75 124.93 9.56 124.49 9.43C123.17 9.04 121.88 8.60 120.56 8.21C109.76 5.00 98.76 2.72 87.54 1.40C80.40 0.55 69.82 0.08 62.63 0.00L62.63 0.00C55.44 0.08 44.86 0.55 37.72 1.40C26.51 2.72 15.50 5.00 4.70 8.21C3.38 8.60 2.09 9.04 0.78 9.43C0.34 9.56 0.11 9.75 0.11 10.24C0.10 18.03 0.00 25.82 0.08 33.61C0.12 37.65 0.42 41.68 0.71 45.70C1.22 52.70 2.23 59.64 3.81 66.49C5.60 74.20 8.15 81.65 11.77 88.74C16.82 98.63 23.64 107.21 32.04 114.62C40.68 122.23 51.73 128.23 62.11 133.29C62.26 133.36 62.43 133.40 62.60 133.40L62.66 133.40C62.83 133.40 63.00 133.36 63.15 133.29C73.53 128.23 84.58 122.23 93.22 114.62C96.27 111.92 99.12 109.08 101.74 106.07C97.35 108.00 92.66 109.52 87.89 110.65C78.44 112.89 68.66 113.55 60.21 112.55C59.97 112.52 59.72 112.50 59.48 112.47C59.04 112.41 58.62 112.32 58.19 112.25C46.53 110.19 38.11 101.39 35.51 89.07C33.55 79.80 34.06 71.12 36.38 62.92C38.18 56.54 41.07 50.44 44.73 44.58C50.84 34.81 58.42 26.99 67.52 21.27C70.05 19.68 72.70 18.25 75.46 16.99C77.88 15.88 80.37 14.90 82.97 14.05C83.73 13.80 84.49 13.58 85.26 13.37C90.94 11.80 96.71 11.37 102.51 13.32C102.92 13.46 103.33 13.61 103.74 13.77C115.42 18.39 120.12 33.02 114.15 45.91C109.18 56.64 100.68 63.51 90.76 68.24C90.32 68.45 89.85 68.66 89.35 68.88C89.30 68.90 89.26 68.92 89.21 68.94C83.54 71.52 64.02 78.17 64.02 78.17C64.34 81.88 65.27 85.10 66.86 87.77C70.35 93.63 77.01 96.82 87.28 96.73C87.51 96.71 87.76 96.70 88.00 96.68C88.08 96.67 88.17 96.67 88.25 96.66C88.28 96.66 88.31 96.65 88.33 96.65C98.54 95.71 113.86 88.61 117.33 80.07C117.33 80.08 117.32 80.09 117.32 80.10C117.32 80.09 117.33 80.08 117.33 80.07C119.02 75.65 120.38 71.12 121.45 66.49C123.03 59.64 124.04 52.70 124.55 45.70C124.84 41.68 125.14 37.65 125.18 33.61C125.26 25.82 125.16 18.03 125.15 10.24Z" />
+          </g>
+        </svg>
+      </div>
+
+      <!-- 01 · Cover (Brand Book p.104) -->
+      <section class="slide cover" data-title="DotNextAI">
+        <div class="logo-wrap" data-a="fade">
+          <svg class="logo" viewBox="0 0 514.51 133.40" role="img" aria-label="ERNI"><use href="#erni-logo" /></svg>
+        </div>
+        <div class="cover-text">
+          <h1 class="h1" data-a="wipe" style="--d: 1">DotNextAI</h1>
+          <p class="h2" data-a="up" style="--d: 4">La arquitectura de un chatbot con LLM en .NET: Microsoft Agent Framework, el proxy de ERNI y cómo se compara con LangChain.</p>
+          <p class="meta min" data-a="up" style="--d: 6">
+            <span>Presentación técnica</span><span>ERNI Academy</span><span>Noviembre 2026</span>
+          </p>
+        </div>
+        <div class="abstract" data-abstract data-w="917" data-h="1080" data-seed="11">
+          <span class="vertical-claim">Swiss Software Engineering</span>
+        </div>
+      </section>
+
+      <!-- 02 · Index (Brand Book p.106) -->
+      <section class="slide index" data-title="Índice">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <div class="abstract" data-abstract data-w="822" data-h="1080" data-seed="33"></div>
+        <h2 class="h1 title" data-a="wipe">Índice</h2>
+        <ol class="toc">
+          <li data-a="up" style="--d: 2"><span class="n">01</span><span class="t">Producto</span></li>
+          <li data-a="up" style="--d: 3"><span class="n">02</span><span class="t">Arquitectura</span></li>
+          <li data-a="up" style="--d: 4"><span class="n">03</span><span class="t">Microsoft Agent Framework</span></li>
+          <li data-a="up" style="--d: 5"><span class="n">04</span><span class="t">Agent Framework y LangChain</span></li>
+          <li data-a="up" style="--d: 6"><span class="n">05</span><span class="t">Stack y calidad</span></li>
+          <li data-a="up" style="--d: 7"><span class="n">06</span><span class="t">Roadmap</span></li>
+        </ol>
+      </section>
+
+      <!-- Section 01 -->
+      <section class="slide slide--blue section" data-title="01 · Producto">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <div class="sec-num" data-a="rise" style="--d: 2">01</div>
+        <h2 class="h1 title" data-a="wipe" style="--d: 3">Producto</h2>
+        <div class="sec-line" data-a="line" style="--d: 4"></div>
+        <p class="sec-desc b1" data-a="up" style="--d: 6">Qué es DotNextAI, en dos minutos.</p>
+      </section>
+
+      <!-- Quote (Brand Book p.122) -->
+      <section class="slide slide--lblue quote" data-title="La pregunta clave">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <div class="quote-box">
+          <div class="qline" data-a="line" style="--d: 1"></div>
+          <p class="h2" data-a="up" style="--d: 3">
+            “El curso proponía Python y LangChain. ¿Cómo sería el mismo chatbot en .NET, con Microsoft Agent Framework?”
+          </p>
+          <p class="b2" data-a="up" style="--d: 5">
+            DotNextAI es el ejercicio «Project 1: Basic LLM Chatbot App» de ERNI, resuelto paso a paso con .NET 10 y el ecosistema de IA de Microsoft.
+          </p>
+          <div class="qline" data-a="line" style="--d: 6"></div>
+        </div>
+      </section>
+
+      <!-- What it is (Brand Book p.109) -->
+      <section class="slide" data-title="Un chatbot completo">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Un chatbot completo</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Un asistente con LLM en la web y en la terminal, sobre el proxy LiteLLM de ERNI.
+        </p>
+        <div class="body pillars">
+          <article class="pillar" data-a="up" style="--d: 4">
+            <svg class="icon"><use href="#i-chat" /></svg>
+            <h3 class="b1 blue">Preguntar</h3>
+            <p class="b2 muted">Respuestas en streaming, con todo el historial y el modelo que elijas.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 5">
+            <span class="vsep" data-a="vline" style="--d: 5"></span>
+            <svg class="icon"><use href="#i-database" /></svg>
+            <h3 class="b1 blue">Recordar</h3>
+            <p class="b2 muted">Cada chat se guarda solo, se ordena en carpetas y se reabre con un enlace.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 6">
+            <span class="vsep" data-a="vline" style="--d: 6"></span>
+            <svg class="icon"><use href="#i-image" /></svg>
+            <h3 class="b1 blue">Ver y crear</h3>
+            <p class="b2 muted">Imágenes como parte de la pregunta, y generación de imágenes con gpt-image-2.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 7">
+            <span class="vsep" data-a="vline" style="--d: 7"></span>
+            <svg class="icon"><use href="#i-coin" /></svg>
+            <h3 class="b1 blue">Medir</h3>
+            <p class="b2 muted">Tokens y coste de cada respuesta y de la conversación entera.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- The chat, as it looks -->
+      <section class="slide" data-title="Así se ve DotNextAI">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Así se ve DotNextAI</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">Al abrir la aplicación ya estás en un chat nuevo. Todo lo demás está a un clic.</p>
+        <div class="body cols">
+          <div class="chatmock" data-a="up" style="--d: 3" aria-hidden="true">
+            <div class="side">
+              <span class="k-label">Espacio de trabajo</span>
+              <span class="nav-item on"><svg class="icon"><use href="#i-chat" /></svg>Chat</span>
+              <span class="nav-item"><svg class="icon"><use href="#i-image" /></svg>Imágenes</span>
+              <span class="k-label">Chats guardados</span>
+              <span class="folder">Trabajo</span>
+              <span class="saved">Plan del offsite</span>
+              <span class="saved">Revisión de código</span>
+              <span class="folder">Sin carpeta</span>
+              <span class="saved">Haiku sobre .NET</span>
+            </div>
+            <div class="main">
+              <div class="bar"><span class="h">Chat</span><span class="picker">gpt-6-luna (predeterminado)</span></div>
+              <div class="log">
+                <div class="msg-u">
+                  <span class="who"><b>Tú</b></span>
+                  <span class="bubble">Explícame qué es un LLM en dos frases.</span>
+                </div>
+                <div class="msg-a">
+                  <span class="who"><b>DotNextAI</b>gpt-6-luna · 1200 de entrada · 34 de salida · <span class="cost">0,00014 US$</span></span>
+                  <span class="bubble">Un modelo entrenado con muchísimo texto para predecir la siguiente palabra. Así puede responder, resumir o traducir.</span>
+                </div>
+                <div class="msg-u">
+                  <span class="who"><b>Tú</b></span>
+                  <span class="bubble">¿Y cómo llega tu respuesta hasta aquí?</span>
+                </div>
+                <div class="msg-a">
+                  <span class="who"><b>DotNextAI</b>gpt-6-luna</span>
+                  <span class="bubble">Pasa por un agente de Agent Framework y el proxy LiteLLM<span class="caret"></span></span>
+                </div>
+              </div>
+              <div class="foot">
+                <span class="total">Esta conversación: 2600 tokens (2500 de entrada · 100 de salida) en 2 respuestas. <b>Coste: 0,00030 US$</b></span>
+                <span class="input">Tu pregunta<span class="send">Parar</span></span>
+              </div>
+            </div>
+          </div>
+          <ul class="bullets">
+            <li data-a="right" style="--d: 4">El <strong>chat es la página de inicio</strong>: <code>/</code> abre una conversación nueva y <code>/?c=&lt;id&gt;</code> una guardada.</li>
+            <li data-a="right" style="--d: 5">Los <strong>chats guardados</strong> viven en el menú lateral, en carpetas.</li>
+            <li data-a="right" style="--d: 6">El <strong>selector de modelo</strong> se recuerda entre sesiones.</li>
+            <li data-a="right" style="--d: 7">Cada respuesta muestra su <strong>modelo, tokens y coste</strong>, y la conversación su total.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- The ten course steps -->
+      <section class="slide" data-title="Diez pasos, de la terminal a la web">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Diez pasos, de la terminal a la web</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">El backlog del curso, en tres fases. Cada paso suma algo a la web, a la terminal y a la API a la vez.</p>
+        <div class="body">
+          <div class="backlog">
+            <div class="phase" data-a="up" style="--d: 3">
+              <span class="k-label">Fase 1 · Bases del backend</span>
+              <ol>
+                <li><span class="sn">01</span><span>Preguntas en terminal<span class="sd">La primera llamada al proxy</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+                <li><span class="sn">02</span><span>Agent Framework<span class="sd">En el curso, LangChain; aquí, Agent Framework</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+                <li><span class="sn">03</span><span>Historial del chat<span class="sd">Conversaciones de varios turnos</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+                <li><span class="sn">04</span><span>API<span class="sd"><code>POST /api/chat</code></span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+              </ol>
+            </div>
+            <div class="phase" data-a="up" style="--d: 5">
+              <span class="k-label">Fase 2 · Aplicación web</span>
+              <ol>
+                <li><span class="sn">05</span><span>Interfaz web<span class="sd">Next.js y Fluent UI con la marca ERNI</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+                <li><span class="sn">06</span><span>Imágenes de entrada<span class="sd">Adjuntar o pegar una captura</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+                <li><span class="sn">07</span><span>Streaming<span class="sd">El texto aparece mientras se escribe</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+              </ol>
+            </div>
+            <div class="phase" data-a="up" style="--d: 7">
+              <span class="k-label">Fase 3 · Funciones extra</span>
+              <ol>
+                <li><span class="sn">08</span><span>Selector de modelo<span class="sd">Los modelos de chat del proxy</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+                <li><span class="sn">09</span><span>Generación de imágenes<span class="sd">gpt-image-2, con galería</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+                <li><span class="sn">10</span><span>Métricas de tokens<span class="sd">Por llamada y por conversación</span></span><svg class="ok" viewBox="0 0 48 48"><use href="#i-check" /></svg></li>
+              </ol>
+            </div>
+          </div>
+          <p class="backlog-note min muted" data-a="fade" style="--d: 10">
+            Los diez pasos se entregaron el 16 de noviembre de 2026. Después llegaron los chats guardados, las carpetas, el chat como página de inicio y el coste por conversación.
+          </p>
+        </div>
+      </section>
+
+      <!-- Section 02 -->
+      <section class="slide slide--blue section" data-title="02 · Arquitectura">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <div class="sec-num" data-a="rise" style="--d: 2">02</div>
+        <h2 class="h1 title" data-a="wipe" style="--d: 3">Arquitectura</h2>
+        <div class="sec-line" data-a="line" style="--d: 4"></div>
+        <p class="sec-desc b1" data-a="up" style="--d: 6">Componentes, capas, proyectos y el viaje de una pregunta.</p>
+      </section>
+
+      <!-- Three front ends (Brand Book p.116) -->
+      <section class="slide" data-title="Tres puertas, un mismo agente">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Tres puertas, un mismo agente</h2>
+        <p class="roles-note b2 muted" data-a="up" style="--d: 2">
+          Las tres comparten el mismo servicio de chat: un agente de Microsoft Agent Framework sobre el proxy LiteLLM de ERNI.
+          Ninguna habla directamente con un proveedor de modelos.
+        </p>
+        <div class="role-list">
+          <article class="role" data-a="right" style="--d: 3">
+            <svg class="icon"><use href="#i-globe" /></svg>
+            <div>
+              <h3 class="b1 blue">Aplicación web</h3>
+              <p class="b2">El chat es la página de inicio: chats guardados en carpetas, imágenes, selector de modelo, tokens y coste. En inglés o español, con tema claro u oscuro.</p>
+            </div>
+          </article>
+          <article class="role" data-a="right" style="--d: 5">
+            <svg class="icon"><use href="#i-terminal" /></svg>
+            <div>
+              <h3 class="b1 blue">Terminal · <code>dotnextai</code></h3>
+              <p class="b2">Chat con historial, <code>ask</code>, <code>image</code> y <code>models</code>. Las respuestas van a stdout y el resto a stderr, así que se puede encadenar con pipes.</p>
+            </div>
+          </article>
+          <article class="role" data-a="right" style="--d: 7">
+            <svg class="icon"><use href="#i-code" /></svg>
+            <div>
+              <h3 class="b1 blue">API REST</h3>
+              <p class="b2">17 endpoints documentados con OpenAPI: chat con streaming, modelos, imágenes y chats guardados.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Component architecture -->
+      <section class="slide" data-title="Arquitectura de componentes">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Arquitectura de componentes</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Web en Next.js y API en .NET, en local. La terminal usa el mismo agente, y todo modelo pasa por el proxy de ERNI.
+        </p>
+        <div class="body">
+          <div class="diagram arch">
+            <div class="group" data-a="fade" style="--d: 3; left: 280px; width: 990px; height: 564px">
+              <span class="min muted">En local · <code>./scripts/dev.sh</code></span>
+            </div>
+            <svg class="edges" viewBox="0 0 1812 564" aria-hidden="true">
+              <path d="M220 160H296" pathLength="1" data-a="draw" style="--d: 8" />
+              <path class="head" d="M286 153l12 7-12 7z" data-a="fade" style="--d: 11" />
+              <path d="M680 160H776" pathLength="1" data-a="draw" style="--d: 10" />
+              <path class="head" d="M766 153l12 7-12 7z" data-a="fade" style="--d: 13" />
+              <path d="M1250 140H1346" pathLength="1" data-a="draw" style="--d: 12" />
+              <path class="head" d="M1336 133l12 7-12 7z" data-a="fade" style="--d: 15" />
+              <path d="M1015 340V416" pathLength="1" data-a="draw" style="--d: 14" />
+              <path class="head" d="M1008 406l7 12 7-12z" data-a="fade" style="--d: 17" />
+              <path d="M1581 240V326" pathLength="1" data-a="draw" style="--d: 15" />
+              <path class="head" d="M1574 316l7 12 7-12z" data-a="fade" style="--d: 18" />
+              <path class="dash" d="M680 385H1305V205H1346" data-a="fade" style="--d: 17" />
+              <path class="head" d="M1336 198l12 7-12 7z" data-a="fade" style="--d: 19" />
+              <path class="flow" d="M220 160H296" />
+              <path class="flow" d="M680 160H776" />
+              <path class="flow" d="M1250 140H1346" />
+              <path class="flow" d="M1015 340V416" />
+              <path class="flow" d="M1581 240V326" />
+            </svg>
+            <div style="left: 0; top: 90px; width: 220px; height: 140px; --d: 4" class="node" data-a="scale">
+              <svg class="icon"><use href="#i-globe" /></svg><span class="nt">Navegador</span>
+            </div>
+            <div style="left: 300px; top: 44px; width: 380px; height: 232px; --d: 5" class="node" data-a="scale">
+              <span class="nt">Next.js 16 · web</span>
+              <span>App Router y Fluent UI v9</span>
+              <span>Inglés y español</span>
+              <span>Chats guardados en el menú</span>
+              <span class="min muted">Puerto 3030</span>
+            </div>
+            <div style="left: 300px; top: 326px; width: 380px; height: 190px; --d: 6" class="node" data-a="scale">
+              <svg class="icon"><use href="#i-terminal" /></svg>
+              <span class="nt">dotnextai · CLI</span>
+              <span><code>chat</code> · <code>ask</code> · <code>image</code> · <code>models</code></span>
+            </div>
+            <div style="left: 780px; top: 44px; width: 470px; height: 296px; --d: 7" class="node node--fill" data-a="scale">
+              <span class="nt">ASP.NET Core · .NET 10</span>
+              <span>Minimal API con OpenAPI</span>
+              <span>Agente de Agent Framework</span>
+              <span>Streaming con Server-Sent Events</span>
+              <span>Catálogo de modelos y precios</span>
+              <span class="min">Puerto 5100</span>
+            </div>
+            <div style="left: 780px; top: 420px; width: 470px; height: 120px; --d: 16" class="node" data-a="scale">
+              <svg class="icon"><use href="#i-database" /></svg><span class="nt">SQLite · EF Core 10</span>
+            </div>
+            <div style="left: 1350px; top: 40px; width: 462px; height: 200px; --d: 8" class="node" data-a="scale">
+              <svg class="icon"><use href="#i-cloud" /></svg>
+              <span class="nt">Proxy LiteLLM de ERNI</span>
+              <span class="min muted">API compatible con OpenAI · precios en <code>model/info</code></span>
+            </div>
+            <div style="left: 1350px; top: 330px; width: 462px; height: 186px; --d: 17" class="node node--fill" data-a="scale">
+              <svg class="icon"><use href="#i-sparkle" /></svg>
+              <span class="nt">Modelos</span>
+              <span class="min">gpt-6-luna · terra · sol · astra · gpt-image-2</span>
+            </div>
+            <span style="left: 690px; top: 120px; --d: 13" class="edge-label" data-a="fade">REST + SSE</span>
+            <span style="left: 1282px; top: 100px; --d: 15" class="edge-label" data-a="fade">HTTPS</span>
+            <span style="left: 1030px; top: 348px; --d: 17" class="edge-label" data-a="fade">chats y carpetas</span>
+            <span style="left: 700px; top: 394px; --d: 19" class="edge-label" data-a="fade">en proceso, el mismo agente</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Layers -->
+      <section class="slide" data-title="Capas limpias">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Capas limpias</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">Las dependencias apuntan hacia dentro: Application no depende de nada.</p>
+        <div class="body cols">
+          <svg class="onion" viewBox="0 0 890 564" aria-hidden="true">
+            <circle class="ring" cx="445" cy="282" r="272" fill="#efefef" data-a="scale" style="--d: 7" />
+            <circle class="ring" cx="445" cy="282" r="190" fill="#00aadb" data-a="scale" style="--d: 5" />
+            <circle class="ring" cx="445" cy="282" r="108" fill="#033778" data-a="scale" style="--d: 3" />
+            <path d="M173 282H255M635 282H717" stroke="#ffffff" stroke-width="4" data-a="fade" style="--d: 8" />
+            <g class="inward" data-a="fade" style="--d: 10">
+              <path d="M262.6 99.6L300.8 137.8M288.8 137.8H300.8V125.8M627.4 99.6L589.2 137.8M601.2 137.8H589.2V125.8M262.6 464.4L300.8 426.2M288.8 426.2H300.8V438.2M627.4 464.4L589.2 426.2M601.2 426.2H589.2V438.2" />
+              <path class="w" d="M320.5 157.5L354.5 191.5M342.5 191.5H354.5V179.5M569.5 157.5L535.5 191.5M547.5 191.5H535.5V179.5M320.5 406.5L354.5 372.5M342.5 372.5H354.5V384.5M569.5 406.5L535.5 372.5M547.5 372.5H535.5V384.5" />
+            </g>
+            <text x="445" y="60" class="ol" text-anchor="middle">Api</text>
+            <text x="445" y="522" class="ol" text-anchor="middle">Cli</text>
+            <text x="445" y="146" class="ol" text-anchor="middle">Infrastructure</text>
+            <text x="445" y="440" class="ol" text-anchor="middle">Persistence</text>
+            <text x="445" y="290" class="ol ol--white" text-anchor="middle">Application</text>
+          </svg>
+          <div class="layers layers--5">
+            <div class="layer" data-a="right" style="--d: 4">
+              <span class="sw" style="background: #efefef"></span>
+              <div><h3 class="b2 semi blue">Api</h3><p class="min">Endpoints Minimal API, errores como ProblemDetails, streaming y límites de uso.</p></div>
+            </div>
+            <div class="layer" data-a="right" style="--d: 5">
+              <span class="sw" style="background: #efefef"></span>
+              <div><h3 class="b2 semi blue">Cli</h3><p class="min">Los comandos de la terminal, sobre los mismos servicios que la API.</p></div>
+            </div>
+            <div class="layer" data-a="right" style="--d: 6">
+              <span class="sw" style="background: #00aadb"></span>
+              <div><h3 class="b2 semi blue">Infrastructure</h3><p class="min">El agente, el cliente del proxy, el catálogo de modelos y los precios.</p></div>
+            </div>
+            <div class="layer" data-a="right" style="--d: 7">
+              <span class="sw" style="background: #00aadb"></span>
+              <div><h3 class="b2 semi blue">Persistence</h3><p class="min">EF Core 10 y SQLite: chats, carpetas, imágenes y migraciones.</p></div>
+            </div>
+            <div class="layer" data-a="right" style="--d: 8">
+              <span class="sw" style="background: #033778"></span>
+              <div><h3 class="b2 semi blue">Application</h3><p class="min">Contratos, reglas del chat y conversaciones, sin ningún SDK.</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Projects and references -->
+      <section class="slide" data-title="Proyectos y referencias">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Proyectos y referencias</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Cinco proyectos .NET. Cada SDK vive en un solo sitio, y el centro no conoce a ninguno.
+        </p>
+        <div class="body">
+          <div class="diagram">
+            <svg class="edges" viewBox="0 0 1812 564" aria-hidden="true">
+              <defs>
+                <marker id="mh" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path class="head-m" d="M0 1L12 6L0 11z" /></marker>
+                <marker id="mh-soft" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="14" markerHeight="14" markerUnits="userSpaceOnUse" orient="auto"><path class="head-m soft" d="M0 1L12 6L0 11z" /></marker>
+              </defs>
+              <path d="M240 60H952" marker-end="url(#mh)" pathLength="1" data-a="draw" style="--d: 9" />
+              <path d="M240 504H952" marker-end="url(#mh)" pathLength="1" data-a="draw" style="--d: 10" />
+              <path d="M200 126L518 232" marker-end="url(#mh)" pathLength="1" data-a="draw" style="--d: 11" />
+              <path d="M200 438L518 332" marker-end="url(#mh)" pathLength="1" data-a="draw" style="--d: 12" />
+              <path d="M1000 126L682 232" marker-end="url(#mh)" pathLength="1" data-a="draw" style="--d: 13" />
+              <path d="M1000 438L682 332" marker-end="url(#mh)" pathLength="1" data-a="draw" style="--d: 14" />
+              <path class="soft dash" d="M240 100C380 100 380 400 500 400H850C930 400 930 470 950 470" marker-end="url(#mh-soft)" data-a="fade" style="--d: 16" />
+            </svg>
+            <div style="left: 0; top: 30px; width: 240px; height: 96px; --d: 3" class="node" data-a="scale"><span class="nt">Api</span><span class="min muted">Minimal API</span></div>
+            <div style="left: 0; top: 438px; width: 240px; height: 96px; --d: 4" class="node" data-a="scale"><span class="nt">Cli</span><span class="min muted">System.CommandLine</span></div>
+            <div style="left: 470px; top: 234px; width: 260px; height: 96px; --d: 5" class="node node--fill" data-a="scale"><span class="nt">Application</span><span class="min">sin dependencias</span></div>
+            <div style="left: 960px; top: 30px; width: 240px; height: 96px; --d: 6" class="node" data-a="scale"><span class="nt">Persistence</span><span class="min muted">EF Core · SQLite</span></div>
+            <div style="left: 960px; top: 438px; width: 240px; height: 96px; --d: 7" class="node" data-a="scale"><span class="nt">Infrastructure</span><span class="min muted">Agent Framework · OpenAI</span></div>
+            <span style="left: 520px; top: 28px; --d: 12" class="edge-label" data-a="fade">guarda los chats</span>
+            <span style="left: 520px; top: 512px; --d: 13" class="edge-label" data-a="fade">el mismo agente, en proceso</span>
+            <span style="left: 560px; top: 408px; --d: 17" class="edge-label" data-a="fade">registro de servicios (DI)</span>
+            <div class="side-notes">
+              <p class="b2" data-a="up" style="--d: 15"><svg class="icon"><use href="#i-lock" /></svg><span><strong class="blue">Application</strong> solo tiene contratos (<code>IChatService</code>, <code>IConversationStore</code>) y reglas, sin ningún SDK.</span></p>
+              <p class="b2" data-a="up" style="--d: 16"><svg class="icon"><use href="#i-sparkle" /></svg><span>Agent Framework y el SDK de OpenAI viven solo en <strong class="blue">Infrastructure</strong>; EF Core y SQLite, solo en <strong class="blue">Persistence</strong>.</span></p>
+              <p class="b2" data-a="up" style="--d: 17"><svg class="icon"><use href="#i-refresh" /></svg><span>Del paso 01 al 02 se cambió la llamada directa por un agente <strong class="blue">sin tocar la CLI ni la API</strong>.</span></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- One question, end to end -->
+      <section class="slide" data-title="Una pregunta, de punta a punta">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Una pregunta, de punta a punta</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          En un chat guardado, el servidor lee el historial: el navegador solo envía la pregunta nueva.
+        </p>
+        <div class="body">
+          <div class="diagram seq">
+            <div style="left: 10px; --d: 3" class="lane-head" data-a="up"><svg class="icon"><use href="#i-globe" /></svg>Navegador</div>
+            <div style="left: 500px; --d: 4" class="lane-head" data-a="up"><svg class="icon"><use href="#i-layers" /></svg>API .NET</div>
+            <div style="left: 990px; --d: 5" class="lane-head" data-a="up"><svg class="icon"><use href="#i-cpu" /></svg>Agente · LiteLLM</div>
+            <div style="left: 1480px; --d: 6" class="lane-head" data-a="up"><svg class="icon"><use href="#i-database" /></svg>SQLite</div>
+            <svg class="edges" viewBox="0 0 1812 564" aria-hidden="true">
+              <path class="soft dash" d="M130 64V498M620 64V498M1110 64V498M1600 64V498" data-a="fade" style="--d: 6" />
+              <path d="M130 126H606" pathLength="1" data-a="draw" style="--d: 8" />
+              <path class="head" d="M596 119l12 7-12 7z" data-a="fade" style="--d: 12" />
+              <path d="M620 196H1586" pathLength="1" data-a="draw" style="--d: 12" />
+              <path class="head" d="M1576 189l12 7-12 7z" data-a="fade" style="--d: 16" />
+              <path d="M620 266H1096" pathLength="1" data-a="draw" style="--d: 16" />
+              <path class="head" d="M1086 259l12 7-12 7z" data-a="fade" style="--d: 20" />
+              <path d="M1110 336H634" pathLength="1" data-a="draw" style="--d: 20" />
+              <path class="head" d="M644 329l-12 7 12 7z" data-a="fade" style="--d: 24" />
+              <path d="M620 406H144" pathLength="1" data-a="draw" style="--d: 24" />
+              <path class="head" d="M154 399l-12 7 12 7z" data-a="fade" style="--d: 28" />
+              <path d="M620 476H1586" pathLength="1" data-a="draw" style="--d: 28" />
+              <path class="head" d="M1576 469l12 7-12 7z" data-a="fade" style="--d: 32" />
+            </svg>
+            <span style="left: 130px; top: 88px; --d: 9" class="msg" data-a="up">1 · La pregunta y sus imágenes</span>
+            <span style="left: 620px; top: 158px; --d: 13" class="msg" data-a="up">2 · Lee el historial guardado</span>
+            <span style="left: 620px; top: 228px; --d: 17" class="msg" data-a="up">3 · Historial + pregunta + modelo</span>
+            <span style="left: 634px; top: 298px; --d: 21" class="msg" data-a="up">4 · Texto en streaming y tokens</span>
+            <span style="left: 144px; top: 368px; --d: 25" class="msg" data-a="up">5 · SSE: <code>delta</code>… y <code>done</code> con el coste</span>
+            <span style="left: 620px; top: 438px; --d: 29" class="msg" data-a="up">6 · Guarda la respuesta, sus tokens y su coste</span>
+            <p class="seq-note min" data-a="up" style="--d: 32">
+              <svg class="icon"><use href="#i-terminal" /></svg>
+              La terminal hace el mismo viaje sin pasar por la API: usa el agente en el propio proceso.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Streaming, end to end -->
+      <section class="slide" data-title="Streaming de punta a punta">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Streaming de punta a punta</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Del <code>IAsyncEnumerable</code> del agente al navegador, sin bibliotecas extra.
+        </p>
+        <div class="body">
+          <div class="steps">
+            <div class="steps-line" data-a="line" style="--d: 3"><span class="pulse"></span></div>
+            <div class="stepcol" data-a="up" style="--d: 4">
+              <span class="num">01</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-cpu" /></svg>Agente</h3>
+              <p class="b2 muted"><code>RunStreamingAsync</code> entrega un <code>AgentResponseUpdate</code> por fragmento; el último trae el uso de tokens.</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 5">
+              <span class="num">02</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-layers" /></svg>Servicio</h3>
+              <p class="b2 muted"><code>AgentChatService</code> los convierte en fragmentos propios; el final lleva la respuesta, el modelo y el coste.</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 6">
+              <span class="num">03</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-check" /></svg>Endpoint</h3>
+              <p class="b2 muted">Espera el primer fragmento antes de responder: un fallo temprano sigue siendo un ProblemDetails con su estado.</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 7">
+              <span class="num">04</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-bolt" /></svg>Navegador</h3>
+              <p class="b2 muted">Eventos <code>delta</code>, <code>done</code> o <code>error</code>, leídos con un lector propio: <code>EventSource</code> no envía POST.</p>
+            </div>
+          </div>
+          <div class="guards" data-a="up" style="--d: 9">
+            <span class="k-label">En la interfaz</span>
+            <div class="chips">
+              <span class="chip"><svg class="icon"><use href="#i-clock" /></svg>«DotNextAI está pensando…» hasta el primer fragmento</span>
+              <span class="chip"><svg class="icon"><use href="#i-stop" /></svg>Parar aborta la petición y se guarda lo recibido</span>
+              <span class="chip"><svg class="icon"><use href="#i-access" /></svg>Los lectores de pantalla oyen la respuesta una vez</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- State only where needed -->
+      <section class="slide" data-title="Estado, solo donde hace falta">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Estado, solo donde hace falta</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          El agente no recuerda nada. Quien necesita recordar, recuerda: la terminal en memoria, la web en SQLite.
+        </p>
+        <div class="body">
+          <div class="pillars pillars--3">
+            <article class="pillar" data-a="up" style="--d: 3">
+              <svg class="icon"><use href="#i-cpu" /></svg>
+              <h3 class="b1 blue">Servicio sin estado</h3>
+              <p class="b2 muted"><code>IChatService</code> recibe el historial en cada llamada. Ni el agente ni la API guardan conversaciones en memoria.</p>
+            </article>
+            <article class="pillar" data-a="up" style="--d: 4">
+              <span class="vsep" data-a="vline" style="--d: 4"></span>
+              <svg class="icon"><use href="#i-terminal" /></svg>
+              <h3 class="b1 blue">Terminal</h3>
+              <p class="b2 muted"><code>ChatConversation</code> guarda los turnos en la memoria del proceso. <code>/new</code> los olvida.</p>
+            </article>
+            <article class="pillar" data-a="up" style="--d: 5">
+              <span class="vsep" data-a="vline" style="--d: 5"></span>
+              <svg class="icon"><use href="#i-database" /></svg>
+              <h3 class="b1 blue">Web</h3>
+              <p class="b2 muted"><code>ConversationService</code> lee el historial de SQLite y guarda cada intercambio al terminar o al parar.</p>
+            </article>
+          </div>
+          <div class="guards" data-a="up" style="--d: 7">
+            <span class="k-label">Reglas</span>
+            <div class="chips">
+              <span class="chip"><svg class="icon"><use href="#i-x" /></svg>Una respuesta fallida nunca se guarda</span>
+              <span class="chip"><svg class="icon"><use href="#i-image" /></svg>Las listas nunca cargan imágenes</span>
+              <span class="chip"><svg class="icon"><use href="#i-chart" /></svg>50 preguntas por conversación</span>
+              <span class="chip"><svg class="icon"><use href="#i-cpu" /></svg>Un agente por modelo, reutilizado</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Errors as data -->
+      <section class="slide" data-title="Errores como datos">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Errores como datos</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Un fallo del proveedor se convierte en un código estable que cada interfaz cuenta a su manera.
+        </p>
+        <div class="body">
+          <div class="steps">
+            <div class="steps-line" data-a="line" style="--d: 3"><span class="pulse"></span></div>
+            <div class="stepcol" data-a="up" style="--d: 4">
+              <span class="num">01</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-cloud" /></svg>Proveedor</h3>
+              <p class="b2 muted">El SDK lanza <code>ClientResultException</code> con el estado HTTP; también hay timeouts y caídas de red.</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 5">
+              <span class="num">02</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-filter" /></svg>Mapper</h3>
+              <p class="b2 muted"><code>ChatFailureMapper</code> lo traduce a un <code>ChatFailure</code>: RateLimited, ModelUnavailable, Timeout…</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 6">
+              <span class="num">03</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-doc" /></svg>API</h3>
+              <p class="b2 muted"><code>ChatProblems</code> responde un ProblemDetails con su estado y la extensión <code>failure</code>.</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 7">
+              <span class="num">04</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-globe" /></svg>Interfaces</h3>
+              <p class="b2 muted">La web traduce el código al idioma del usuario; la CLI muestra un mensaje, una pista y un código de salida.</p>
+            </div>
+          </div>
+          <div class="guards" data-a="up" style="--d: 9">
+            <span class="k-label">Reglas</span>
+            <div class="chips">
+              <span class="chip"><svg class="icon"><use href="#i-layers" /></svg>El mismo ChatFailure en la web, la CLI y la API</span>
+              <span class="chip"><svg class="icon"><use href="#i-bolt" /></svg>A mitad de stream: evento <code>error</code> con el mismo código</span>
+              <span class="chip"><svg class="icon"><use href="#i-check" /></svg>Validación antes de gastar: 400 por campo</span>
+              <span class="chip"><svg class="icon"><use href="#i-eye" /></svg>El texto del proveedor nunca llega tal cual</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tokens and cost -->
+      <section class="slide" data-title="Tokens y coste">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Tokens y coste</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Cada respuesta dice lo que ha costado, con los mismos precios que usa el proxy para cobrar.
+        </p>
+        <div class="body">
+          <div class="formula" data-a="up" style="--d: 3">
+            <span class="term"><b>(entrada − en caché)</b><small>× precio de entrada</small></span>
+            <span class="op">+</span>
+            <span class="term"><b>en caché</b><small>× precio de caché</small></span>
+            <span class="op">+</span>
+            <span class="term"><b>salida</b><small>× precio de salida</small></span>
+            <span class="op">=</span>
+            <span class="eq">coste de la llamada</span>
+          </div>
+          <div class="cost-cols">
+            <ul class="bullets">
+              <li data-a="right" style="--d: 5">Precios leídos del proxy (<code>model/info</code>) y guardados <strong>5 minutos</strong> en memoria.</li>
+              <li data-a="right" style="--d: 6">El total de la conversación es <strong>la suma de sus llamadas</strong>, historial reenviado incluido.</li>
+              <li data-a="right" style="--d: 7">Si una llamada no tiene precio, el total se queda sin coste: nunca una suma a medias.</li>
+              <li data-a="right" style="--d: 8">Se guarda con cada respuesta: un cambio de tarifa no reescribe los chats antiguos.</li>
+            </ul>
+            <div class="terminal" data-a="up" style="--d: 6">
+              <div class="tb"><span></span><span></span><span></span></div>
+<pre><span class="p">$</span> dotnextai ask "Reply with exactly: OK"
+<span class="c">OK</span>
+<span class="e">Tokens: 39 in · 4 out · 43 total · $0.0000059</span></pre>
+              <p class="terminal-note">Prueba real con gpt-6-luna: 39 × $0.10 + 4 × $0.50 por millón de tokens.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 03 -->
+      <section class="slide slide--blue section" data-title="03 · Microsoft Agent Framework">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <div class="sec-num" data-a="rise" style="--d: 2">03</div>
+        <h2 class="h1 title" data-a="wipe" style="--d: 3">Microsoft Agent Framework</h2>
+        <div class="sec-line" data-a="line" style="--d: 4"></div>
+        <p class="sec-desc b1" data-a="up" style="--d: 6">Qué es, cómo se monta un agente y qué pasa en cada ejecución.</p>
+      </section>
+
+      <!-- What it is -->
+      <section class="slide" data-title="Qué es Agent Framework">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Qué es Agent Framework</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          El sucesor directo de Semantic Kernel y AutoGen, creado por los mismos equipos de Microsoft.
+        </p>
+        <div class="body pillars">
+          <article class="pillar" data-a="up" style="--d: 4">
+            <svg class="icon"><use href="#i-cpu" /></svg>
+            <h3 class="b1 blue">Agentes</h3>
+            <p class="b2 muted">Un LLM con instrucciones y herramientas, sobre OpenAI, Azure OpenAI, Foundry, Anthropic, Ollama y más.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 5">
+            <span class="vsep" data-a="vline" style="--d: 5"></span>
+            <svg class="icon"><use href="#i-layers" /></svg>
+            <h3 class="b1 blue">Workflows</h3>
+            <p class="b2 muted">Grafos y funciones que conectan agentes con caminos de ejecución explícitos.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 6">
+            <span class="vsep" data-a="vline" style="--d: 6"></span>
+            <svg class="icon"><use href="#i-box" /></svg>
+            <h3 class="b1 blue">Bloques base</h3>
+            <p class="b2 muted">Sesión para el estado, context providers para la memoria, middleware y clientes MCP.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 7">
+            <span class="vsep" data-a="vline" style="--d: 7"></span>
+            <svg class="icon"><use href="#i-refresh" /></svg>
+            <h3 class="b1 blue">Lo mejor de dos mundos</h3>
+            <p class="b2 muted">Lo sencillo de AutoGen y lo empresarial de Semantic Kernel. En .NET y Python; Go, en preview.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- The stack, layer by layer -->
+      <section class="slide" data-title="La pila, capa a capa">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">La pila, capa a capa</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Cada capa solo conoce a la de debajo. Cambiar de proveedor es cambiar la capa de abajo, no el agente.
+        </p>
+        <div class="body pila">
+          <div class="band" data-a="right" style="--d: 3">
+            <div class="bn"><b>DotNextAI</b><span>AgentChatService · IChatService</span></div>
+            <p>Valida la pregunta, elige el agente del modelo, traduce los errores a <code>ChatFailure</code> y pone precio a los tokens.</p>
+            <span class="tag">Nuestro código</span>
+          </div>
+          <div class="band band--fill" data-a="right" style="--d: 4">
+            <div class="bn"><b>Microsoft Agent Framework</b><span>AIAgent · ChatClientAgent</span></div>
+            <p>Instrucciones y nombre, <code>RunAsync</code> y <code>RunStreamingAsync</code>, sesión opcional, herramientas y middleware.</p>
+            <span class="tag">Microsoft.Agents.AI 1.28</span>
+          </div>
+          <div class="band band--light" data-a="right" style="--d: 5">
+            <div class="bn"><b>Microsoft.Extensions.AI</b><span>IChatClient</span></div>
+            <p>La abstracción estándar de .NET: <code>ChatMessage</code>, <code>TextContent</code>, <code>DataContent</code>, <code>UsageDetails</code> y streaming.</p>
+            <span class="tag">10.11</span>
+          </div>
+          <div class="band" data-a="right" style="--d: 6">
+            <div class="bn"><b>OpenAI .NET SDK</b><span>ChatClient</span></div>
+            <p>HTTP, reintentos, timeout y un transporte <code>HttpClient</code> que los tests sustituyen.</p>
+            <span class="tag">OpenAI 2.15</span>
+          </div>
+          <div class="band band--soft" data-a="right" style="--d: 7">
+            <div class="bn"><b>Proxy LiteLLM de ERNI</b><span>API compatible con OpenAI</span></div>
+            <p>Una clave, todos los modelos: gpt-6-luna, terra, sol, astra y gpt-image-2.</p>
+            <span class="tag">Externo</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Building the agent -->
+      <section class="slide" data-title="Así creamos el agente">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Así creamos el agente</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Un cliente del SDK de OpenAI apuntando al proxy, convertido en agente con una sola llamada.
+        </p>
+        <div class="body code-cols">
+          <figure class="code" data-a="up" style="--d: 3">
+            <figcaption class="ch">C# · Infrastructure<small>LlmChatClientFactory + AgentChatService</small></figcaption>
+<pre><span class="c">// Un ChatClient del SDK de OpenAI, apuntando al proxy</span>
+<span class="t">ChatClient</span> client = <span class="k">new</span>(model, <span class="k">new</span> <span class="t">ApiKeyCredential</span>(apiKey),
+    <span class="k">new</span> <span class="t">OpenAIClientOptions</span>
+    {
+        Endpoint = <span class="k">new</span> <span class="t">Uri</span>(endpoint),        <span class="c">// LiteLLM de ERNI</span>
+        NetworkTimeout = <span class="t">TimeSpan</span>.FromSeconds(timeout),
+        RetryPolicy = <span class="k">new</span> <span class="t">ClientRetryPolicy</span>(maxRetries),
+        Transport = <span class="k">new</span> <span class="t">HttpClientPipelineTransport</span>(httpClient),
+    });
+
+<span class="c">// El mismo cliente, convertido en agente</span>
+<span class="t">AIAgent</span> agent = client.<span class="m">AsAIAgent</span>(
+    instructions: <span class="s">"You are DotNextAI, a helpful assistant…"</span>,
+    name: <span class="s">"DotNextAI"</span>,
+    loggerFactory: loggerFactory);</pre>
+          </figure>
+          <ul class="bullets">
+            <li data-a="right" style="--d: 4"><code>AsAIAgent</code> viene de <strong>Microsoft.Agents.AI.OpenAI</strong> y crea un <code>ChatClientAgent</code>.</li>
+            <li data-a="right" style="--d: 5"><strong>Un agente por modelo</strong>, creado la primera vez y reutilizado.</li>
+            <li data-a="right" style="--d: 6">Solo modelos del catálogo del proxy: nunca un nombre arbitrario.</li>
+            <li data-a="right" style="--d: 7">El <code>HttpClient</code> se inyecta: los tests cambian el transporte y nunca llaman al proxy.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- One run, step by step -->
+      <section class="slide" data-title="Una ejecución, paso a paso">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Una ejecución, paso a paso</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Lo que ocurre dentro de <code>RunAsync</code>, desde los mensajes hasta la respuesta.
+        </p>
+        <div class="body">
+          <div class="steps">
+            <div class="steps-line" data-a="line" style="--d: 3"><span class="pulse"></span></div>
+            <div class="stepcol" data-a="up" style="--d: 4">
+              <span class="num">01</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-chat" /></svg>Mensajes</h3>
+              <p class="b2 muted">El historial como <code>ChatMessage</code> de usuario y asistente, y la pregunta con <code>TextContent</code> y <code>DataContent</code>.</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 5">
+              <span class="num">02</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-cpu" /></svg>Agente</h3>
+              <p class="b2 muted">El <code>ChatClientAgent</code> antepone sus instrucciones como mensaje de sistema y llama a su <code>IChatClient</code>.</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 6">
+              <span class="num">03</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-cloud" /></svg>Proveedor</h3>
+              <p class="b2 muted"><code>POST chat/completions</code> al proxy, con los reintentos y el timeout del SDK de OpenAI.</p>
+            </div>
+            <div class="stepcol" data-a="up" style="--d: 7">
+              <span class="num">04</span>
+              <h3 class="b1 blue"><svg class="icon"><use href="#i-doc" /></svg>Respuesta</h3>
+              <p class="b2 muted"><code>AgentResponse</code> con <code>Text</code>, <code>FinishReason</code> y <code>Usage</code>; en streaming, un <code>AgentResponseUpdate</code> por fragmento.</p>
+            </div>
+          </div>
+          <div class="guards" data-a="up" style="--d: 9">
+            <span class="k-label">Lo que DotNextAI saca de cada respuesta</span>
+            <div class="chips">
+              <span class="chip"><svg class="icon"><use href="#i-text" /></svg>El texto, o el refusal del modelo</span>
+              <span class="chip"><svg class="icon"><use href="#i-x" /></svg><code>FinishReason.Length</code> → respuesta cortada</span>
+              <span class="chip"><svg class="icon"><use href="#i-coin" /></svg><code>UsageDetails</code> → tokens, caché y coste</span>
+              <span class="chip"><svg class="icon"><use href="#i-sparkle" /></svg><code>ModelId</code> → qué modelo respondió</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- The code of a run -->
+      <section class="slide" data-title="Sin sesión, a propósito">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Sin sesión, a propósito</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Agent Framework puede guardar el hilo en una <code>AgentSession</code>. Aquí el historial es nuestro y viaja en cada ejecución.
+        </p>
+        <div class="body code-cols">
+          <figure class="code" data-a="up" style="--d: 3">
+            <figcaption class="ch">C# · AgentChatService<small>simplificado</small></figcaption>
+<pre><span class="c">// El historial y la pregunta, con sus imágenes, en cada llamada</span>
+<span class="t">List</span>&lt;<span class="t">ChatMessage</span>&gt; messages =
+[
+    .. history.Select(ToChatMessage),
+    <span class="k">new</span>(<span class="t">ChatRole</span>.User, [<span class="k">new</span> <span class="t">TextContent</span>(question), .. images]),
+];
+
+<span class="c">// La respuesta completa…</span>
+<span class="t">AgentResponse</span> response = <span class="k">await</span> agent.<span class="m">RunAsync</span>(messages);
+<span class="c">// response.Text · response.FinishReason · response.Usage</span>
+
+<span class="c">// …o fragmento a fragmento</span>
+<span class="k">await foreach</span> (<span class="k">var</span> update <span class="k">in</span> agent.<span class="m">RunStreamingAsync</span>(messages))
+{
+    <span class="k">yield return new</span> <span class="t">ChatStreamUpdate</span>(update.Text);
+}</pre>
+          </figure>
+          <ul class="bullets">
+            <li data-a="right" style="--d: 4">El historial vive en <strong>la memoria de la CLI</strong> o en <strong>SQLite</strong>, nunca en el agente.</li>
+            <li data-a="right" style="--d: 5">La API sigue sin estado: cualquier petición puede ir a cualquier instancia.</li>
+            <li data-a="right" style="--d: 6">Las imágenes van solo con su pregunta; el historial es texto.</li>
+            <li data-a="right" style="--d: 7">En streaming el SDK pide <code>include_usage</code>: los tokens llegan en el último fragmento.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Beyond a chat -->
+      <section class="slide" data-title="Lo que ofrece y aún no usamos">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Lo que ofrece y aún no usamos</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          DotNextAI usa la parte más pequeña del framework. El resto está a una dependencia de distancia.
+        </p>
+        <div class="body stack">
+          <div class="card" data-a="up" style="--d: 3">
+            <h3 class="card-h"><svg class="icon"><use href="#i-settings" /></svg>Herramientas</h3>
+            <p class="b2 muted">Métodos .NET con <code>AIFunctionFactory</code> y servidores MCP. El agente decide cuándo llamarlos.</p>
+            <span class="tag">Idea: buscar en los chats</span>
+          </div>
+          <div class="card" data-a="up" style="--d: 4">
+            <h3 class="card-h"><svg class="icon"><use href="#i-filter" /></svg>Middleware</h3>
+            <p class="b2 muted">Intercepta ejecuciones del agente, llamadas a herramientas y al <code>IChatClient</code>.</p>
+            <span class="tag">Idea: caché y guardarraíles</span>
+          </div>
+          <div class="card" data-a="up" style="--d: 5">
+            <h3 class="card-h"><svg class="icon"><use href="#i-database" /></svg>Sesión y memoria</h3>
+            <p class="b2 muted"><code>AgentSession</code> guarda el hilo; los context providers añaden memoria o RAG a cada ejecución.</p>
+            <span class="tag">Hoy: historial propio</span>
+          </div>
+          <div class="card" data-a="up" style="--d: 6">
+            <h3 class="card-h"><svg class="icon"><use href="#i-layers" /></svg>Workflows</h3>
+            <p class="b2 muted">Agentes y funciones en un grafo, con checkpoints y una persona en el bucle cuando hace falta.</p>
+            <span class="tag">Idea: resumir carpetas</span>
+          </div>
+          <div class="card" data-a="up" style="--d: 7">
+            <h3 class="card-h"><svg class="icon"><use href="#i-check" /></svg>Harness agent</h3>
+            <p class="b2 muted">Un agente para tareas largas: planificación, lista de tareas, compactación de contexto y aprobación de herramientas.</p>
+            <span class="tag">Tareas largas</span>
+          </div>
+          <div class="card" data-a="up" style="--d: 8">
+            <h3 class="card-h"><svg class="icon"><use href="#i-eye" /></svg>Observabilidad</h3>
+            <p class="b2 muted">Trazas y métricas con OpenTelemetry, en el agente y en el <code>IChatClient</code>.</p>
+            <span class="tag">Idea: trazas con Aspire</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 04 -->
+      <section class="slide slide--blue section" data-title="04 · Agent Framework y LangChain">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <div class="sec-num" data-a="rise" style="--d: 2">04</div>
+        <h2 class="h1 title" data-a="wipe" style="--d: 3">Agent Framework y LangChain</h2>
+        <div class="sec-line" data-a="line" style="--d: 4"></div>
+        <p class="sec-desc b1" data-a="up" style="--d: 6">El mismo problema, dos ecosistemas: equivalencias, parecidos y diferencias.</p>
+      </section>
+
+      <!-- Two ecosystems -->
+      <section class="slide" data-title="Dos ecosistemas">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Dos ecosistemas</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Los dos separan el modelo, el agente y la orquestación. Cambia quién pone cada pieza.
+        </p>
+        <div class="body duo">
+          <div class="card" data-a="up" style="--d: 3">
+            <h3 class="card-h"><svg class="icon"><use href="#i-link" /></svg>LangChain</h3>
+            <dl>
+              <dt>Lenguajes</dt><dd>Python y JavaScript/TypeScript</dd>
+              <dt>Modelos y agentes</dt><dd>LangChain: modelos de chat, mensajes, herramientas y <code>create_agent</code></dd>
+              <dt>Orquestación</dt><dd>LangGraph: grafos con estado, checkpoints y humano en el bucle</dd>
+              <dt>Trazas y evaluación</dt><dd>LangSmith</dd>
+              <dt>Despliegue</dt><dd>LangSmith Agent Server</dd>
+            </dl>
+          </div>
+          <div class="card card--blue" data-a="up" style="--d: 4">
+            <h3 class="card-h"><svg class="icon"><use href="#i-cpu" /></svg>Microsoft Agent Framework</h3>
+            <dl>
+              <dt>Lenguajes</dt><dd>.NET y Python; Go, en preview</dd>
+              <dt>Modelos</dt><dd>Microsoft.Extensions.AI: <code>IChatClient</code>, el estándar de .NET</dd>
+              <dt>Agentes y orquestación</dt><dd>Agent Framework: agentes, harness agent y workflows</dd>
+              <dt>Trazas</dt><dd>OpenTelemetry: Aspire, Application Insights, Grafana…</dd>
+              <dt>Despliegue</dt><dd>Microsoft Foundry, contenedores, ASP.NET Core</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <!-- Concept by concept -->
+      <section class="slide" data-title="Equivalencias, concepto a concepto">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Equivalencias, concepto a concepto</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Casi todo lo que sabes de LangChain tiene su nombre en .NET.
+        </p>
+        <div class="body">
+          <table class="compare" data-a="up" style="--d: 3">
+            <thead><tr><th>Concepto</th><th>LangChain · LangGraph</th><th>Agent Framework · M.E.AI</th></tr></thead>
+            <tbody>
+              <tr><td>Modelo de chat</td><td><code>BaseChatModel</code> · <code>ChatOpenAI</code></td><td><code>IChatClient</code> · <code>ChatClient.AsIChatClient()</code></td></tr>
+              <tr><td>Mensajes</td><td><code>SystemMessage</code>, <code>HumanMessage</code>, <code>AIMessage</code></td><td><code>ChatMessage</code> + <code>ChatRole</code></td></tr>
+              <tr><td>Imágenes</td><td>Bloques de contenido de imagen</td><td><code>DataContent</code> · <code>UriContent</code></td></tr>
+              <tr class="hl"><td>Agente</td><td><code>create_agent(model, tools, system_prompt)</code></td><td><code>ChatClientAgent</code> · <code>AsAIAgent(instructions, name)</code></td></tr>
+              <tr class="hl"><td>Ejecutar</td><td><code>invoke</code> · <code>stream</code></td><td><code>RunAsync</code> · <code>RunStreamingAsync</code></td></tr>
+              <tr><td>Herramientas</td><td><code>@tool</code></td><td><code>AIFunctionFactory.Create</code> · MCP</td></tr>
+              <tr><td>Memoria del hilo</td><td><code>checkpointer</code> + <code>thread_id</code></td><td><code>AgentSession</code></td></tr>
+              <tr><td>Middleware</td><td>Hooks <code>before_model</code> · <code>after_model</code></td><td>Middleware de agente, de herramientas y de <code>IChatClient</code></td></tr>
+              <tr><td>Orquestación</td><td>LangGraph <code>StateGraph</code></td><td>Workflows</td></tr>
+              <tr><td>Trazas</td><td>LangSmith · callbacks</td><td>OpenTelemetry</td></tr>
+              <tr><td>Uso de tokens</td><td><code>usage_metadata</code></td><td><code>UsageDetails</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Similarities -->
+      <section class="slide" data-title="En qué se parecen">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">En qué se parecen</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">Las dos han llegado a las mismas ideas sobre cómo construir agentes.</p>
+        <div class="body pillars">
+          <article class="pillar" data-a="up" style="--d: 4">
+            <svg class="icon"><use href="#i-cloud" /></svg>
+            <h3 class="b1 blue">Proveedor intercambiable</h3>
+            <p class="b2 muted">Una abstracción sobre el modelo: cambiar de OpenAI a otro proveedor no reescribe la aplicación.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 5">
+            <span class="vsep" data-a="vline" style="--d: 5"></span>
+            <svg class="icon"><use href="#i-refresh" /></svg>
+            <h3 class="b1 blue">El agente es un bucle</h3>
+            <p class="b2 muted">Modelo + instrucciones + herramientas, llamando herramientas hasta terminar la tarea.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 6">
+            <span class="vsep" data-a="vline" style="--d: 6"></span>
+            <svg class="icon"><use href="#i-bolt" /></svg>
+            <h3 class="b1 blue">Streaming y tokens</h3>
+            <p class="b2 muted">Respuestas fragmento a fragmento, imágenes y uso de tokens forman parte del modelo base.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 7">
+            <span class="vsep" data-a="vline" style="--d: 7"></span>
+            <svg class="icon"><use href="#i-layers" /></svg>
+            <h3 class="b1 blue">Grafos y middleware</h3>
+            <p class="b2 muted">Grafos con estado para lo complejo, y middleware en el bucle para planificar, resumir o pedir aprobación.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Differences -->
+      <section class="slide" data-title="En qué se diferencian">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">En qué se diferencian</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          No hay uno mejor: hay uno que encaja mejor con tu lenguaje, tu plataforma y tu equipo.
+        </p>
+        <div class="body">
+          <table class="compare compare--loose" data-a="up" style="--d: 3">
+            <thead><tr><th>Aspecto</th><th>LangChain</th><th>Agent Framework</th></tr></thead>
+            <tbody>
+              <tr><td>Lenguaje</td><td>Python y JavaScript, tipado dinámico</td><td>C# con tipado estático: muchos errores salen al compilar</td></tr>
+              <tr><td>Base</td><td>Sus propias abstracciones de modelo y mensajes</td><td>Microsoft.Extensions.AI, compartido con todo el ecosistema .NET</td></tr>
+              <tr><td>Integraciones</td><td>El catálogo más grande: proveedores, loaders, vector stores</td><td>Menos, pero cualquier <code>IChatClient</code> sirve; nativo en Azure y Microsoft 365</td></tr>
+              <tr><td>Observabilidad</td><td>LangSmith, un servicio de LangChain</td><td>OpenTelemetry, un estándar abierto</td></tr>
+              <tr><td>Aplicación</td><td>Se suele servir con FastAPI o el Agent Server</td><td>Encaja en ASP.NET Core: DI, logging, opciones</td></tr>
+              <tr><td>Recorrido</td><td>Desde 2022, comunidad enorme</td><td>Desde 2025, heredero de Semantic Kernel y AutoGen</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Step 02 in both worlds -->
+      <section class="slide" data-title="El paso 02, en los dos mundos">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">El paso 02, en los dos mundos</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          «Llamar al LLM a través de un framework»: la versión del curso y la de DotNextAI.
+        </p>
+        <div class="body">
+          <div class="code-duo">
+            <figure class="code" data-a="up" style="--d: 3">
+              <figcaption class="ch">LangChain<small>Python</small></figcaption>
+<pre><span class="k">from</span> langchain.agents <span class="k">import</span> create_agent
+<span class="k">from</span> langchain_openai <span class="k">import</span> ChatOpenAI
+
+model = <span class="t">ChatOpenAI</span>(
+    model=<span class="s">"gpt-6-luna"</span>,
+    base_url=PROXY_URL, api_key=API_KEY)
+
+agent = <span class="m">create_agent</span>(
+    model,
+    tools=[],
+    system_prompt=<span class="s">"You are DotNextAI…"</span>)
+
+result = agent.<span class="m">invoke</span>(
+    {<span class="s">"messages"</span>: history + [question]})
+print(result[<span class="s">"messages"</span>][-1].content)</pre>
+            </figure>
+            <figure class="code" data-a="up" style="--d: 5">
+              <figcaption class="ch">Microsoft Agent Framework<small>C#</small></figcaption>
+<pre><span class="k">using</span> Microsoft.Agents.AI;
+<span class="k">using</span> OpenAI.Chat;
+
+<span class="t">ChatClient</span> client = <span class="k">new</span>(
+    <span class="s">"gpt-6-luna"</span>, <span class="k">new</span> <span class="t">ApiKeyCredential</span>(apiKey),
+    <span class="k">new</span> <span class="t">OpenAIClientOptions</span> { Endpoint = proxyUrl });
+
+<span class="t">AIAgent</span> agent = client.<span class="m">AsAIAgent</span>(
+    instructions: <span class="s">"You are DotNextAI…"</span>,
+    name: <span class="s">"DotNextAI"</span>);
+
+<span class="t">AgentResponse</span> result = <span class="k">await</span> agent.<span class="m">RunAsync</span>(
+    [.. history, question]);
+<span class="t">Console</span>.WriteLine(result.Text);</pre>
+            </figure>
+          </div>
+          <p class="caption min muted" data-a="fade" style="--d: 8">
+            Simplificado, sin streaming ni errores. En los dos casos la aplicación pasa el historial: sin <code>checkpointer</code> ni <code>AgentSession</code>.
+          </p>
+        </div>
+      </section>
+
+      <!-- Why Agent Framework here -->
+      <section class="slide" data-title="¿Por qué Agent Framework aquí?">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">¿Por qué Agent Framework aquí?</h2>
+        <div class="body cols">
+          <div class="lead">
+            <p class="h2" data-a="up" style="--d: 2">Por el equipo y el ecosistema, no porque LangChain no sirva.</p>
+            <p class="b2 muted" data-a="up" style="--d: 3">
+              La guía del curso proponía Python, LangChain y FastAPI. El paso 02 se resolvió con un <code>ChatClientAgent</code> detrás de la misma interfaz, y la CLI y la API ni se enteraron.
+            </p>
+          </div>
+          <div class="criteria-wide">
+            <ol>
+              <li data-a="right" style="--d: 4"><span class="ci">01</span>El equipo trabaja en C#, y ValidatorHub ya es .NET.</li>
+              <li data-a="right" style="--d: 5"><span class="ci">02</span>Streaming, imágenes y tokens vienen de serie con Microsoft.Extensions.AI.</li>
+              <li data-a="right" style="--d: 6"><span class="ci">03</span>Encaja en ASP.NET Core: inyección de dependencias, logging y opciones.</li>
+              <li data-a="right" style="--d: 7"><span class="ci">04</span>Testeable: se sustituye el transporte y los tests nunca llaman al proxy.</li>
+              <li data-a="right" style="--d: 8"><span class="ci">05</span>Herramientas, MCP y workflows listos para cuando hagan falta.</li>
+              <li data-a="right" style="--d: 9"><span class="ci">06</span>En un equipo Python, LangChain sería la elección natural.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 05 -->
+      <section class="slide slide--blue section" data-title="05 · Stack y calidad">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <div class="sec-num" data-a="rise" style="--d: 2">05</div>
+        <h2 class="h1 title" data-a="wipe" style="--d: 3">Stack y calidad</h2>
+        <div class="sec-line" data-a="line" style="--d: 4"></div>
+        <p class="sec-desc b1" data-a="up" style="--d: 6">Tecnologías, pipelines, forma de trabajar y cifras.</p>
+      </section>
+
+      <!-- Stack -->
+      <section class="slide" data-title="Stack tecnológico">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Stack tecnológico</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">El mismo stack que ValidatorHub, más la capa de IA de Microsoft sobre el proxy de ERNI.</p>
+        <div class="body stack">
+          <div class="card" data-a="up" style="--d: 3">
+            <h3 class="card-h"><svg class="icon"><use href="#i-code" /></svg>Web</h3>
+            <div class="chips">
+              <span class="chip chip--blue">Next.js 16</span><span class="chip">React 19</span><span class="chip">TypeScript 5</span>
+              <span class="chip">Fluent UI React v9</span><span class="chip">i18n propio en/es</span>
+            </div>
+          </div>
+          <div class="card" data-a="up" style="--d: 4">
+            <h3 class="card-h"><svg class="icon"><use href="#i-layers" /></svg>Backend</h3>
+            <div class="chips">
+              <span class="chip chip--blue">.NET 10 LTS</span><span class="chip">ASP.NET Core Minimal API</span><span class="chip">OpenAPI + Swagger UI</span>
+              <span class="chip">System.CommandLine</span>
+            </div>
+          </div>
+          <div class="card" data-a="up" style="--d: 5">
+            <h3 class="card-h"><svg class="icon"><use href="#i-sparkle" /></svg>IA</h3>
+            <div class="chips">
+              <span class="chip chip--blue">Microsoft Agent Framework</span><span class="chip">Microsoft.Extensions.AI</span><span class="chip">OpenAI .NET SDK</span>
+              <span class="chip">Proxy LiteLLM de ERNI</span>
+            </div>
+          </div>
+          <div class="card" data-a="up" style="--d: 6">
+            <h3 class="card-h"><svg class="icon"><use href="#i-database" /></svg>Datos</h3>
+            <div class="chips">
+              <span class="chip chip--blue">EF Core 10</span><span class="chip">SQLite</span><span class="chip">Migraciones</span>
+            </div>
+          </div>
+          <div class="card" data-a="up" style="--d: 7">
+            <h3 class="card-h"><svg class="icon"><use href="#i-flask" /></svg>Testing</h3>
+            <div class="chips">
+              <span class="chip chip--blue">xUnit v3</span><span class="chip">WebApplicationFactory</span><span class="chip">Vitest</span>
+              <span class="chip">Testing Library</span><span class="chip">Playwright</span><span class="chip">axe-core</span>
+            </div>
+          </div>
+          <div class="card" data-a="up" style="--d: 8">
+            <h3 class="card-h"><svg class="icon"><use href="#i-cloud" /></svg>DevOps</h3>
+            <div class="chips">
+              <span class="chip chip--blue">GitHub Actions</span><span class="chip">Docker</span><span class="chip">Dependabot</span>
+              <span class="chip"><code>scripts/dev.sh</code></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CI pipelines -->
+      <section class="slide" data-title="Cada cambio, verificado">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Cada cambio, verificado</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Un workflow por parte del proyecto y un E2E con la cadena completa. Gitleaks y zizmor vigilan el repositorio cada semana.
+        </p>
+        <div class="body">
+          <div class="pipeline">
+            <span></span>
+            <span class="colhead" data-a="fade" style="--d: 3">01</span>
+            <span class="colhead" data-a="fade" style="--d: 3">02</span>
+            <span class="colhead" data-a="fade" style="--d: 3">03</span>
+            <span class="colhead" data-a="fade" style="--d: 3">04</span>
+            <span class="colhead" data-a="fade" style="--d: 3">05</span>
+            <span class="colhead" data-a="fade" style="--d: 3">06</span>
+            <span class="colhead" data-a="fade" style="--d: 3">07</span>
+
+            <div class="lane-label" data-a="left" style="--d: 3"><span class="lt">Backend CI</span><code class="min muted">backend/**</code></div>
+            <div class="lane" style="--start: 700ms">
+              <span class="track"></span><span class="token"></span>
+              <div class="step" style="--n: 0"><span class="ring"><svg class="icon"><use href="#i-scan" /></svg></span><span class="st">Semgrep</span><span class="sd">C# y Dockerfile</span></div>
+              <div class="step" style="--n: 1"><span class="ring"><svg class="icon"><use href="#i-lock" /></svg></span><span class="st">Restore</span><span class="sd">lock files, sin paquetes vulnerables</span></div>
+              <div class="step" style="--n: 2"><span class="ring"><svg class="icon"><use href="#i-code" /></svg></span><span class="st">Build</span><span class="sd">analizadores, -warnaserror</span></div>
+              <div class="step" style="--n: 3"><span class="ring"><svg class="icon"><use href="#i-database" /></svg></span><span class="st">Migraciones</span><span class="sd">modelo de EF Core al día</span></div>
+              <div class="step" style="--n: 4"><span class="ring"><svg class="icon"><use href="#i-flask" /></svg></span><span class="st">xUnit</span><span class="sd">unidad e integración</span></div>
+              <div class="step" style="--n: 5"><span class="ring"><svg class="icon"><use href="#i-box" /></svg></span><span class="st">Docker</span><span class="sd">imagen y SBOM</span></div>
+              <div class="step" style="--n: 6"><span class="ring"><svg class="icon"><use href="#i-shield" /></svg></span><span class="st">Trivy</span><span class="sd">escaneo de la imagen</span></div>
+            </div>
+
+            <div class="lane-label" data-a="left" style="--d: 4"><span class="lt">Frontend CI</span><code class="min muted">frontend/**</code></div>
+            <div class="lane" style="--start: 1000ms">
+              <span class="track"></span><span class="token"></span>
+              <div class="step" style="--n: 0"><span class="ring"><svg class="icon"><use href="#i-scan" /></svg></span><span class="st">Semgrep</span><span class="sd">TypeScript, React, Next.js</span></div>
+              <div class="step" style="--n: 1"><span class="ring"><svg class="icon"><use href="#i-lock" /></svg></span><span class="st">npm ci</span><span class="sd">sin scripts, firmas y audit</span></div>
+              <div class="step" style="--n: 2"><span class="ring"><svg class="icon"><use href="#i-check" /></svg></span><span class="st">ESLint</span><span class="sd">lint</span></div>
+              <div class="step" style="--n: 3"><span class="ring"><svg class="icon"><use href="#i-code" /></svg></span><span class="st">tsc</span><span class="sd">type-check</span></div>
+              <div class="step" style="--n: 4"><span class="ring"><svg class="icon"><use href="#i-flask" /></svg></span><span class="st">Vitest</span><span class="sd">con cobertura</span></div>
+              <div class="step" style="--n: 5"><span class="ring"><svg class="icon"><use href="#i-box" /></svg></span><span class="st">next build</span><span class="sd">imagen y SBOM</span></div>
+              <div class="step" style="--n: 6"><span class="ring"><svg class="icon"><use href="#i-shield" /></svg></span><span class="st">Trivy</span><span class="sd">escaneo de la imagen</span></div>
+            </div>
+
+            <div class="lane-label" data-a="left" style="--d: 5"><span class="lt">E2E</span><code class="min muted">web + API</code></div>
+            <div class="lane" style="--start: 1300ms">
+              <span class="track"></span><span class="token"></span>
+              <div class="step" style="--n: 0"><span class="ring"><svg class="icon"><use href="#i-code" /></svg></span><span class="st">API Release</span><span class="sd">restore bloqueado</span></div>
+              <div class="step" style="--n: 1"><span class="ring"><svg class="icon"><use href="#i-lock" /></svg></span><span class="st">npm ci</span><span class="sd">sin scripts</span></div>
+              <div class="step" style="--n: 2"><span class="ring"><svg class="icon"><use href="#i-cloud" /></svg></span><span class="st">LiteLLM falso</span><span class="sd">sin claves ni costes</span></div>
+              <div class="step" style="--n: 3"><span class="ring"><svg class="icon"><use href="#i-layers" /></svg></span><span class="st">API real</span><span class="sd">SQLite temporal</span></div>
+              <div class="step" style="--n: 4"><span class="ring"><svg class="icon"><use href="#i-globe" /></svg></span><span class="st">Web de producción</span><span class="sd">next build + start</span></div>
+              <div class="step" style="--n: 5"><span class="ring"><svg class="icon"><use href="#i-flask" /></svg></span><span class="st">Playwright</span><span class="sd">37 escenarios</span></div>
+              <div class="step" style="--n: 6"><span class="ring"><svg class="icon"><use href="#i-access" /></svg></span><span class="st">axe</span><span class="sd">cero violaciones</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Spec-driven, AI-assisted -->
+      <section class="slide" data-title="Specs primero, con agentes de IA">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Specs primero, con agentes de IA</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Construido con Claude Code siguiendo las mismas reglas que seguiría cualquier persona del equipo.
+        </p>
+        <div class="body pillars">
+          <article class="pillar" data-a="up" style="--d: 4">
+            <svg class="icon"><use href="#i-doc" /></svg>
+            <h3 class="b1 blue">Spec primero</h3>
+            <p class="b2 muted">Cada cambio empieza en <code>docs/specs</code>: decisiones con fecha, su porqué y qué reemplazan.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 5">
+            <span class="vsep" data-a="vline" style="--d: 5"></span>
+            <svg class="icon"><use href="#i-settings" /></svg>
+            <h3 class="b1 blue">Reglas escritas</h3>
+            <p class="b2 muted"><code>AGENTS.md</code> fija las capas, los textos traducidos, los estilos y cómo verificar cada cambio.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 6">
+            <span class="vsep" data-a="vline" style="--d: 6"></span>
+            <svg class="icon"><use href="#i-flask" /></svg>
+            <h3 class="b1 blue">Tests como contrato</h3>
+            <p class="b2 muted">Los tests nunca llaman al proxy real: modelos falsos en .NET y un LiteLLM falso en el E2E.</p>
+          </article>
+          <article class="pillar" data-a="up" style="--d: 7">
+            <span class="vsep" data-a="vline" style="--d: 7"></span>
+            <svg class="icon"><use href="#i-refresh" /></svg>
+            <h3 class="b1 blue">Docs vivas</h3>
+            <p class="b2 muted">README, specs, diseño y <code>todo.md</code> cambian en el mismo commit que el código.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Figures (Brand Book p.116) -->
+      <section class="slide" data-title="El proyecto en cifras">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">El proyecto en cifras</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">Datos del repositorio a 17 de noviembre de 2026.</p>
+        <div class="body figures">
+          <div class="figure" data-a="up" style="--d: 3"><span class="big" data-count="749">749</span><p class="b2">tests automatizados</p><p class="min muted">371 en .NET · 341 en Vitest · 37 en Playwright</p></div>
+          <div class="figure" data-a="up" style="--d: 4"><span class="big" data-count="10">10</span><p class="b2">pasos del curso, todos entregados</p></div>
+          <div class="figure" data-a="up" style="--d: 5"><span class="big" data-count="17">17</span><p class="b2">endpoints REST documentados con OpenAPI</p></div>
+          <div class="figure" data-a="up" style="--d: 6"><span class="big" data-count="4">4</span><p class="b2">modelos de chat, más gpt-image-2 para imágenes</p></div>
+          <div class="figure" data-a="up" style="--d: 7"><span class="big" data-count="2">2</span><p class="b2">idiomas en la web: inglés y español</p></div>
+          <div class="figure" data-a="up" style="--d: 8"><span class="big" data-count="2">2</span><p class="b2">días del primer commit a todo lo que ves aquí</p></div>
+        </div>
+      </section>
+
+      <!-- Section 06 -->
+      <section class="slide slide--blue section" data-title="06 · Roadmap">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <div class="sec-num" data-a="rise" style="--d: 2">06</div>
+        <h2 class="h1 title" data-a="wipe" style="--d: 3">Roadmap</h2>
+        <div class="sec-line" data-a="line" style="--d: 4"></div>
+        <p class="sec-desc b1" data-a="up" style="--d: 6">Lo que ya funciona y lo que viene.</p>
+      </section>
+
+      <!-- Roadmap (flow page, Brand Book p.118) -->
+      <section class="slide" data-title="Roadmap">
+        <header class="topbar"><span class="tagline">better ask ERNI</span><span class="pg"></span></header>
+        <h2 class="h1 title" data-a="wipe">Roadmap</h2>
+        <p class="subtitle" data-a="up" style="--d: 2">
+          Los diez pasos del curso y los chats guardados, entregados en dos días. Lo siguiente: más comodidad y llevarlo más allá del portátil.
+        </p>
+        <div class="body timeline">
+          <div class="tl tl--done">
+            <span class="k-label" data-a="fade" style="--d: 3">Entregado</span>
+            <div class="tl-line" data-a="line" style="--d: 3"></div>
+            <div class="tl-items tl-items--6">
+              <div class="tl-item" data-a="up" style="--d: 5"><span class="tl-dot"></span><span class="min muted">16 nov</span><h3 class="b2 semi blue">Terminal y agente</h3><p class="min">Pasos 01 a 03: preguntas, Agent Framework e historial.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 6"><span class="tl-dot"></span><span class="min muted">16 nov</span><h3 class="b2 semi blue">API y web</h3><p class="min">Pasos 04 y 05, con Playwright desde el primer día.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 7"><span class="tl-dot"></span><span class="min muted">16 nov</span><h3 class="b2 semi blue">Imágenes y streaming</h3><p class="min">Pasos 06 y 07.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 8"><span class="tl-dot"></span><span class="min muted">16 nov</span><h3 class="b2 semi blue">Modelos, imágenes y tokens</h3><p class="min">Pasos 08 a 10: el backlog, completo.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 9"><span class="tl-dot"></span><span class="min muted">16–17 nov</span><h3 class="b2 semi blue">Chats guardados</h3><p class="min">SQLite, carpetas con icono y color, en el menú lateral.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 10"><span class="tl-dot"></span><span class="min muted">17 nov</span><h3 class="b2 semi blue">Chat como inicio y coste</h3><p class="min">El coste de cada respuesta y de la conversación.</p></div>
+            </div>
+          </div>
+          <div class="tl tl--next">
+            <span class="k-label" data-a="fade" style="--d: 11">Próximos pasos</span>
+            <div class="tl-line" data-a="line" style="--d: 9"></div>
+            <div class="tl-items tl-items--6">
+              <div class="tl-item" data-a="up" style="--d: 11"><span class="tl-dot"></span><h3 class="b2 semi blue">Markdown</h3><p class="min">Respuestas con formato, con un renderizador seguro.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 12"><span class="tl-dot"></span><h3 class="b2 semi blue">Búsqueda</h3><p class="min">Encontrar cualquier chat guardado.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 13"><span class="tl-dot"></span><h3 class="b2 semi blue">Coste de las imágenes</h3><p class="min">gpt-image-2 cobra por token de imagen.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 14"><span class="tl-dot"></span><h3 class="b2 semi blue">gpt-image-2 en el proxy</h3><p class="min">Probarlo con la clave real de ERNI.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 15"><span class="tl-dot"></span><h3 class="b2 semi blue">Microsoft Entra ID</h3><p class="min">Inicio de sesión corporativo, como ValidatorHub.</p></div>
+              <div class="tl-item" data-a="up" style="--d: 16"><span class="tl-dot"></span><h3 class="b2 semi blue">Chats por persona</h3><p class="min">Un propietario para cada chat guardado.</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Back cover (Brand Book p.123, outro p.129) -->
+      <section class="slide back" data-title="Swiss Software Engineering">
+        <svg class="giant-e" viewBox="14 8 110 116" aria-hidden="true">
+          <path fill="#ffffff" d="M87.28 96.73C72.35 96.87 65.04 90.05 64.02 78.17C64.02 78.17 83.54 71.52 89.21 68.94C89.73 68.71 90.24 68.48 90.76 68.24C100.68 63.51 109.18 56.63 114.15 45.91C120.12 33.02 115.43 18.39 103.74 13.77C96.75 11.01 89.78 11.83 82.97 14.05C66.70 19.35 54.02 29.72 44.74 44.58C36.36 57.99 32.02 72.58 35.51 89.07C38.21 101.85 47.15 110.86 59.48 112.47C72.32 114.14 88.41 111.93 101.74 106.07C106.35 100.80 110.28 95.03 113.49 88.74C114.94 85.90 116.21 83.01 117.33 80.07C113.74 88.91 97.46 96.21 87.28 96.73M76.56 33.50C78.97 31.16 82.33 29.45 85.56 28.57C94.82 26.06 101.73 33.06 99.75 42.96C99.01 46.62 97.47 50.44 95.28 53.32C87.35 63.78 75.94 68.08 63.65 71.69C63.22 55.31 66.26 43.49 76.56 33.50Z" />
+          <circle cx="23.65" cy="84.97" r="6" fill="#ffffff" />
+        </svg>
+        <div class="back-text">
+          <p class="h1" data-a="up" style="--d: 6">Swiss Software<br />Engineering</p>
+          <p class="b1" data-a="up" style="--d: 8">better ask ERNI</p>
+          <p class="min back-meta" data-a="fade" style="--d: 10">DotNextAI · github.com/SamuelHdez/DotNextAI</p>
+        </div>
+      </section>
+
+      <div class="progress" id="progress" aria-hidden="true"></div>
+    </main>
+
+    <nav class="controls" id="controls" aria-label="Navegación de la presentación">
+      <button type="button" id="prev" aria-label="Diapositiva anterior"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg></button>
+      <span class="count" id="count" aria-live="polite"></span>
+      <button type="button" id="next" aria-label="Diapositiva siguiente"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg></button>
+      <button type="button" id="fs" aria-label="Pantalla completa"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /></svg></button>
+    </nav>
+    <p class="hint" id="hint"><kbd>←</kbd><kbd>→</kbd> navegar · <kbd>F</kbd> pantalla completa · <kbd>P</kbd> exportar a PDF</p>
+    <p class="sr-only" id="announcer" aria-live="polite"></p>
+  </body>
+</html>
