@@ -30,6 +30,32 @@ public class TokenUsageTests
     }
 
     [Fact]
+    public void Add_SumsTheCosts()
+    {
+        Assert.Equal(0.0003m, new TokenUsage(10, 5, 15, 0.0001m).Add(new TokenUsage(1, 2, 3, 0.0002m)).Cost);
+        Assert.Equal(0.0001m, TokenUsage.Zero.Add(new TokenUsage(1, 2, 3, 0.0001m)).Cost);
+    }
+
+    [Fact]
+    public void Add_AnUnknownCost_MakesTheSumUnknown()
+    {
+        Assert.Null(new TokenUsage(10, 5, 15, 0.0001m).Add(new TokenUsage(1, 2, 3)).Cost);
+        Assert.Null(new TokenUsage(10, 5, 15).Add(new TokenUsage(1, 2, 3, 0.0002m)).Cost);
+    }
+
+    [Fact]
+    public async Task Conversation_TotalUsage_SumsTheCostsOfTheAnswers()
+    {
+        var chat = new FakeChatService(_ => new ChatAnswer("answer", "gpt-6-luna", false, new TokenUsage(100, 10, 110, 0.000015m)));
+        var conversation = new ChatConversation(chat);
+
+        await conversation.AskAsync("one", TestContext.Current.CancellationToken);
+        await conversation.AskAsync("two", TestContext.Current.CancellationToken);
+
+        Assert.Equal(new TokenUsage(200, 20, 220, 0.00003m), conversation.TotalUsage);
+    }
+
+    [Fact]
     public async Task Conversation_TotalUsage_SumsTheAnswersAndResetsWithTheConversation()
     {
         var calls = 0;

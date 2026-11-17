@@ -43,6 +43,7 @@ export const en = {
   "chat.send": "Send",
   "chat.tokens": "{input} in · {output} out tokens",
   "chat.usage.total": "This conversation: {total} tokens ({input} in · {output} out) over {answers} answers.",
+  "chat.usage.cost": "Cost: {cost}, at the LiteLLM proxy's prices.",
   "chat.usage.hint": "Every question resends the conversation, so input tokens grow with each turn.",
   "chat.stop": "Stop",
   "chat.stopped": "Stopped before the end.",

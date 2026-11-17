@@ -21,6 +21,40 @@ public class UsageCommandTests
         Assert.Contains("Tokens: 1,200 in · 34 out · 1,234 total", run.Error, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("0.000137", "$0.00014")]
+    [InlineData("0.0123", "$0.012")]
+    [InlineData("0.25", "$0.25")]
+    [InlineData("0.5", "$0.50")]
+    [InlineData("1.234", "$1.23")]
+    [InlineData("12", "$12.00")]
+    [InlineData("0", "$0.00")]
+    public void Cost_HasTwoSignificantDigitsBelowADollarAndTwoDecimalsFromOne(string cost, string expected)
+    {
+        Assert.Equal(expected, global::DotNextAI.Cli.CliMessages.Cost(decimal.Parse(cost, System.Globalization.CultureInfo.InvariantCulture)));
+    }
+
+    [Fact]
+    public async Task Ask_PricedModel_AddsTheCostToTheTokenLine()
+    {
+        var chat = new FakeChatService(_ => new ChatAnswer("pong", "gpt-6-luna", false, new TokenUsage(1_200, 34, 1_234, 0.000137m)));
+
+        var run = await RunAsync(chat, ["ask", "Hi"]);
+
+        Assert.Contains("Tokens: 1,200 in · 34 out · 1,234 total · $0.00014", run.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Chat_PricedModel_ShowsTheCostOfEachAnswerAndOfTheConversation()
+    {
+        var chat = new FakeChatService(_ => new ChatAnswer("pong", "gpt-6-luna", false, new TokenUsage(1_200, 34, 1_234, 0.00015m)));
+
+        var run = await RunAsync(chat, ["chat"], stdin: Lines("one", "two", "/usage"), inputRedirected: true);
+
+        Assert.Contains("Tokens: 1,200 in · 34 out · 1,234 total · $0.00015 (conversation: 2,468 · $0.00030)", run.Error, StringComparison.Ordinal);
+        Assert.Contains("This conversation: 2 answers, 2,400 in · 68 out · 2,468 total tokens, $0.00030 at the LiteLLM proxy's prices.", run.Error, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Ask_ProxyWithoutUsage_PrintsNoTokenLine()
     {

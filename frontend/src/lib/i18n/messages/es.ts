@@ -42,6 +42,7 @@ export const es: Messages = {
   "chat.send": "Enviar",
   "chat.tokens": "{input} de entrada · {output} de salida",
   "chat.usage.total": "Esta conversación: {total} tokens ({input} de entrada · {output} de salida) en {answers} respuestas.",
+  "chat.usage.cost": "Coste: {cost}, con los precios del proxy LiteLLM.",
   "chat.usage.hint": "Cada pregunta reenvía la conversación, así que los tokens de entrada crecen en cada turno.",
   "chat.stop": "Parar",
   "chat.stopped": "Detenida antes de terminar.",

@@ -42,7 +42,8 @@ public class AgentChatServiceTests
         string? endpoint = "https://litellm.example.com/",
         string? apiKey = null,
         string? model = Model,
-        Cli.FakeModelCatalog? catalog = null) =>
+        Cli.FakeModelCatalog? catalog = null,
+        IModelPrices? prices = null) =>
         new(
             Microsoft.Extensions.Options.Options.Create(new LlmOptions
             {
@@ -54,7 +55,8 @@ public class AgentChatServiceTests
             }),
             new StubHttpClientFactory(handler),
             NullLoggerFactory.Instance,
-            catalog ?? new Cli.FakeModelCatalog());
+            catalog ?? new Cli.FakeModelCatalog(),
+            prices);
 
     [Fact]
     public async Task AskAsync_SuccessfulCompletion_ReturnsAnswerAndModel()
@@ -292,6 +294,50 @@ public class AgentChatServiceTests
         var answer = await service.AskAsync("ping", TestContext.Current.CancellationToken);
 
         Assert.Equal(new TokenUsage(5, 1, 6), answer.Usage);
+    }
+
+    [Fact]
+    public async Task AskAsync_ModelWithAPrice_ReportsTheCostPricedWithTheModelAskedFor()
+    {
+        // The proxy reports its deployment name; the price belongs to the model_name that was asked for.
+        var prices = new FakeModelPrices(new Dictionary<string, ModelPrice> { [Model] = new(0.000001m, 0.000004m) });
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong", model: "azure/gpt-5.6-luna-2026")), prices: prices);
+
+        var answer = await service.AskAsync("ping", TestContext.Current.CancellationToken);
+
+        Assert.Equal(new TokenUsage(5, 1, 6, (5 * 0.000001m) + (1 * 0.000004m)), answer.Usage);
+        Assert.Equal([Model], prices.Asked);
+    }
+
+    [Fact]
+    public async Task AskAsync_CachedInputTokens_AreAtTheCacheReadPrice()
+    {
+        var body = JsonSerializer.Serialize(new
+        {
+            id = "x",
+            @object = "chat.completion",
+            created = 1,
+            model = Model,
+            choices = new[] { new { index = 0, message = new { role = "assistant", content = "pong" }, finish_reason = "stop" } },
+            usage = new { prompt_tokens = 1_000, completion_tokens = 10, total_tokens = 1_010, prompt_tokens_details = new { cached_tokens = 800 } },
+        });
+        var prices = new FakeModelPrices(new Dictionary<string, ModelPrice> { [Model] = new(0.000001m, 0.000004m, 0.0000001m) });
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, body), prices: prices);
+
+        var answer = await service.AskAsync("ping", TestContext.Current.CancellationToken);
+
+        Assert.Equal((200 * 0.000001m) + (800 * 0.0000001m) + (10 * 0.000004m), answer.Usage!.Cost);
+    }
+
+    [Fact]
+    public async Task AskAsync_ModelWithoutAPrice_ReportsTheTokensWithoutACost()
+    {
+        var service = CreateService(StubHttpHandler.Json(HttpStatusCode.OK, Completion("pong")), prices: new FakeModelPrices(new Dictionary<string, ModelPrice>()));
+
+        var answer = await service.AskAsync("ping", TestContext.Current.CancellationToken);
+
+        Assert.Equal(new TokenUsage(5, 1, 6), answer.Usage);
+        Assert.Null(answer.Usage!.Cost);
     }
 
     [Fact]

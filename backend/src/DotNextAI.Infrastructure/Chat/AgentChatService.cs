@@ -22,6 +22,7 @@ namespace DotNextAI.Infrastructure.Chat;
 /// Step 06: images go with the question as <see cref="DataContent"/>; the SDK sends them as base64 data URIs.
 /// Step 07: <see cref="AskStreamingAsync"/> relays the agent's streamed updates as they arrive.
 /// Step 08: one agent per chat model, created on first use; a model must be in the <see cref="IModelCatalog"/>.
+/// Step 10: the provider's token counters, priced with the proxy's prices (<see cref="IModelPrices"/>).
 /// </summary>
 internal sealed partial class AgentChatService : IChatService
 {
@@ -35,6 +36,7 @@ internal sealed partial class AgentChatService : IChatService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IModelCatalog _catalog;
+    private readonly IModelPrices _prices;
     private readonly ConcurrentDictionary<string, AIAgent> _agents = new(StringComparer.Ordinal);
     private readonly ILogger<AgentChatService> _logger;
 
@@ -42,12 +44,14 @@ internal sealed partial class AgentChatService : IChatService
         IOptions<LlmOptions> options,
         IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory,
-        IModelCatalog catalog)
+        IModelCatalog catalog,
+        IModelPrices? prices = null)
     {
         _options = options.Value;
         _httpClientFactory = httpClientFactory;
         _loggerFactory = loggerFactory;
         _catalog = catalog;
+        _prices = prices ?? NoPrices.Instance;
         _logger = loggerFactory.CreateLogger<AgentChatService>();
     }
 
@@ -56,6 +60,7 @@ internal sealed partial class AgentChatService : IChatService
     public async Task<ChatAnswer> AskAsync(ChatRequest request, CancellationToken cancellationToken)
     {
         var (prompt, model) = Validate(request);
+        var requested = model;
         var agent = await AgentForAsync(model, cancellationToken);
         var started = Stopwatch.GetTimestamp();
         AgentResponse response;
@@ -105,7 +110,7 @@ internal sealed partial class AgentChatService : IChatService
             text,
             model,
             Truncated: response.FinishReason == Microsoft.Extensions.AI.ChatFinishReason.Length,
-            Usage: ToUsage(response.Usage));
+            Usage: await UsageOfAsync(response.Usage, requested, cancellationToken));
     }
 
     public async IAsyncEnumerable<ChatStreamUpdate> AskStreamingAsync(
@@ -113,11 +118,12 @@ internal sealed partial class AgentChatService : IChatService
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var (prompt, model) = Validate(request);
+        var requested = model;
         var agent = await AgentForAsync(model, cancellationToken);
         var started = Stopwatch.GetTimestamp();
         var text = new StringBuilder();
         Microsoft.Extensions.AI.ChatFinishReason? finishReason = null;
-        TokenUsage? usage = null;
+        UsageDetails? usage = null;
 
         var updates = agent.RunStreamingAsync(ToMessages(request.History, prompt, request.Images), cancellationToken: cancellationToken);
         await using var enumerator = updates.GetAsyncEnumerator(cancellationToken);
@@ -154,7 +160,7 @@ internal sealed partial class AgentChatService : IChatService
             // The SDK asks for stream_options.include_usage: the usage comes in a final chunk without text.
             foreach (var reported in update.Contents.OfType<UsageContent>())
             {
-                usage = ToUsage(reported.Details) ?? usage;
+                usage = reported.Details ?? usage;
             }
 
             if ((update.RawRepresentation as ChatResponseUpdate)?.ModelId is { Length: > 0 } answeredBy)
@@ -176,9 +182,10 @@ internal sealed partial class AgentChatService : IChatService
 
         var elapsedMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         LogCallCompleted(model, finishReason?.Value, elapsedMs);
+        var priced = await UsageOfAsync(usage, requested, cancellationToken);
         yield return new ChatStreamUpdate(
             string.Empty,
-            new ChatAnswer(text.ToString(), model, Truncated: finishReason == Microsoft.Extensions.AI.ChatFinishReason.Length, Usage: usage));
+            new ChatAnswer(text.ToString(), model, Truncated: finishReason == Microsoft.Extensions.AI.ChatFinishReason.Length, Usage: priced));
     }
 
     /// <summary>The rules of every call; returns the trimmed question and the model to use.</summary>
@@ -216,8 +223,30 @@ internal sealed partial class AgentChatService : IChatService
             .AsAIAgent(instructions: Instructions, name: AgentName, loggerFactory: _loggerFactory));
     }
 
-    private static TokenUsage? ToUsage(UsageDetails? details) =>
-        details is null ? null : TokenUsage.From(details.InputTokenCount, details.OutputTokenCount, details.TotalTokenCount);
+    /// <summary>
+    /// The provider's counters with their cost. The price is the one of the model that was asked for (the proxy's
+    /// <c>model_name</c>), not the deployment name the answer reports.
+    /// </summary>
+    private async Task<TokenUsage?> UsageOfAsync(UsageDetails? details, string requestedModel, CancellationToken cancellationToken)
+    {
+        if (details is null || TokenUsage.From(details.InputTokenCount, details.OutputTokenCount, details.TotalTokenCount) is not { } usage)
+        {
+            return null;
+        }
+
+        var price = await _prices.FindAsync(requestedModel, cancellationToken);
+        return price is null
+            ? usage
+            : usage with { Cost = price.CostOf(usage.InputTokens, details.CachedInputTokenCount ?? 0, usage.OutputTokens) };
+    }
+
+    /// <summary>No prices: used when none are registered (tests that do not care about costs).</summary>
+    private sealed class NoPrices : IModelPrices
+    {
+        public static readonly NoPrices Instance = new();
+
+        public Task<ModelPrice?> FindAsync(string model, CancellationToken cancellationToken) => Task.FromResult<ModelPrice?>(null);
+    }
 
     private static List<ChatMessage> ToMessages(IReadOnlyList<ChatTurn> history, string question, IReadOnlyList<ChatImage> images)
     {

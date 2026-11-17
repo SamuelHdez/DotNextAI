@@ -27,19 +27,21 @@ export function questionCount(messages: readonly ChatMessage[]): number {
 
 /**
  * What the conversation cost so far (step 10): the sum of every answer's tokens, history resends included. `answers`
- * counts the answers whose usage is known; null when none is.
+ * counts the answers whose usage is known; null when none is. `cost` is the sum of their costs, and null as soon as one
+ * of them has none, as in the backend's `TokenUsage.Add`: a partial sum never passes for the total.
  */
-export function conversationUsage(messages: readonly ChatMessage[]): (TokenUsage & { answers: number }) | null {
+export function conversationUsage(messages: readonly ChatMessage[]): (Required<TokenUsage> & { answers: number }) | null {
   const counted = messages.filter((message) => message.usage);
   if (counted.length === 0) return null;
-  return counted.reduce(
+  return counted.reduce<Required<TokenUsage> & { answers: number }>(
     (total, { usage }) => ({
       inputTokens: total.inputTokens + usage!.inputTokens,
       outputTokens: total.outputTokens + usage!.outputTokens,
       totalTokens: total.totalTokens + usage!.totalTokens,
+      cost: total.cost != null && usage!.cost != null ? total.cost + usage!.cost : null,
       answers: total.answers + 1,
     }),
-    { inputTokens: 0, outputTokens: 0, totalTokens: 0, answers: 0 },
+    { inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0, answers: 0 },
   );
 }
 

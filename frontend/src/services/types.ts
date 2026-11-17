@@ -48,6 +48,8 @@ export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  /** US dollars at the proxy's prices; null (or absent) when the model has no price or a call of a total had none. */
+  cost?: number | null;
 }
 
 export interface ChatResponse {

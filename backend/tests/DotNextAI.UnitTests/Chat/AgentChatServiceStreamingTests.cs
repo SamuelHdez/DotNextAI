@@ -36,7 +36,7 @@ public class AgentChatServiceStreamingTests
     private static string Stream(params string[] pieces) =>
         string.Concat(pieces.Select(piece => Chunk(piece))) + Chunk(null, "stop") + "data: [DONE]\n\n";
 
-    private static AgentChatService CreateService(StubHttpHandler handler) =>
+    private static AgentChatService CreateService(StubHttpHandler handler, IModelPrices? prices = null) =>
         new(
             Microsoft.Extensions.Options.Options.Create(new LlmOptions
             {
@@ -48,7 +48,8 @@ public class AgentChatServiceStreamingTests
             }),
             new StubHttpClientFactory(handler),
             NullLoggerFactory.Instance,
-            new Cli.FakeModelCatalog());
+            new Cli.FakeModelCatalog(),
+            prices);
 
     private static async Task<List<ChatStreamUpdate>> CollectAsync(IAsyncEnumerable<ChatStreamUpdate> updates)
     {
@@ -98,6 +99,27 @@ public class AgentChatServiceStreamingTests
         var updates = await CollectAsync(service.AskStreamingAsync("Hi", [], [], TestContext.Current.CancellationToken));
 
         Assert.Equal(new TokenUsage(42, 7, 49), updates[^1].Completed!.Usage);
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_ModelWithAPrice_PutsTheCostOnTheWholeAnswer()
+    {
+        var usageChunk = "data: " + JsonSerializer.Serialize(new
+        {
+            id = "chatcmpl-stream",
+            @object = "chat.completion.chunk",
+            created = 1_700_000_000,
+            model = "azure/gpt-5.6-luna-2026",
+            choices = Array.Empty<object>(),
+            usage = new { prompt_tokens = 42, completion_tokens = 7, total_tokens = 49 },
+        }) + "\n\n";
+        var prices = new FakeModelPrices(new Dictionary<string, ModelPrice> { [Model] = new(0.000001m, 0.000004m) });
+        var service = CreateService(StubHttpHandler.Sse(Chunk("Hi") + Chunk(null, "stop") + usageChunk + "data: [DONE]\n\n"), prices);
+
+        var updates = await CollectAsync(service.AskStreamingAsync("Hi", [], [], TestContext.Current.CancellationToken));
+
+        Assert.Equal((42 * 0.000001m) + (7 * 0.000004m), updates[^1].Completed!.Usage!.Cost);
+        Assert.Equal([Model], prices.Asked);
     }
 
     [Fact]

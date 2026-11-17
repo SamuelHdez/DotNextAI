@@ -4,7 +4,7 @@ import type { ReactElement, ReactNode } from "react";
 import type { vi } from "vitest";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import type { Locale } from "@/lib/i18n/locales";
-import type { ConversationDetail, ConversationSummary, Folder } from "@/services/types";
+import type { ConversationDetail, ConversationSummary, Folder, TokenUsage } from "@/services/types";
 
 /** Renders inside Fluent UI and the i18n provider, as the app does. */
 export function renderWithProviders(ui: ReactElement, { locale = "en", ...options }: { locale?: Locale } & RenderOptions = {}) {
@@ -34,7 +34,7 @@ export function streamedAnswer(
   text: string,
   truncated = false,
   model = "gpt-5.6-luna",
-  usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null = null,
+  usage: TokenUsage | null = null,
 ): Response {
   const pieces = text.split(/(?<=\s)/).filter(Boolean);
   return sseResponse(

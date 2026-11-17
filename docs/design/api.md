@@ -78,11 +78,11 @@ Request:
   "answer": "Your name is Ana.",
   "model": "gpt-6-luna",
   "truncated": false,
-  "usage": { "inputTokens": 1200, "outputTokens": 34, "totalTokens": 1234 }
+  "usage": { "inputTokens": 1200, "outputTokens": 34, "totalTokens": 1234, "cost": 0.000137 }
 }
 ```
 
-`usage` (step 10, [token metrics](../specs/feature-token-metrics.md)) holds the tokens of this call as the proxy reports them, or `null` when it reports none. Input tokens include the history.
+`usage` (step 10, [token metrics](../specs/feature-token-metrics.md)) holds the tokens of this call as the proxy reports them, or `null` when it reports none. Input tokens include the history. `cost` (since 2026-11-17) is what the call cost in US dollars at the prices configured in the LiteLLM proxy (`GET {Llm:Endpoint}model/info`), a JSON number with up to 10 decimals, or `null` when the model has no price or the prices could not be read. The same `usage` shape is used everywhere below; image generations keep `cost: null` for now.
 
 `truncated` is true when the answer stopped at the maximum output length. To continue the conversation, the client appends `{ role: "user", text: question }` and `{ role: "assistant", text: answer }` to its history. The question goes as sent; the server trims it.
 
@@ -158,7 +158,7 @@ Shapes:
 // ConversationSummary
 {
   "id": "9b1e…", "title": "Plan the team offsite", "folderId": "5f0c…", "model": "gpt-6-luna", "questionCount": 2,
-  "usage": { "inputTokens": 30, "outputTokens": 4, "totalTokens": 34 },
+  "usage": { "inputTokens": 30, "outputTokens": 4, "totalTokens": 34, "cost": 0.000005 },
   "createdAt": "2026-11-16T21:41:00+00:00", "updatedAt": "2026-11-16T21:45:00+00:00"
 }
 
@@ -169,14 +169,14 @@ Shapes:
     { "id": "…", "role": "user", "text": "What is this?", "images": [{ "id": "…", "mediaType": "image/png", "size": 70, "url": "/api/conversations/9b1e…/images/…" }],
       "model": null, "usage": null, "truncated": false, "stopped": false, "createdAt": "…" },
     { "id": "…", "role": "assistant", "text": "A diagram.", "images": [], "model": "gpt-6-luna",
-      "usage": { "inputTokens": 120, "outputTokens": 3, "totalTokens": 123 }, "truncated": false, "stopped": false, "createdAt": "…" }
+      "usage": { "inputTokens": 120, "outputTokens": 3, "totalTokens": 123, "cost": 0.0000135 }, "truncated": false, "stopped": false, "createdAt": "…" }
   ]
 }
 ```
 
 Folder `icon`: `folder`, `briefcase`, `star`, `heart`, `book`, `code`, `lightbulb`, `rocket`, `people`, `home`, `beaker`, `airplane`. `color`: `default`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `berry`, `pink`, `brown` (`FolderAppearance`). The web app maps them to Fluent icons and theme colours.
 
-`url` is relative to the API. The conversation's `usage` is the sum of its answers'; `model` is the model of the last answer.
+`url` is relative to the API. The conversation's `usage` is the sum of its answers'; its `cost` is the sum of their costs, saved with each answer, and `null` once an answer with tokens has none (and for chats saved before 2026-11-17). `model` is the model of the last answer.
 
 ### `POST /api/conversations/{id}/messages/stream`
 
@@ -246,7 +246,7 @@ Only the origins in `Cors:AllowedOrigins` (`http://localhost:3030` in Developmen
   - Validation: 400 for an empty, missing or too-long question; empty, role-less or null turns; history over the limit; `"system"` or numeric roles; malformed JSON. None of them calls the model.
   - Failures: 503 when not configured; the status, `failure`, `title` and `detail` of every `ChatFailure`.
   - Limits and CORS: 429 with `Retry-After` over the rate limit, the CORS preflight for `POST`, 405 for `GET`.
-- `UsageEndpointTests` (integration): `usage` on `/api/chat`, on the `done` event and on `/api/images`; null without it.
+- `UsageEndpointTests` (integration): `usage` with its `cost` on `/api/chat` and on the `done` event, a null `cost` for a model without a price, `usage` on `/api/images`; null without it.
 - `ImageEndpointTests` (integration): base64 answer and size; 400 for an empty prompt or an unknown size; 503 when not configured; failures; its own rate limit.
 - `ModelsEndpointTests` (integration):
   - `GET /api/models`: the list and its limits; 503 when not configured; the proxy's failure.

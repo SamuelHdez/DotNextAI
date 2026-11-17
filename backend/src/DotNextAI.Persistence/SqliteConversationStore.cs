@@ -70,7 +70,7 @@ internal sealed class SqliteConversationStore(ChatsDbContext db, TimeProvider ti
     {
         await EnsureFolderExistsAsync(folderId, cancellationToken);
         var now = Now();
-        var conversation = new ConversationEntity { Id = Guid.NewGuid(), Title = title, FolderId = folderId, CreatedAt = now, UpdatedAt = now };
+        var conversation = new ConversationEntity { Id = Guid.NewGuid(), Title = title, FolderId = folderId, Cost = 0m, CreatedAt = now, UpdatedAt = now };
         db.Conversations.Add(conversation);
         await db.SaveChangesAsync(cancellationToken);
         return Summary(conversation);
@@ -103,7 +103,9 @@ internal sealed class SqliteConversationStore(ChatsDbContext db, TimeProvider ti
                 row.Message.Text,
                 row.Images,
                 row.Message.Model,
-                TokenUsage.From(row.Message.InputTokens, row.Message.OutputTokens, row.Message.TotalTokens),
+                TokenUsage.From(row.Message.InputTokens, row.Message.OutputTokens, row.Message.TotalTokens) is { } usage
+                    ? usage with { Cost = row.Message.Cost }
+                    : null,
                 row.Message.Truncated,
                 row.Message.Stopped,
                 Utc(row.Message.CreatedAt))).ToArray());
@@ -171,6 +173,7 @@ internal sealed class SqliteConversationStore(ChatsDbContext db, TimeProvider ti
             InputTokens = exchange.Usage?.InputTokens,
             OutputTokens = exchange.Usage?.OutputTokens,
             TotalTokens = exchange.Usage?.TotalTokens,
+            Cost = exchange.Usage?.Cost,
             Truncated = exchange.Truncated,
             Stopped = exchange.Stopped,
             CreatedAt = now,
@@ -178,9 +181,14 @@ internal sealed class SqliteConversationStore(ChatsDbContext db, TimeProvider ti
 
         conversation.QuestionCount++;
         conversation.Model = exchange.Model ?? conversation.Model;
-        conversation.InputTokens += exchange.Usage?.InputTokens ?? 0;
-        conversation.OutputTokens += exchange.Usage?.OutputTokens ?? 0;
-        conversation.TotalTokens += exchange.Usage?.TotalTokens ?? 0;
+        if (exchange.Usage is { } usage)
+        {
+            // Same rule as TokenUsage.Add: one answer without a cost makes the total unknown.
+            var total = new TokenUsage(conversation.InputTokens, conversation.OutputTokens, conversation.TotalTokens, conversation.Cost).Add(usage);
+            (conversation.InputTokens, conversation.OutputTokens, conversation.TotalTokens, conversation.Cost) =
+                (total.InputTokens, total.OutputTokens, total.TotalTokens, total.Cost);
+        }
+
         conversation.UpdatedAt = now;
         if (title is not null)
         {
@@ -207,7 +215,7 @@ internal sealed class SqliteConversationStore(ChatsDbContext db, TimeProvider ti
             conversation.FolderId,
             conversation.Model,
             conversation.QuestionCount,
-            new TokenUsage(conversation.InputTokens, conversation.OutputTokens, conversation.TotalTokens),
+            new TokenUsage(conversation.InputTokens, conversation.OutputTokens, conversation.TotalTokens, conversation.Cost),
             Utc(conversation.CreatedAt),
             Utc(conversation.UpdatedAt));
 

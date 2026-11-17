@@ -11,7 +11,7 @@ namespace DotNextAI.IntegrationTests.Chat;
 public class UsageEndpointTests(DotNextAIApiFactory factory) : IClassFixture<DotNextAIApiFactory>
 {
     private static FakeChatService Counting() =>
-        new(_ => new ChatAnswer("Hello Ana!", "gpt-5.6-luna", false, new TokenUsage(120, 4, 124)));
+        new(_ => new ChatAnswer("Hello Ana!", "gpt-5.6-luna", false, new TokenUsage(120, 4, 124, 0.0000141m)));
 
     [Fact]
     public async Task Chat_ReturnsTheUsage()
@@ -24,6 +24,18 @@ public class UsageEndpointTests(DotNextAIApiFactory factory) : IClassFixture<Dot
         Assert.Equal(120, usage.GetProperty("inputTokens").GetInt64());
         Assert.Equal(4, usage.GetProperty("outputTokens").GetInt64());
         Assert.Equal(124, usage.GetProperty("totalTokens").GetInt64());
+        Assert.Equal(0.0000141m, usage.GetProperty("cost").GetDecimal());
+    }
+
+    [Fact]
+    public async Task Chat_ModelWithoutAPrice_ReturnsANullCost()
+    {
+        using var client = factory.CreateClientWith(new FakeChatService(_ => new ChatAnswer("Hi", "gpt-5.6-luna", false, new TokenUsage(1, 1, 2))));
+
+        using var response = await client.PostAsJsonAsync(new Uri("/api/chat", UriKind.Relative), new { question = "Hi" }, TestContext.Current.CancellationToken);
+
+        var usage = (await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("usage");
+        Assert.Equal(JsonValueKind.Null, usage.GetProperty("cost").ValueKind);
     }
 
     [Fact]
@@ -47,6 +59,7 @@ public class UsageEndpointTests(DotNextAIApiFactory factory) : IClassFixture<Dot
         var done = body.Replace("\r\n", "\n", StringComparison.Ordinal).Split("\n\n").Single(block => block.StartsWith("event: done", StringComparison.Ordinal));
         using var data = JsonDocument.Parse(done.Split("data: ", 2)[1]);
         Assert.Equal(124, data.RootElement.GetProperty("usage").GetProperty("totalTokens").GetInt64());
+        Assert.Equal(0.0000141m, data.RootElement.GetProperty("usage").GetProperty("cost").GetDecimal());
     }
 
     [Fact]

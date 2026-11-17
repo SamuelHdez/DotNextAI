@@ -27,10 +27,11 @@ public sealed record ChatTurnDto(ChatTurnRole? Role, string? Text);
 public sealed record ChatResponseDto(string Answer, string Model, bool Truncated, TokenUsageDto? Usage = null);
 
 /// <summary>Tokens of one call. Input tokens include the history sent with the question.</summary>
-public sealed record TokenUsageDto(long InputTokens, long OutputTokens, long TotalTokens)
+/// <param name="Cost">US dollars at the proxy's prices; null when the model has no price or a call of the total had none.</param>
+public sealed record TokenUsageDto(long InputTokens, long OutputTokens, long TotalTokens, decimal? Cost = null)
 {
     public static TokenUsageDto? From(DotNextAI.Application.Chat.TokenUsage? usage) =>
-        usage is null ? null : new(usage.InputTokens, usage.OutputTokens, usage.TotalTokens);
+        usage is null ? null : new(usage.InputTokens, usage.OutputTokens, usage.TotalTokens, usage.Cost);
 }
 
 /// <summary>Answer of <c>GET /api/models</c>: the chat models of the proxy, the default first.</summary>

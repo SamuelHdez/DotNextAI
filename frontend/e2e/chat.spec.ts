@@ -194,6 +194,22 @@ test.describe("chat", () => {
     await expect(page.getByText("Every question resends the conversation, so input tokens grow with each turn.")).toBeVisible();
   });
 
+  test("shows the cost of each answer and of the conversation at the proxy's prices", async ({ page }) => {
+    const costOf = (text: string | null) => Number(text!.match(/\$([\d.]+)/)![1]);
+
+    await ask(page, "Hello");
+    await expect(conversation(page).getByText(/^\$0\.\d+$/)).toHaveCount(1);
+    const total = page.getByText(/^Cost: \$[\d.]+, at the LiteLLM proxy's prices\.$/);
+    await expect(total).toBeVisible();
+    const first = costOf(await total.textContent());
+    expect(first).toBeGreaterThan(0);
+
+    await ask(page, "Hello again");
+
+    await expect(conversation(page).getByText(/^\$0\.\d+$/)).toHaveCount(2);
+    await expect.poll(async () => costOf(await total.textContent())).toBeGreaterThan(first * 2);
+  });
+
   test("has no serious accessibility violations with a conversation", async ({ page }) => {
     await expectNoA11yViolations(page);
 

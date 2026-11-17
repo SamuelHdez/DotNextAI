@@ -5,6 +5,7 @@ import { Warning16Regular } from "@fluentui/react-icons";
 import { useEffect, useRef, useState } from "react";
 import { ImageViewer, type ViewedImage } from "@/components/ui/ImageViewer";
 import type { ChatMessage } from "@/lib/chat/conversation";
+import { formatCost } from "@/lib/chat/cost";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 const useStyles = makeStyles({
@@ -104,7 +105,7 @@ interface ChatMessageListProps {
 /** The conversation, oldest first. New messages are announced by screen readers (role="log") and scrolled into view. */
 export function ChatMessageList({ messages, pendingQuestion, pendingImages, pendingAnswer = "" }: ChatMessageListProps) {
   const styles = useStyles();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const end = useRef<HTMLLIElement>(null);
   const [viewed, setViewed] = useState<ViewedImage | null>(null);
 
@@ -129,6 +130,7 @@ export function ChatMessageList({ messages, pendingQuestion, pendingImages, pend
               {message.usage && (
                 <Caption1>{t("chat.tokens", { input: message.usage.inputTokens, output: message.usage.outputTokens })}</Caption1>
               )}
+              {message.usage?.cost != null && <Caption1>{formatCost(message.usage.cost, locale)}</Caption1>}
               </div>
               <Images
                 images={message.images}

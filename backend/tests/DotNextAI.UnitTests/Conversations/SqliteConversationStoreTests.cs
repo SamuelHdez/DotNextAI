@@ -115,6 +115,39 @@ public sealed class SqliteConversationStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task AppendExchange_SavesTheCostOfEachAnswerAndSumsIt()
+    {
+        var store = _database.NewStore();
+        var conversation = await store.CreateConversationAsync("Costs", null, TestContext.Current.CancellationToken);
+        Assert.Equal(0m, conversation.TotalUsage.Cost);
+
+        await store.AppendExchangeAsync(conversation.Id, Exchange("One", "1", new TokenUsage(10, 3, 13, 0.0000025m)), null, TestContext.Current.CancellationToken);
+        // A stopped answer has no usage: it adds neither tokens nor cost.
+        await store.AppendExchangeAsync(conversation.Id, new SavedExchange("Two", [], "2", "gpt-6-luna", null, Truncated: false, Stopped: true), null, TestContext.Current.CancellationToken);
+        await store.AppendExchangeAsync(conversation.Id, Exchange("Three", "3", new TokenUsage(20, 1, 21, 0.0000025m)), null, TestContext.Current.CancellationToken);
+
+        var detail = (await _database.NewStore().GetConversationAsync(conversation.Id, TestContext.Current.CancellationToken))!;
+        Assert.Equal(new TokenUsage(30, 4, 34, 0.000005m), detail.Summary.TotalUsage);
+        Assert.Equal(0.0000025m, detail.Messages[1].Usage!.Cost);
+        Assert.Null(detail.Messages[3].Usage);
+        Assert.Equal(0.000005m, Assert.Single(await _database.NewStore().ListConversationsAsync(TestContext.Current.CancellationToken)).TotalUsage.Cost);
+    }
+
+    [Fact]
+    public async Task AppendExchange_AnAnswerWithoutACost_MakesTheTotalUnknown()
+    {
+        var store = _database.NewStore();
+        var conversation = await store.CreateConversationAsync("Costs", null, TestContext.Current.CancellationToken);
+
+        await store.AppendExchangeAsync(conversation.Id, Exchange("One", "1", new TokenUsage(10, 3, 13, 0.0000025m)), null, TestContext.Current.CancellationToken);
+        await store.AppendExchangeAsync(conversation.Id, Exchange("Two", "2", new TokenUsage(20, 1, 21)), null, TestContext.Current.CancellationToken);
+        var summary = await store.AppendExchangeAsync(conversation.Id, Exchange("Three", "3", new TokenUsage(5, 1, 6, 0.000001m)), null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(new TokenUsage(35, 5, 40), summary.TotalUsage);
+        Assert.Null((await _database.NewStore().GetConversationAsync(conversation.Id, TestContext.Current.CancellationToken))!.Messages[3].Usage!.Cost);
+    }
+
+    [Fact]
     public async Task Images_AreStoredWithTheQuestionAndServedOneByOne()
     {
         var store = _database.NewStore();

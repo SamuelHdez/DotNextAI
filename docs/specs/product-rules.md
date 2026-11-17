@@ -48,6 +48,16 @@ Model list reported by the ERNI LiteLLM proxy for our key (`GET /models`) on 202
 | `gpt-realtime-1.5` | realtime | 32,000 / 4,096 | Not used. |
 | `text-embedding-3-small` | embedding | 8,192 / — | Not used. |
 
+**Prices** configured in the proxy (`GET /model/info`, US dollars per million tokens) on 2026-11-17. The app reads them at runtime to show costs ([token metrics](feature-token-metrics.md#decisions)), so this table is for reference only:
+
+| Model | Input | Output | Cached input | Above 272k input tokens (input / output / cached) |
+| ----- | ----- | ------ | ------------ | ------------------------------------------------- |
+| `gpt-6-luna` | $0.10 | $0.50 | $0.01 | $0.20 / $0.75 / $0.02 |
+| `gpt-6.1-terra` | $1.00 | $5.00 | $0.05 | $2.00 / $7.50 / $0.10 |
+| `gpt-6.1-sol` | $2.00 | $11.00 | $0.11 | $4.00 / $15.00 / $0.20 |
+| `gpt-6-astra` | $10.00 | $50.00 | $1.00 | $20.00 / $75.00 / $2.00 |
+| `gpt-image-2` | $5.00 (text), $8.00 (image) | $30.00 (image) | $1.25 | — |
+
 **History of the access (probes with our key):**
 
 - 2026-11-16: the key's team only had `gpt-5.6-luna` (then the default) and `gpt-5.6-terra`, which had **no healthy deployments**; the `gpt-6.x` models answered 403 `team_model_access_denied`.

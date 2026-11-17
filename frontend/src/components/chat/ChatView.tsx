@@ -22,6 +22,7 @@ import { chatErrorMessage, type LocalizedError } from "@/lib/chat/chatErrors";
 import { checkQuestion, MAX_CONVERSATION_QUESTIONS, MAX_QUESTION_LENGTH } from "@/lib/chat/chatRules";
 import { MAX_IMAGE_MEGABYTES, MAX_IMAGES_PER_QUESTION, readImageFile, type ImageAttachment } from "@/lib/chat/images";
 import { conversationUsage, questionCount, type ChatMessage } from "@/lib/chat/conversation";
+import { formatCost } from "@/lib/chat/cost";
 import { initialModel, readModelPreference, storeModelPreference } from "@/lib/chat/modelPreference";
 import { toChatMessages } from "@/lib/chat/savedChats";
 import { useI18n } from "@/lib/i18n/I18nProvider";
@@ -101,7 +102,7 @@ interface ChatViewProps {
  */
 export function ChatView({ initialConversationId = null, onSaved, onStopped, onMissing, onDiscarded, onNewConversation }: ChatViewProps = {}) {
   const styles = useStyles();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
@@ -408,6 +409,7 @@ export function ChatView({ initialConversationId = null, onSaved, onStopped, onM
               <Caption1>
                 {t("chat.usage.total", { total: usage.totalTokens, input: usage.inputTokens, output: usage.outputTokens, answers: usage.answers })}
               </Caption1>
+              {usage.cost != null && <Caption1>{t("chat.usage.cost", { cost: formatCost(usage.cost, locale) })}</Caption1>}
               <Caption1 className={styles.usageHint}>{t("chat.usage.hint")}</Caption1>
             </div>
           )}

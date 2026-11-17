@@ -49,12 +49,12 @@ erDiagram
     Conversations ||--o{ Messages : "cascade"
     Messages ||--o{ MessageImages : "cascade"
     Folders { guid Id string Name "NOCASE unique" string Icon string Color datetime CreatedAt }
-    Conversations { guid Id string Title guid FolderId string Model int QuestionCount long InputTokens long OutputTokens long TotalTokens datetime CreatedAt datetime UpdatedAt }
-    Messages { guid Id guid ConversationId int Sequence int Role string Text string Model long InputTokens long OutputTokens long TotalTokens bool Truncated bool Stopped datetime CreatedAt }
+    Conversations { guid Id string Title guid FolderId string Model int QuestionCount long InputTokens long OutputTokens long TotalTokens decimal Cost datetime CreatedAt datetime UpdatedAt }
+    Messages { guid Id guid ConversationId int Sequence int Role string Text string Model long InputTokens long OutputTokens long TotalTokens decimal Cost bool Truncated bool Stopped datetime CreatedAt }
     MessageImages { guid Id guid MessageId int Position string MediaType long Size blob Data }
 ```
 
-The conversation keeps its totals (questions, tokens, last model), so the list never reads the messages. Lists and the conversation detail never load image bytes; only `GET …/images/{imageId}` does.
+The conversation keeps its totals (questions, tokens, cost, last model), so the list never reads the messages. `Cost` (US dollars, SQLite `TEXT`, `ConversationCost` migration of 2026-11-17) is the answer's cost when it was saved; the conversation's starts at 0 and becomes null once an answer with tokens has no cost. Chats saved before the migration have null costs ([token metrics](feature-token-metrics.md#decisions)). Lists and the conversation detail never load image bytes; only `GET …/images/{imageId}` does.
 
 ## Web app
 

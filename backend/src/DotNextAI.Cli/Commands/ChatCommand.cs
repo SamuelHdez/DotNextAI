@@ -20,7 +20,7 @@ internal sealed class ChatCommand(IChatService chat, IModelCatalog catalog, CliC
           /images       List the images attached to your next question
           /model        Show the current chat model and the available ones
           /model <name> Answer the next questions with another model (the conversation goes on)
-          /usage        Tokens used by this conversation so far
+          /usage        Tokens and cost of this conversation so far
           /new          Start a new conversation (forget the previous questions, answers and attached images)
           /help         Show this list
           /exit, /quit  Leave the chat (also Ctrl+D, or Ctrl+Z then Enter on Windows)
@@ -166,7 +166,7 @@ internal sealed class ChatCommand(IChatService chat, IModelCatalog catalog, CliC
                     ? "No questions answered yet."
                     : conversation.TotalUsage.TotalTokens == 0
                         ? $"{conversation.QuestionCount} answers; the LiteLLM proxy did not report their tokens."
-                        : $"This conversation: {conversation.QuestionCount} answers, {CliMessages.Tokens(conversation.TotalUsage)} tokens. Every question resends the history, so input tokens grow with each turn.");
+                        : $"This conversation: {conversation.QuestionCount} answers, {CliMessages.Tokens(conversation.TotalUsage)} tokens{(conversation.TotalUsage.Cost is { } cost ? $", {CliMessages.Cost(cost)} at the LiteLLM proxy's prices" : string.Empty)}. Every question resends the history, so input tokens grow with each turn.");
                 return false;
             case "/IMAGES":
                 await console.Error.WriteLineAsync(attachments.Count == 0

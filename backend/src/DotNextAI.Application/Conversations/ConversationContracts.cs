@@ -12,7 +12,7 @@ public sealed record FolderUpdate(string? Name = null, string? Icon = null, stri
 /// <summary>A saved conversation without its messages, for lists.</summary>
 /// <param name="Model">Model of the last answer, when there is one.</param>
 /// <param name="QuestionCount">Answered questions, for the 50-question limit.</param>
-/// <param name="TotalUsage">Tokens of every answer so far (step 10).</param>
+/// <param name="TotalUsage">Tokens of every answer so far (step 10) and their cost, null when unknown.</param>
 public sealed record ConversationSummary(
     Guid Id,
     string Title,

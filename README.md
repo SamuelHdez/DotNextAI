@@ -81,7 +81,7 @@ Open `http://localhost:3030` after `./scripts/dev.sh`. A dashboard with the Vali
 
 - **Chat** (the start page, `/`): every conversation is saved (SQLite, through the API) and listed under **Saved chats**, where folders (one level) organise them; rename, move and delete from each chat's menu, and `/?c=<id>` reopens one after a reload. Enter sends, Shift+Enter adds a line, the answer appears as it is written (**Stop** keeps what arrived), **New conversation** starts over, and the **Model** selector picks one of the proxy's chat models (remembered). Attach up to 4 images (PNG, JPEG, WebP, GIF, 4 MB each) with the paperclip or by pasting; they go with that question only.
 - **Images**: describe an image, pick a shape and generate it with the proxy's image model (`gpt-image-2`); download the results.
-- **Tokens**: every answer and image shows its tokens, and the chat shows the conversation's total (input grows with the history).
+- **Tokens and cost**: every answer and image shows its tokens, and the chat shows the conversation's total (input grows with the history). Chat answers and the conversation also show their cost in US dollars, at the prices configured in the LiteLLM proxy (`model/info`).
 - **Header**: language selector (English / Español, remembered in a cookie) and appearance (system / light / dark).
 
 Details in the [web app spec](docs/specs/feature-web-app.md).

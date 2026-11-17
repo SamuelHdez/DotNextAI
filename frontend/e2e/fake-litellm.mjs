@@ -18,6 +18,7 @@
 // "[e2e:unavailable]"), and refuses response_format, which gpt-image models do not accept.
 // GET /models (and /v1/models) lists two chat models plus non-chat ones, with LiteLLM's "mode"; answers name the
 // model that was asked for, so the tests see which model answered.
+// GET /model/info (and /v1/model/info) gives LiteLLM's prices per token (PRICES), so answers show a cost.
 import { createServer } from "node:http";
 
 const port = Number(process.argv[2] ?? process.env.FAKE_LITELLM_PORT ?? 4010);
@@ -28,6 +29,11 @@ const MODELS = [
   { id: "e2e-embedding", object: "model", owned_by: "openai", mode: "embedding", max_input_tokens: 8192 },
   { id: "e2e-image", object: "model", owned_by: "openai", mode: "image_generation" },
 ];
+// US dollars per token, as LiteLLM's model_info: $10 / $30 per million for e2e-model, $1 / $2 for e2e-model-fast.
+const PRICES = {
+  "e2e-model": { input_cost_per_token: 0.00001, output_cost_per_token: 0.00003 },
+  "e2e-model-fast": { input_cost_per_token: 0.000001, output_cost_per_token: 0.000002 },
+};
 
 function textOf(content) {
   if (typeof content === "string") return content;
@@ -143,6 +149,14 @@ const server = createServer((request, response) => {
       return send(response, 401, { error: { message: "Authentication Error, no api key passed in." } });
     }
     return send(response, 200, { data: MODELS, object: "list" });
+  }
+
+  if (request.method === "GET" && /^\/(v1\/)?model\/info$/.test(path)) {
+    if (!/^Bearer \S+$/.test(request.headers.authorization ?? "")) {
+      return send(response, 401, { error: { message: "Authentication Error, no api key passed in." } });
+    }
+    const data = MODELS.map(({ id, mode }) => ({ model_name: id, litellm_params: { model: `openai/${id}` }, model_info: { mode, ...PRICES[id] } }));
+    return send(response, 200, { data });
   }
 
   const isImages = request.method === "POST" && /^\/(v1\/)?images\/generations$/.test(path);

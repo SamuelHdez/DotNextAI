@@ -50,7 +50,7 @@ internal static class ConversationEndpoints
             summary.FolderId,
             summary.Model,
             summary.QuestionCount,
-            new TokenUsageDto(summary.TotalUsage.InputTokens, summary.TotalUsage.OutputTokens, summary.TotalUsage.TotalTokens),
+            TokenUsageDto.From(summary.TotalUsage)!,
             summary.CreatedAt,
             summary.UpdatedAt);
 

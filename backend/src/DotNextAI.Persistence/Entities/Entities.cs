@@ -39,6 +39,12 @@ internal sealed class ConversationEntity
 
     public long TotalTokens { get; set; }
 
+    /// <summary>
+    /// Running cost in US dollars (docs/specs/feature-token-metrics.md): 0 for a new chat, null once an answer with
+    /// tokens has no cost, and null for chats saved before costs existed.
+    /// </summary>
+    public decimal? Cost { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -69,6 +75,9 @@ internal sealed class MessageEntity
     public long? OutputTokens { get; set; }
 
     public long? TotalTokens { get; set; }
+
+    /// <summary>Cost of the answer in US dollars at the proxy's prices when it was saved; null when unknown.</summary>
+    public decimal? Cost { get; set; }
 
     public bool Truncated { get; set; }
 

@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddHttpClient(LlmChatClientFactory.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan);
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IModelCatalog, LiteLlmModelCatalog>();
+        services.AddSingleton<IModelPrices, LiteLlmModelPrices>();
         services.AddSingleton<IChatService, AgentChatService>();
         services.AddSingleton<IImageService, LiteLlmImageService>();
 

@@ -23,6 +23,9 @@ namespace DotNextAI.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal?>("Cost")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -106,6 +109,9 @@ namespace DotNextAI.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Cost")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")

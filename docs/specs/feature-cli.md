@@ -40,7 +40,7 @@ Rules:
 - The question is trimmed. Empty questions and questions longer than 20,000 characters are rejected before any model call ([chat rules](feature-llm-chat.md#rules)).
 - Configuration is checked **before** the question is read, so nobody types a question that cannot be sent.
 - No history: each `ask` run is independent. For a conversation, use the chat.
-- After the answer, when the proxy reports usage, stderr gets `Tokens: 1,200 in · 34 out · 1,234 total` (step 10).
+- After the answer, when the proxy reports usage, stderr gets `Tokens: 1,200 in · 34 out · 1,234 total` (step 10), followed by ` · $0.00014` when the model has a price (since 2026-11-17).
 - Images (`--image`, `-i`, repeatable): PNG, JPEG, WebP or GIF, recognised by their bytes whatever the extension, at most 4 MB each (the size is checked before reading the file).
 - Ctrl+C cancels the call in progress.
 
@@ -71,7 +71,7 @@ Rules:
 - Empty lines are ignored.
 - A question that fails (model error, too long) is reported and **not** added to the history. The chat goes on, and the question can be asked again.
 - At 50 questions, further questions are refused with the limit message until `/new`.
-- After each answer, when the proxy reports usage, stderr gets `Tokens: … (conversation: N)` (step 10).
+- After each answer, when the proxy reports usage, stderr gets `Tokens: … (conversation: N)` (step 10), with the answer's and the conversation's costs when known: `Tokens: … · $0.00014 (conversation: N · $0.0003)`.
 - Attached images go with the next question only. After an answer they are used up; when the question fails they stay attached for the retry. The history keeps the text.
 - Configuration is checked before the banner; when it is missing the chat exits with 3.
 
@@ -81,7 +81,7 @@ Rules:
 | `/images` | Lists the images waiting for the next question, or `No images attached.` |
 | `/model` | Shows the current model (`Model: gpt-6-luna`) and the list, the current one marked with `*`. |
 | `/model <name>` | Answers the next questions with another chat model: `Now using gpt-6.1-terra. The conversation goes on with it.` The history goes to the new model. A non-chat or unknown model is refused with the list. |
-| `/usage` | Tokens of the conversation so far (step 10), see [token metrics](feature-token-metrics.md#formats). |
+| `/usage` | Tokens of the conversation so far (step 10) and, when known, its cost at the LiteLLM proxy's prices; see [token metrics](feature-token-metrics.md#formats). |
 | `/new` | Forgets the conversation, its token total and the attached images, and writes `Started a new conversation.` |
 | `/help` | Lists the chat commands. |
 | `/exit`, `/quit` | Ends the chat (exit code 0). |
