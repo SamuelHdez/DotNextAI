@@ -708,3 +708,52 @@
 .card p.b2 {
   font-size: 22px;
 }
+
+/* ---------- The cycle of a question in AgentChatService ---------- */
+
+.cycle .node {
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 16px 18px;
+  font-size: 18px;
+  line-height: 1.3;
+}
+.cycle .node .nt {
+  font-size: 23px;
+}
+.cycle .sn {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--lblue);
+}
+.cycle .fail {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: var(--rule);
+  font-size: 16px;
+  line-height: 1.3;
+  color: var(--grey);
+}
+.cycle .fail b {
+  color: var(--blue);
+  font-weight: 600;
+}
+.cycle .node--fill .fail {
+  border-top-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.85);
+}
+.cycle .node--fill .fail b {
+  color: var(--white);
+}
+.cycle .dep {
+  justify-content: center;
+  gap: 2px;
+}
+.cycle .dep .nt {
+  font-size: 20px;
+}
+.cycle .edge-label.ret {
+  color: var(--blue);
+  font-weight: 600;
+}

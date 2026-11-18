@@ -134,6 +134,46 @@ scripts/    dev.sh
 
 See [architecture](docs/design/architecture.md) for the components and the decisions behind them.
 
+## How a question flows
+
+Every question, from the web app, the API or the terminal, goes through `AgentChatService` (`backend/src/DotNextAI.Infrastructure/Chat/AgentChatService.cs`), the Microsoft Agent Framework implementation of `IChatService`:
+
+```mermaid
+flowchart TB
+    callers["<b>Callers</b><br/>API: /api/chat, /api/chat/stream<br/>ConversationService (saved chats)<br/>CLI: ChatConversation"]
+
+    subgraph svc["AgentChatService · AskAsync / AskStreamingAsync"]
+        direction TB
+        validate["<b>1 · Validate</b><br/>ChatRules: question, history, images<br/>LLM configured?<br/><i>fails: ArgumentException (400), NotConfigured</i>"]
+        agent["<b>2 · Pick the agent</b><br/>model from the catalog, one cached ChatClientAgent per model<br/><i>fails: ModelNotFound</i>"]
+        messages["<b>3 · Build messages</b><br/>history (user / assistant) + question with TextContent and DataContent<br/>no AgentSession: the caller owns the history"]
+        run["<b>4 · Run</b><br/>RunAsync, or RunStreamingAsync relayed piece by piece<br/><i>fails: Unauthorized, RateLimited, ModelUnavailable, BadRequest, Timeout, Unavailable</i>"]
+        answer["<b>5 · Read the answer</b><br/>text or refusal, ModelId, FinishReason.Length = cut off<br/><i>fails: EmptyAnswer</i>"]
+        price["<b>6 · Price it</b><br/>UsageDetails x model price = TokenUsage.Cost<br/><i>no price: no cost, never a failure</i>"]
+        validate --> agent --> messages --> run --> answer --> price
+    end
+
+    catalog[("IModelCatalog<br/>GET models · 5 min cache")]
+    proxy[("LiteLLM proxy<br/>POST chat/completions")]
+    prices[("IModelPrices<br/>GET model/info · 5 min cache")]
+    result(["ChatAnswer, or the last ChatStreamUpdate when streaming<br/>failures: ChatServiceException with a ChatFailure"])
+
+    callers --> validate
+    agent -. "only for a model other than the default" .-> catalog
+    run -- "OpenAI .NET SDK" --> proxy
+    price -.-> prices
+    price --> result
+```
+
+1. **Validate.** `ChatRules` checks the question, the history and the images (format from the bytes, count, size) before anything is spent; a broken rule is an `ArgumentException`, which the API answers as 400. A missing LLM configuration is `NotConfigured`.
+2. **Pick the agent.** The model is the one asked for or `Llm:DefaultModel`. Any other model must be a chat model of the proxy (`IModelCatalog`), or the call fails with `ModelNotFound`, so a client's model name never reaches the proxy unchecked. Each model gets one `ChatClientAgent` (`LlmChatClientFactory.Create(...).AsAIAgent(instructions, name)`), created on first use and reused.
+3. **Build the messages.** The caller passes the history with every question: the service keeps no conversation and uses no `AgentSession` (the CLI keeps it in memory, saved chats in SQLite). The question goes last, with its images as `DataContent`; the history stays text.
+4. **Run.** `RunAsync` returns the whole answer; `RunStreamingAsync` yields an update per piece, relayed at once as `ChatStreamUpdate(text)`. The agent puts its instructions first and calls the proxy through the OpenAI SDK (timeout, retries, the `Llm` `HttpClient`). `ChatFailureMapper` turns failures into a `ChatFailure`: the proxy's HTTP status (`Unauthorized`, `RateLimited`, `ModelUnavailable`, `BadRequest`…), a timeout (`Timeout`), or a lost connection (`Unavailable`, also when a stream breaks after some text).
+5. **Read the answer.** The text, or the model's refusal when there is none; still empty is `EmptyAnswer`. `ModelId` says which model answered and `FinishReason.Length` marks a cut-off answer. Only metadata is logged, never prompts or answers.
+6. **Price it.** The provider's `UsageDetails` (from the final `UsageContent` when streaming) become a `TokenUsage`, priced with the proxy's prices of the model asked for (`IModelPrices`, cached input included). No price means no cost, never a failure. The result is a `ChatAnswer`; when streaming it travels in the last `ChatStreamUpdate`.
+
+The API turns a `ChatFailure` into ProblemDetails with a `failure` code (`ChatProblems`), or into an `error` event once a stream has started, and the web app and the CLI translate that code ([chat service spec](docs/specs/feature-llm-chat.md), [API contract](docs/design/api.md)).
+
 ## Security notes
 
 - The LiteLLM key stays in the backend: it is not in API responses, error messages, logs or tracked files. Tests check `/api/health` and the error messages (the key is masked even if the proxy echoes it).
